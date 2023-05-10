@@ -8,7 +8,17 @@ Custom nodes that extend the capabilities of ComfyUI
 | _TranslateCLIPTextEncodeNode_| Node translate promt from other languages into english | conditioning |
 
 # Installing
-1. Download from github repositorie ComfyUI_Custom_Nodes_AlekPet, and put in custom_nodes
+1. Download from github repositorie ComfyUI_Custom_Nodes_AlekPet, extract folder ComfyUI_Custom_Nodes_AlekPet, and put in custom_nodes
+
+__Folder stucture:__
+```
+custom_nodes
+   |-- ComfyUI_Custom_Nodes_AlekPet
+       |---- folders nodes
+       |---- __init__.py
+       |---- LICENSE
+       |---- README.md     
+```
 2. Run Comflyui....
 
 # Installing use git
