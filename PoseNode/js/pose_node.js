@@ -12,7 +12,7 @@ import { fabric } from "/lib/fabric.js";
 fabric.Object.prototype.transparentCorners = false;
 fabric.Object.prototype.cornerColor = "#108ce6";
 fabric.Object.prototype.borderColor = "#108ce6";
-fabric.Object.prototype.cornerSize = 1;
+fabric.Object.prototype.cornerSize = 10;
 
 let connect_keypoints = [
   [0, 1],
