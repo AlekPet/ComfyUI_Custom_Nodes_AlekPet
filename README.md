@@ -2,10 +2,10 @@
 Custom nodes that extend the capabilities of ComfyUI
 
 # List Nodes:
-| Name      | Description |
-| :----------- | :-----------: |
-| _PoseNode_ | Set pose ControlNet |
-| _TranslateCLIPTextEncodeNode_| Node translate promt from other languages into english |
+| Name      | Description | ComfyUI category |
+| :----------- | :-----------: | :-----------: |
+| _PoseNode_ | Set pose ControlNet | image | 
+| _TranslateCLIPTextEncodeNode_| Node translate promt from other languages into english | conditioning |
 
 # Installing
 1. Download from github repositorie ComfyUI_Custom_Nodes_AlekPet, and put in custom_nodes
