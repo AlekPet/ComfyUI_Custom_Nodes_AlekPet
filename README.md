@@ -19,7 +19,7 @@ custom_nodes
        |---- LICENSE
        |---- README.md     
 ```
-2. Run Comflyui....
+2. Run Comflyui and nodes will be installed automatically....
 
 # Installing use git
 1. Install [Git](https://git-scm.com/)
