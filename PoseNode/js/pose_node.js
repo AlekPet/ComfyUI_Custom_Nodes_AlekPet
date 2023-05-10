@@ -2,6 +2,7 @@
  * Title: Set Poses in ComflyUI from ControlNet
  * Author: AlekPet
  * Description: I rewrote the main.js file as a class, from fkunn1326's openpose-editor (https://github.com/fkunn1326/openpose-editor/blob/master/javascript/main.js)
+ * Version: 2023.05.10
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
