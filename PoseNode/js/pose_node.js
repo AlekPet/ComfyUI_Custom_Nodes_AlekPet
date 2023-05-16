@@ -651,6 +651,7 @@ app.registerExtension({
             undo_history: [],
             redo_history: [],
           };
+          LS_Save();
         }
 
         createOpenPose.apply(this, [this, nodeNamePNG, {}, app]);
