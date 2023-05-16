@@ -2,7 +2,7 @@
  * Title: Set Poses in ComflyUI from ControlNet
  * Author: AlekPet
  * Description: I rewrote the main.js file as a class, from fkunn1326's openpose-editor (https://github.com/fkunn1326/openpose-editor/blob/master/javascript/main.js)
- * Version: 2023.05.10
+ * Version: 2023.05.16
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -81,11 +81,11 @@ class OpenPose {
     this.lockMode = false;
     this.visibleEyes = true;
     this.flipped = false;
-    this.undo_history = [];
-    this.redo_history = [];
-    this.fileName = node.name;
-    this.canvas = this.initCanvas(canvasElement);
     this.node = node;
+    this.undo_history = LS_Poses[node.name].undo_history || [];
+    this.redo_history = LS_Poses[node.name].redo_history || [];
+    this.history_change = false;
+    this.canvas = this.initCanvas(canvasElement);
     this.image = node.widgets.find((w) => w.name === "image");
   }
 
@@ -123,7 +123,7 @@ class OpenPose {
       line4,
       line5
     ) => {
-      var c = new fabric.Circle({
+      let c = new fabric.Circle({
         left: left,
         top: top,
         strokeWidth: 1,
@@ -302,14 +302,21 @@ class OpenPose {
     });
 
     this.canvas.on("object:modified", () => {
-      this.uploadPoseFile(`${this.fileName}.png`);
-      if (this.lockMode) return;
+      if (
+        this.lockMode ||
+        this.canvas.getActiveObject().type == "activeSelection"
+      )
+        return;
       this.undo_history.push(this.getJSON());
       this.redo_history.length = 0;
+      this.history_change = true;
+      this.uploadPoseFile(this.node.name);
     });
 
-    this.setPose(default_keypoints);
-    this.undo_history.push(this.getJSON());
+    if (!LS_Poses[this.node.name].undo_history.length) {
+      this.setPose(default_keypoints);
+      this.undo_history.push(this.getJSON());
+    }
     return this.canvas;
   }
 
@@ -323,7 +330,8 @@ class OpenPose {
       this.loadPreset(content);
       this.canvas.renderAll();
       this.lockMode = false;
-      this.uploadPoseFile(`${this.fileName}.png`);
+      this.history_change = true;
+      this.uploadPoseFile(this.node.name);
     }
   }
 
@@ -335,18 +343,29 @@ class OpenPose {
       this.loadPreset(content);
       this.canvas.renderAll();
       this.lockMode = false;
-      this.uploadPoseFile(`${this.fileName}.png`);
+      this.history_change = true;
+      this.uploadPoseFile(this.node.name);
     }
   }
 
-  resetCanvas = () => {
+  resetCanvas() {
     this.canvas.clear();
     this.canvas.backgroundColor = "#000";
     this.addPose();
-  };
+  }
 
-  uploadPoseFile = (fileName) => {
+  updateHistoryData() {
+    if (this.history_change) {
+      LS_Poses[this.node.name].undo_history = this.undo_history;
+      LS_Poses[this.node.name].redo_history = this.redo_history;
+      LS_Save();
+      this.history_change = false;
+    }
+  }
+
+  uploadPoseFile(fileName) {
     // Upload pose to temp folder ComfyUI
+
     const uploadFile = async (blobFile) => {
       try {
         const resp = await fetch("/upload/image", {
@@ -362,19 +381,19 @@ class OpenPose {
           }
 
           this.image.value = data.name;
-          LS_Poses[this.node.name][data.name] = this.getJSON();
-          LS_Save();
+          this.updateHistoryData();
         } else {
           alert(resp.status + " - " + resp.statusText);
         }
       } catch (error) {
-        alert(error);
+        console.log(error);
       }
     };
 
     this.canvas.lowerCanvasEl.toBlob(function (blob) {
       let formData = new FormData();
       formData.append("image", blob, fileName);
+      formData.append("overwrite", "true");
       formData.append("type", "temp");
       uploadFile(formData);
     }, "image/png");
@@ -383,22 +402,14 @@ class OpenPose {
     const callb = this.node.callback,
       self = this;
     this.image.callback = function () {
-      let nameFile = self.node.name;
-      if (
-        Object.hasOwn(LS_Poses, nameFile) &&
-        Object.hasOwn(LS_Poses[nameFile], self.image.value)
-      ) {
-        self.loadPreset(LS_Poses[nameFile][self.image.value]);
-      } else {
-        console.log(`Pose "${self.image.value}" not found in LocalStorage!`);
-      }
+      this.image.value = self.node.name;
       if (callb) {
         return callb.apply(this, arguments);
       }
     };
-  };
+  }
 
-  getJSON = () => {
+  getJSON() {
     const json = {
       keypoints: this.canvas
         .getObjects()
@@ -411,9 +422,9 @@ class OpenPose {
     };
 
     return json;
-  };
+  }
 
-  loadPreset = (json) => {
+  loadPreset(json) {
     try {
       if (json["keypoints"].length % 18 === 0) {
         this.setPose(json["keypoints"]);
@@ -423,7 +434,7 @@ class OpenPose {
     } catch (e) {
       console.error(e);
     }
-  };
+  }
 }
 
 // Create OpenPose widget
@@ -460,35 +471,49 @@ function createOpenPose(node, inputName, inputData, app) {
     },
   };
 
-  // Create canvas to ouput pose
-  let canvasOpenPose = document.createElement("canvas"),
-    panelButtons = document.createElement("div"),
-    undoButton = document.createElement("button"),
-    redoButton = document.createElement("button");
-
-  panelButtons.className = "panelButtons";
-  undoButton.textContent = "⟲";
-  redoButton.textContent = "⟳";
-  undoButton.title = "Undo";
-  redoButton.title = "Redo";
-
-  undoButton.addEventListener("click", () => node.openPose.undo());
-  redoButton.addEventListener("click", () => node.openPose.redo());
-
   // Fabric canvas
+  let canvasOpenPose = document.createElement("canvas");
   node.openPose = new OpenPose(node, canvasOpenPose);
 
   node.openPose.canvas.setWidth(512);
   node.openPose.canvas.setHeight(512);
 
   let widgetCombo = node.widgets.filter((w) => w.type === "combo");
-  widgetCombo[0].value = `${node.name}.png`;
+  widgetCombo[0].value = node.name;
 
   widget.openpose = node.openPose.canvas.wrapperEl;
   widget.parent = node;
 
+  // Create elements undo, redo, clear history
+  let panelButtons = document.createElement("div"),
+    undoButton = document.createElement("button"),
+    redoButton = document.createElement("button"),
+    historyClearButton = document.createElement("button");
+
+  panelButtons.className = "panelButtons";
+  undoButton.textContent = "⟲";
+  redoButton.textContent = "⟳";
+  historyClearButton.textContent = "✖";
+  undoButton.title = "Undo";
+  redoButton.title = "Redo";
+  historyClearButton.title = "Clear History";
+
+  undoButton.addEventListener("click", () => node.openPose.undo());
+  redoButton.addEventListener("click", () => node.openPose.redo());
+  historyClearButton.addEventListener("click", () => {
+    if (confirm(`Delete all pose history of a node "${node.name}"?`)) {
+      node.openPose.undo_history = [];
+      node.openPose.redo_history = [];
+      node.openPose.setPose(default_keypoints);
+      node.openPose.undo_history.push(node.openPose.getJSON());
+      node.openPose.history_change = true;
+      node.openPose.updateHistoryData();
+    }
+  });
+
   panelButtons.appendChild(undoButton);
   panelButtons.appendChild(redoButton);
+  panelButtons.appendChild(historyClearButton);
   node.openPose.canvas.wrapperEl.appendChild(panelButtons);
 
   document.body.appendChild(widget.openpose);
@@ -551,6 +576,7 @@ function createOpenPose(node, inputName, inputData, app) {
 
 window.LS_Poses = {};
 function LS_Save() {
+  ///console.log("Save:", LS_Poses);
   localStorage.setItem("ComfyUI_Poses", JSON.stringify(LS_Poses));
 }
 
@@ -570,23 +596,27 @@ app.registerExtension({
       background: #ffffff52;
       color: white;
     }
+    .panelButtons button:last-child{
+      background: #ff000052;
+    }
     
     `;
     document.head.appendChild(style);
   },
   async setup(app) {
-    console.log("Setup PoseNode");
     let openPoseNode = app.graph._nodes.filter((wi) => wi.type == "PoseNode");
 
     if (openPoseNode.length) {
       openPoseNode.map((n) => {
+        console.log(`Setup PoseNode: ${n.name}`);
         let widgetImage = n.widgets.find((w) => w.name == "image");
-        if (
-          widgetImage &&
-          Object.hasOwn(LS_Poses, n.name) &&
-          Object.hasOwn(LS_Poses[n.name], widgetImage.value)
-        ) {
-          n.openPose.loadPreset(LS_Poses[n.name][widgetImage.value]);
+        if (widgetImage && Object.hasOwn(LS_Poses, n.name)) {
+          let pose_ls = LS_Poses[n.name].undo_history;
+          n.openPose.loadPreset(
+            pose_ls.length > 0
+              ? pose_ls[pose_ls.length - 1]
+              : { keypoints: default_keypoints }
+          );
         }
       });
     }
@@ -596,7 +626,6 @@ app.registerExtension({
       const onNodeCreated = nodeType.prototype.onNodeCreated;
 
       nodeType.prototype.onNodeCreated = function () {
-        console.log("Create PoseNode");
         const r = onNodeCreated
           ? onNodeCreated.apply(this, arguments)
           : undefined;
@@ -604,7 +633,10 @@ app.registerExtension({
         let openPoseNode = app.graph._nodes.filter(
             (wi) => wi.type == "PoseNode"
           ),
-          nodeName = `Pose_${openPoseNode.length}`;
+          nodeName = `Pose_${openPoseNode.length}`,
+          nodeNamePNG = `${nodeName}.png`;
+
+        console.log(`Create PoseNode: ${nodeName}`);
 
         LS_Poses =
           localStorage.getItem("ComfyUI_Poses") &&
@@ -614,13 +646,16 @@ app.registerExtension({
           LS_Poses = JSON.parse(localStorage.getItem("ComfyUI_Poses"));
         }
 
-        if (!Object.hasOwn(LS_Poses, nodeName)) {
-          LS_Poses[nodeName] = {};
+        if (!Object.hasOwn(LS_Poses, nodeNamePNG)) {
+          LS_Poses[nodeNamePNG] = {
+            undo_history: [],
+            redo_history: [],
+          };
         }
 
-        createOpenPose.apply(this, [this, nodeName, {}, app]);
+        createOpenPose.apply(this, [this, nodeNamePNG, {}, app]);
         setTimeout(() => {
-          this.openPose.uploadPoseFile(`${nodeName}.png`);
+          this.openPose.uploadPoseFile(nodeNamePNG);
         }, 1);
 
         this.setSize([530, 620]);
