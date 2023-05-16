@@ -1,5 +1,5 @@
 # ComfyUI Custom Nodes 
-Custom nodes that extend the capabilities of ComfyUI
+Custom nodes that extend the capabilities of [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
 
 # List Nodes:
 | Name      | Description | ComfyUI category |
