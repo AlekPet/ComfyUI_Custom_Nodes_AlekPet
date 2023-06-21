@@ -449,41 +449,28 @@ function PainterWidget(node, inputName, inputData, app) {
         height: w + "px",
       });
 
-      // Object.assign(this.painter_wrap.children[2].style, {
-      //   width: `${155.0 * t.a}px`,
-      //   fontSize: `${t.d * 10.0}px`,
-      // });
-
-      // Array.from(this.painter_wrap.children[2].children).forEach((element) => {
-      //   Object.assign(element.style, {
-      //     width: `${147 * t.a}px`,
-      //     fontSize: `${t.d * 10.0}px`,
-      //   });
-      //   element.hidden = !visible;
-      // });
-
-      // Array.from(
-      //   this.painter_wrap.children[2].querySelectorAll(
-      //     "input, button, input:after"
-      //   )
-      // ).forEach((element) => {
-      //   if (element.type == "number") {
-      //     Object.assign(element.style, {
-      //       width: `${110 * t.a}px`,
-      //       height: `${21 * t.d}px`,
-      //       fontSize: `${t.d * 10.0}px`,
-      //     });
-      //   } else if (element.type == "checkbox") {
-      //     element.style.marginTop = "-8px";
-      //   } else {
-      //     Object.assign(element.style, {
-      //       width: `${(element.id.includes("lock") ? 75 : 25) * t.a}px`,
-      //       height: `${(element.id.includes("lock") ? 15 : 25) * t.d}px`,
-      //       fontSize: `${t.d * 10.0}px`,
-      //     });
-      //   }
-      //   element.hidden = !visible;
-      // });
+      Array.from(
+        this.painter_wrap.children[2].querySelectorAll(
+          "input, button, input:after, span"
+        )
+      ).forEach((element) => {
+        if (element.type == "number") {
+          Object.assign(element.style, {
+            width: `${40 * t.a}px`,
+            height: `${21 * t.d}px`,
+            fontSize: `${t.d * 10.0}px`,
+          });
+        } else if (element.tagName == "SPAN") {
+          // NOPE
+        } else {
+          Object.assign(element.style, {
+            width: `${(element.id.includes("lock") ? 75 : 25) * t.a}px`,
+            height: `${(element.id.includes("lock") ? 15 : 25) * t.d}px`,
+            fontSize: `${t.d * 10.0}px`,
+          });
+        }
+        element.hidden = !visible;
+      });
     },
   };
 
@@ -532,7 +519,7 @@ function PainterWidget(node, inputName, inputData, app) {
   // panelButtons.appendChild(undoButton);
   // panelButtons.appendChild(redoButton);
   // panelButtons.appendChild(historyClearButton);
-  // node.openPose.canvas.wrapperEl.appendChild(panelButtons);
+  // node.painter.canvas.wrapperEl.appendChild(panelButtons);
   document.body.appendChild(widget.painter_wrap);
 
   node.addWidget("button", "Clear Canvas", "clear_painer", () => {
@@ -640,9 +627,9 @@ app.registerExtension({
       content: attr(data-label);
       position: absolute;
       color: white;
-      left: 33%;
+      left: 45%;
       font-size: 0.5rem;
-      margin-top: -15%;
+      margin-top: -20%;
     }
     .painter_colors_box input[type="color"]::-webkit-color-swatch-wrapper {
       padding: 1px !important;
@@ -677,7 +664,6 @@ app.registerExtension({
       PainerNode.map((n) => {
         console.log(`Setup PainterNode: ${n.name}`);
         let widgetImage = n.widgets.find((w) => w.name == "image");
-        console.log(LS_Painters[n.name]);
         if (widgetImage && Object.hasOwn(LS_Painters, n.name)) {
           let painter_ls = LS_Painters[n.name].undo_history;
           /*n.painter.loadPreset(
