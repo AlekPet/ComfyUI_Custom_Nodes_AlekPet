@@ -344,7 +344,6 @@ class Painter {
         );
       }
       if (shape) {
-        console.log(shape);
         this.canvas.add(shape).setActiveObject(shape);
       }
     });
