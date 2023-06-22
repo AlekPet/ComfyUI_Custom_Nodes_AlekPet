@@ -8,6 +8,67 @@
 import { app } from "../scripts/app.js";
 import { fabric } from "/lib/fabric.js";
 
+// ================= FUNCTIONS ================
+const removeIcon =
+  "data:image/svg+xml,%3Csvg version='1.1' id='Ebene_1' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3C/defs%3E%3Crect x='125.3' y='264.6' width='350.378' height='349.569' style='fill: rgb(237, 0, 0); stroke: rgb(197, 2, 2);' rx='58.194' ry='58.194'%3E%3C/rect%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18' rx='32.772' ry='32.772'%3E%3C/rect%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179' rx='32.772' ry='32.772'%3E%3C/rect%3E%3C/g%3E%3C/svg%3E";
+
+const removeImg = document.createElement("img");
+removeImg.src = removeIcon;
+
+fabric.Object.prototype.controls.removeControl = new fabric.Control({
+  x: 0.5,
+  y: -0.5,
+  offsetY: -16,
+  offsetX: 16,
+  cursorStyle: "pointer",
+  mouseUpHandler: removeObject,
+  render: renderIcon(removeImg),
+  cornerSize: 24,
+});
+
+function renderIcon(icon) {
+  return function renderIcon(ctx, left, top, styleOverride, fabricObject) {
+    var size = this.cornerSize;
+    ctx.save();
+    ctx.translate(left, top);
+    ctx.rotate(fabric.util.degreesToRadians(fabricObject.angle));
+    ctx.drawImage(icon, -size / 2, -size / 2, size, size);
+    ctx.restore();
+  };
+}
+
+function removeObject(eventData, transform) {
+  var target = transform.target;
+  var canvas = target.canvas;
+  canvas.remove(target);
+  canvas.requestRenderAll();
+}
+
+function toRGBA(hex, alpha = 1.0) {
+  let array_hex = hex.match(/[^#]./g);
+  if (array_hex) {
+    return `rgba(${array_hex
+      .map((h) => parseInt(h, 16))
+      .join(", ")}, ${alpha})`;
+  }
+  return hex;
+}
+
+function showHide() {
+  Array.from(arguments).forEach(
+    (el) =>
+      (el.style.display =
+        !el.style.display || el.style.display == "none" ? "block" : "none")
+  );
+}
+
+window.LS_Painters = {};
+function LS_Save() {
+  ///console.log("Save:", LS_Painters);
+  localStorage.setItem("ComfyUI_Painter", JSON.stringify(LS_Painters));
+}
+// ================= END FUNCTIONS ================
+
 // ================= CLASS PAINTER ================
 class Painter {
   constructor(node, canvas) {
@@ -73,7 +134,7 @@ class Painter {
     <input id="fillColorTransparent" type="number" max="1.0" min="0" step="0.05" value="1.0" title="Alpha fill value">
     </div>
     <div class="painter_colors_alpha">
-    <span>Fill</span><span>Alpha</span>
+    <span>Stroke</span><span>Alpha</span>
     <input id="strokeColor" type="color" value="#FFFFFF" title="Stroke color">    
     <input id="strokeColorTransparent" type="number" max="1.0" min="0" step="0.05" value="1.0" title="Stroke alpha value">
     </div>
@@ -111,14 +172,6 @@ class Painter {
     this.bindEvents();
   }
 
-  showHide() {
-    Array.from(arguments).forEach(
-      (el) =>
-        (el.style.display =
-          !el.style.display || el.style.display == "none" ? "block" : "none")
-    );
-  }
-
   clearCanvas() {
     this.canvas.clear();
     this.canvas.backgroundColor = this.bgColor.value;
@@ -132,30 +185,20 @@ class Painter {
       this.canvas.isDrawingMode = this.drawning = false;
       target.textContent = "D";
       target.title = "Enable draw mode";
-      this.showHide(this.manipulation_box, nextElement);
+      showHide(this.manipulation_box, nextElement);
     } else {
       this.canvas.isDrawingMode = this.drawning = true;
       target.textContent = "M";
       target.title = "Enable modify mode";
-      this.showHide(this.manipulation_box, nextElement);
+      showHide(this.manipulation_box, nextElement);
     }
-  }
-
-  toRGBA(hex, alpha = 1.0) {
-    let array_hex = hex.match(/[^#]./g);
-    if (array_hex) {
-      return `rgba(${array_hex
-        .map((h) => parseInt(h, 16))
-        .join(", ")}, ${alpha})`;
-    }
-    return hex;
   }
 
   changePropertyBrush() {
     this.canvas.freeDrawingBrush = new fabric.PencilBrush(this.canvas);
-    this.canvas.freeDrawingBrush.color = this.toRGBA(
-      this.fillColor.value,
-      this.fillColorTransparent.value
+    this.canvas.freeDrawingBrush.color = toRGBA(
+      this.strokeColor.value,
+      this.strokeColorTransparent.value
     );
     this.canvas.freeDrawingBrush.width = parseInt(this.strokeWidth.value, 10);
   }
@@ -205,15 +248,13 @@ class Painter {
       this.canvas.backgroundColor = this.bgColor.value;
       this.canvas.renderAll();
     };
-    this.strokeColorTransparent.oninput = () => {};
-    this.strokeColorTransparent.oninput = () => {};
-
-    this.strokeWidth.oninput = () => {
-      this.strokeWidth.nextElementSibling.textContent = parseInt(
-        this.strokeWidth.value,
-        10
-      );
+    this.strokeColorTransparent.oninput = () => {
+      if (this.type == "Brush") {
+        this.changePropertyBrush();
+      }
     };
+    this.strokeWidth.oninput = () => {};
+
     this.strokeWidth.onchange = () => {
       if (this.type == "Brush") {
         this.changePropertyBrush();
@@ -240,11 +281,11 @@ class Painter {
         strokeColor =
           strokeWidth == 0
             ? "transparent"
-            : this.toRGBA(
+            : toRGBA(
                 this.strokeColor.value,
                 this.strokeColorTransparent.value
               ) || colors[Math.floor(Math.random() * colors.length)],
-        fillColor = this.toRGBA(
+        fillColor = toRGBA(
           this.fillColor.value,
           this.fillColorTransparent.value
         );
@@ -303,9 +344,9 @@ class Painter {
         });
       } else {
         shape = null;
-        this.canvas.freeDrawingBrush.color = this.toRGBA(
-          this.fillColor.value,
-          this.fillColorTransparent.value
+        this.canvas.freeDrawingBrush.color = toRGBA(
+          this.strokeColor.value,
+          this.strokeColorTransparent.value
         );
         this.canvas.freeDrawingBrush.width = parseInt(
           this.strokeWidth.value,
@@ -416,8 +457,9 @@ class Painter {
     };
   }
 }
+// ================= END CLASS PAINTER ================
 
-// ================= Create Paint Widget ================
+// ================= CREATE PAINTER WIDGET ============
 function PainterWidget(node, inputName, inputData, app) {
   node.name = inputName;
   const widget = {
@@ -564,14 +606,9 @@ function PainterWidget(node, inputName, inputData, app) {
   };
   return { widget: widget };
 }
+// ================= END CREATE PAINTER WIDGET ============
 
-// ================= NODE SETTING ================
-window.LS_Painters = {};
-function LS_Save() {
-  ///console.log("Save:", LS_Painters);
-  localStorage.setItem("ComfyUI_Painter", JSON.stringify(LS_Painters));
-}
-
+// ================= CREATE EXTENSION ================
 app.registerExtension({
   name: "Comfy.PainterNode",
   async init(app) {
@@ -637,7 +674,7 @@ app.registerExtension({
     .painter_colors_alpha{
       display: grid;
       grid-template-columns: 0.7fr 0.7fr;
-      font-size: 0.5rem;
+      font-size: 0.55rem;
       text-align: center;
       align-items: start;
       justify-items: center;
@@ -720,3 +757,4 @@ app.registerExtension({
     }
   },
 });
+// ================= END CREATE EXTENSION ================
