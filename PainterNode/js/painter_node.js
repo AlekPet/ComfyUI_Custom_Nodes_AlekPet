@@ -15,17 +15,6 @@ const removeIcon =
 const removeImg = document.createElement("img");
 removeImg.src = removeIcon;
 
-fabric.Object.prototype.controls.removeControl = new fabric.Control({
-  x: 0.5,
-  y: -0.5,
-  offsetY: -16,
-  offsetX: 16,
-  cursorStyle: "pointer",
-  mouseUpHandler: removeObject,
-  render: renderIcon(removeImg),
-  cornerSize: 24,
-});
-
 function renderIcon(icon) {
   return function renderIcon(ctx, left, top, styleOverride, fabricObject) {
     var size = this.cornerSize;
@@ -96,6 +85,7 @@ class Painter {
       isDrawingMode: true,
       backgroundColor: "transparent",
     });
+
     this.canvas.setWidth(512);
     this.canvas.setHeight(512);
 
@@ -353,7 +343,10 @@ class Painter {
           10
         );
       }
-      if (shape) this.canvas.add(shape).setActiveObject(shape);
+      if (shape) {
+        console.log(shape);
+        this.canvas.add(shape).setActiveObject(shape);
+      }
     });
 
     this.canvas.on("mouse:move", (o) => {
@@ -398,6 +391,24 @@ class Painter {
     });
 
     this.canvas.on("mouse:up", (o) => {
+      this.canvas._objects.forEach((object) => {
+        if (!object.hasOwnProperty("controls")) {
+          object.controls = {
+            ...object.controls,
+            removeControl: new fabric.Control({
+              x: 0.5,
+              y: -0.5,
+              offsetY: -16,
+              offsetX: 16,
+              cursorStyle: "pointer",
+              mouseUpHandler: removeObject,
+              render: renderIcon(removeImg),
+              cornerSize: 24,
+            }),
+          };
+        }
+      });
+
       if (this.type != "Brush") this.canvas.isDrawingMode = false;
       this.uploadPaintFile(this.node.name);
     });
