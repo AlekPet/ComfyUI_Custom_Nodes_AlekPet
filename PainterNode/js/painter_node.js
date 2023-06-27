@@ -158,7 +158,6 @@ class Painter {
     );
     this.bgColor = panelPaintBox.querySelector("#bgColor");
     this.clear = panelPaintBox.querySelector("#clear");
-    this.brushReset = { ...this.canvas.freeDrawingBrush };
 
     this.changePropertyBrush();
     this.bindEvents();
@@ -179,6 +178,7 @@ class Painter {
       target.title = "Enable draw mode";
       showHide(this.manipulation_box, nextElement);
     } else {
+      this.canvas.discardActiveObject().renderAll();
       this.canvas.isDrawingMode = this.drawning = true;
       target.textContent = "M";
       target.title = "Enable modify mode";
@@ -280,19 +280,17 @@ class Painter {
 
     this.canvas.on("mouse:down", (o) => {
       this.canvas.isDrawingMode = this.drawning;
-
-      if (!this.canvas.isDrawingMode) {
+      if (
+        !this.canvas.isDrawingMode ||
+        (this.type == "Brush" && this.type == "Erase")
+      ) {
         return;
       }
-      console.log(this.canvas.isDrawingMode, this.drawning);
 
       let pointer = this.canvas.getPointer(o.e),
-        type = this.type || "Brush",
         shape = null;
-
       this.origX = pointer.x;
       this.origY = pointer.y;
-
       let colors = ["red", "blue", "green", "yellow", "purple", "orange"],
         strokeWidth = +this.strokeWidth.value,
         strokeColor =
@@ -307,7 +305,7 @@ class Painter {
           this.fillColorTransparent.value
         );
 
-      if (type == "Rect") {
+      if (this.type == "Rect") {
         shape = new fabric.Rect({
           left: this.origX,
           top: this.origY,
@@ -323,7 +321,7 @@ class Painter {
           hasBorders: false,
           hasControls: false,
         });
-      } else if (type == "Circle") {
+      } else if (this.type == "Circle") {
         shape = new fabric.Circle({
           left: this.origX,
           top: this.origY,
@@ -337,7 +335,7 @@ class Painter {
           hasBorders: false,
           hasControls: false,
         });
-      } else if (type == "Triangle") {
+      } else if (this.type == "Triangle") {
         shape = new fabric.Triangle({
           left: this.origX,
           top: this.origY,
@@ -350,7 +348,7 @@ class Painter {
           hasBorders: false,
           hasControls: false,
         });
-      } else if (type == "Line") {
+      } else if (this.type == "Line") {
         let points = [pointer.x, pointer.y, pointer.x, pointer.y];
         shape = new fabric.Line(points, {
           fill: fillColor,
@@ -371,7 +369,7 @@ class Painter {
         );
       }
       if (shape) {
-        this.canvas.add(shape).setActiveObject(shape);
+        this.canvas.add(shape).renderAll().setActiveObject(shape);
       }
     });
 
@@ -389,19 +387,17 @@ class Painter {
           });
         } catch (e) {}
       }
-      if (
-        !this.canvas.isDrawingMode ||
-        this.type == "Brush" ||
-        this.type == "Erase"
-      ) {
+      if (!this.canvas.isDrawingMode) {
         return;
       }
 
+      if (this.type == "Brush" || this.type == "Erase") return;
       let pointer = this.canvas.getPointer(o.e),
-        activeObj = this.canvas.getActiveObject(),
-        type = this.type;
+        activeObj = this.canvas.getActiveObject();
 
-      if (type == "Circle") {
+      if (!activeObj) return;
+
+      if (this.type == "Circle") {
         let radius =
           Math.max(
             Math.abs(this.origY - pointer.y),
@@ -409,13 +405,12 @@ class Painter {
           ) / 2;
         if (radius > activeObj.strokeWidth) radius -= activeObj.strokeWidth / 2;
         activeObj.set({ radius: radius });
-      } else if (type == "Line") {
+      } else if (this.type == "Line") {
         activeObj.set({ x2: pointer.x, y2: pointer.y });
       } else {
         activeObj.set({ width: Math.abs(this.origX - pointer.x) });
         activeObj.set({ height: Math.abs(this.origY - pointer.y) });
       }
-
       activeObj.setCoords();
       this.canvas.renderAll();
     });
