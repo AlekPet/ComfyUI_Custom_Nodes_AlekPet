@@ -122,7 +122,7 @@ class Painter {
     <div class="painter_colors_alpha">
     <span>Fill</span><span>Alpha</span>
     <input id="fillColor" type="color" value="#FF00FF" title="Fill color">
-    <input id="fillColorTransparent" type="number" max="1.0" min="0" step="0.05" value="1.0" title="Alpha fill value">
+    <input id="fillColorTransparent" type="number" max="1.0" min="0" step="0.05" value="0.0" title="Alpha fill value">
     </div>
     <div class="painter_colors_alpha">
     <span>Stroke</span><span>Alpha</span>
@@ -178,20 +178,36 @@ class Painter {
       target.title = "Enable draw mode";
       showHide(this.manipulation_box, nextElement);
     } else {
-      this.canvas.discardActiveObject().renderAll();
+      this.canvas.discardActiveObject();
+
+      this.type = "Brush";
+      this.changePropertyBrush();
+      this.setActiveElement(
+        this.shapes_box.querySelector("[data-shape=Brush]")
+      );
       this.canvas.isDrawingMode = this.drawning = true;
       target.textContent = "M";
       target.title = "Enable modify mode";
       showHide(this.manipulation_box, nextElement);
+      this.canvas.renderAll();
     }
+  }
+
+  setActiveElement(element_active) {
+    let elementActive = this.shapes_box.querySelector(".active");
+    if (elementActive) elementActive.classList.remove("active");
+    element_active.classList.add("active");
   }
 
   changePropertyBrush(type = "Brush") {
     if (type == "Brush") {
+      this.canvas.freeDrawingBrush = new fabric.PencilBrush(this.canvas);
       this.canvas.freeDrawingBrush.color = toRGBA(
         this.strokeColor.value,
         this.strokeColorTransparent.value
       );
+    } else {
+      this.canvas.freeDrawingBrush = new fabric.EraserBrush(this.canvas);
     }
     this.canvas.freeDrawingBrush.width = parseInt(this.strokeWidth.value, 10);
   }
@@ -203,36 +219,19 @@ class Painter {
         currentTarget = target.dataset?.shape;
 
       if (currentTarget) {
-        let elementActive = this.shapes_box.querySelector(".active");
-        if (elementActive) elementActive.classList.remove("active");
         this.type = currentTarget;
 
         switch (currentTarget) {
           case "Erase":
-            this.canvas.freeDrawingBrush = new fabric.EraserBrush(this.canvas);
-            this.canvas.freeDrawingBrush.width = parseInt(
-              this.strokeWidth.value,
-              10
-            );
-            this.canvas.isDrawingMode = true;
-            break;
           case "Brush":
-            this.canvas.freeDrawingBrush = new fabric.PencilBrush(this.canvas);
-            this.canvas.freeDrawingBrush.color = toRGBA(
-              this.strokeColor.value,
-              this.strokeColorTransparent.value
-            );
-            this.canvas.freeDrawingBrush.width = parseInt(
-              this.strokeWidth.value,
-              10
-            );
+            this.changePropertyBrush(currentTarget);
             this.canvas.isDrawingMode = true;
             break;
           default:
             this.canvas.isDrawingMode = false;
             break;
         }
-        target.classList.add("active");
+        this.setActiveElement(target);
       }
     };
     // Button Mode select
@@ -280,12 +279,9 @@ class Painter {
 
     this.canvas.on("mouse:down", (o) => {
       this.canvas.isDrawingMode = this.drawning;
-      if (
-        !this.canvas.isDrawingMode ||
-        (this.type == "Brush" && this.type == "Erase")
-      ) {
-        return;
-      }
+      if (!this.canvas.isDrawingMode) return;
+
+      if (this.type == "Brush" && this.type == "Erase") return;
 
       let pointer = this.canvas.getPointer(o.e),
         shape = null;
@@ -357,16 +353,6 @@ class Painter {
           hasBorders: false,
           hasControls: false,
         });
-      } else {
-        shape = null;
-        this.canvas.freeDrawingBrush.color = toRGBA(
-          this.strokeColor.value,
-          this.strokeColorTransparent.value
-        );
-        this.canvas.freeDrawingBrush.width = parseInt(
-          this.strokeWidth.value,
-          10
-        );
       }
       if (shape) {
         this.canvas.add(shape).renderAll().setActiveObject(shape);
@@ -392,6 +378,7 @@ class Painter {
       }
 
       if (this.type == "Brush" || this.type == "Erase") return;
+
       let pointer = this.canvas.getPointer(o.e),
         activeObj = this.canvas.getActiveObject();
 
@@ -437,7 +424,7 @@ class Painter {
       if (this.type !== "Brush" && this.type !== "Erase") {
         this.canvas.isDrawingMode = false;
       }
-
+      this.canvas.renderAll();
       this.uploadPaintFile(this.node.name);
     });
 
