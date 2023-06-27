@@ -112,6 +112,7 @@ class Painter {
     <div class="painter_drawning_elements" style="display:block;">
     <div class="painter_shapes_box fieldset_box" f_name="Shapes">
     <button class="active" data-shape='Brush' title="Brush">B</button>
+    <button data-shape='Erase' title="Erase">E</button>
     <button data-shape='Circle' title="Draw circle">◯</button>
     <button data-shape='Rect' title="Draw rectangle">▭</button>
     <button data-shape='Triangle' title="Draw triangle">△</button>
@@ -157,6 +158,7 @@ class Painter {
     );
     this.bgColor = panelPaintBox.querySelector("#bgColor");
     this.clear = panelPaintBox.querySelector("#clear");
+    this.brushReset = { ...this.canvas.freeDrawingBrush };
 
     this.changePropertyBrush();
     this.bindEvents();
@@ -184,16 +186,18 @@ class Painter {
     }
   }
 
-  changePropertyBrush() {
-    this.canvas.freeDrawingBrush = new fabric.PencilBrush(this.canvas);
-    this.canvas.freeDrawingBrush.color = toRGBA(
-      this.strokeColor.value,
-      this.strokeColorTransparent.value
-    );
+  changePropertyBrush(type = "Brush") {
+    if (type == "Brush") {
+      this.canvas.freeDrawingBrush.color = toRGBA(
+        this.strokeColor.value,
+        this.strokeColorTransparent.value
+      );
+    }
     this.canvas.freeDrawingBrush.width = parseInt(this.strokeWidth.value, 10);
   }
 
   bindEvents() {
+    // Button tools select
     this.shapes_box.onclick = (e) => {
       let target = e.target,
         currentTarget = target.dataset?.shape;
@@ -202,18 +206,39 @@ class Painter {
         let elementActive = this.shapes_box.querySelector(".active");
         if (elementActive) elementActive.classList.remove("active");
         this.type = currentTarget;
-        target.classList.add("active");
 
-        if (currentTarget == "Brush") {
-          this.canvas.isDrawingMode = true;
-        } else {
-          this.canvas.isDrawingMode = false;
+        switch (currentTarget) {
+          case "Erase":
+            this.canvas.freeDrawingBrush = new fabric.EraserBrush(this.canvas);
+            this.canvas.freeDrawingBrush.width = parseInt(
+              this.strokeWidth.value,
+              10
+            );
+            this.canvas.isDrawingMode = true;
+            break;
+          case "Brush":
+            this.canvas.freeDrawingBrush = new fabric.PencilBrush(this.canvas);
+            this.canvas.freeDrawingBrush.color = toRGBA(
+              this.strokeColor.value,
+              this.strokeColorTransparent.value
+            );
+            this.canvas.freeDrawingBrush.width = parseInt(
+              this.strokeWidth.value,
+              10
+            );
+            this.canvas.isDrawingMode = true;
+            break;
+          default:
+            this.canvas.isDrawingMode = false;
+            break;
         }
+        target.classList.add("active");
       }
     };
-
+    // Button Mode select
     this.change_mode.onclick = (e) => this.changeMode(e);
 
+    // Buttons Lock events
     this.manipulation_box.onclick = (e) => {
       let target = e.target,
         listButtons = [
@@ -234,20 +259,21 @@ class Painter {
         }
       }
     };
+    // Event input bgcolor
     this.bgColor.oninput = () => {
       this.canvas.backgroundColor = this.bgColor.value;
       this.canvas.renderAll();
     };
+    // Event input stroke transparent
     this.strokeColorTransparent.oninput = () => {
       if (this.type == "Brush") {
         this.changePropertyBrush();
       }
     };
-    this.strokeWidth.oninput = () => {};
-
+    // Event change stroke width
     this.strokeWidth.onchange = () => {
-      if (this.type == "Brush") {
-        this.changePropertyBrush();
+      if (this.type == "Brush" || this.type == "Erase") {
+        this.changePropertyBrush(this.type);
       }
       this.canvas.renderAll();
     };
@@ -258,6 +284,7 @@ class Painter {
       if (!this.canvas.isDrawingMode) {
         return;
       }
+      console.log(this.canvas.isDrawingMode, this.drawning);
 
       let pointer = this.canvas.getPointer(o.e),
         type = this.type || "Brush",
@@ -362,7 +389,11 @@ class Painter {
           });
         } catch (e) {}
       }
-      if (!this.canvas.isDrawingMode || this.type == "Brush") {
+      if (
+        !this.canvas.isDrawingMode ||
+        this.type == "Brush" ||
+        this.type == "Erase"
+      ) {
         return;
       }
 
@@ -408,7 +439,10 @@ class Painter {
         }
       });
 
-      if (this.type != "Brush") this.canvas.isDrawingMode = false;
+      if (this.type !== "Brush" && this.type !== "Erase") {
+        this.canvas.isDrawingMode = false;
+      }
+
       this.uploadPaintFile(this.node.name);
     });
 
