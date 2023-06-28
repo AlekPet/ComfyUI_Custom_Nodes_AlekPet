@@ -3,7 +3,7 @@
 > PainterNode allows you to draw in the node window, for later use in the ControlNet or in any other node.
 > Features:
 
-- Ability to draw shapes (circle, square, triangle, line)
+- Ability to draw shapes (circle, square, triangle, line), and use pencil and erase
 - Set fill color with transparency
 - Set color with transparency and line weight
 - Set the background
