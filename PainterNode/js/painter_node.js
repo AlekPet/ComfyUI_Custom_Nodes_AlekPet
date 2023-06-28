@@ -107,10 +107,10 @@ class Painter {
     </div>
     <div class="painter_drawning_box">
     <div class="painter_mode_box fieldset_box" f_name="Mode">
-    <button id="painter_change_mode" title="Enable modify mode">M</button>
+    <button id="painter_change_mode" title="Enable selection mode">Selection</button>
     </div>
     <div class="painter_drawning_elements" style="display:block;">
-    <div class="painter_shapes_box fieldset_box" f_name="Shapes">
+    <div class="painter_grid_style painter_shapes_box fieldset_box" f_name="Shapes">
     <button class="active" data-shape='Brush' title="Brush">B</button>
     <button data-shape='Erase' title="Erase">E</button>
     <button data-shape='Circle' title="Draw circle">◯</button>
@@ -119,12 +119,12 @@ class Painter {
     <button data-shape='Line' title="Draw line">|</button>
     </div>
     <div class="painter_colors_box fieldset_box" f_name="Colors">
-    <div class="painter_colors_alpha">
+    <div class="painter_grid_style painter_colors_alpha">
     <span>Fill</span><span>Alpha</span>
     <input id="fillColor" type="color" value="#FF00FF" title="Fill color">
     <input id="fillColorTransparent" type="number" max="1.0" min="0" step="0.05" value="0.0" title="Alpha fill value">
     </div>
-    <div class="painter_colors_alpha">
+    <div class="painter_grid_style painter_colors_alpha">
     <span>Stroke</span><span>Alpha</span>
     <input id="strokeColor" type="color" value="#FFFFFF" title="Stroke color">    
     <input id="strokeColorTransparent" type="number" max="1.0" min="0" step="0.05" value="1.0" title="Stroke alpha value">
@@ -174,20 +174,18 @@ class Painter {
 
     if (this.drawning) {
       this.canvas.isDrawingMode = this.drawning = false;
-      target.textContent = "D";
-      target.title = "Enable draw mode";
+      target.textContent = "Drawing";
+      target.title = "Enable drawing mode";
       showHide(this.manipulation_box, nextElement);
     } else {
       this.canvas.discardActiveObject();
-
-      this.type = "Brush";
-      this.changePropertyBrush();
-      this.setActiveElement(
-        this.shapes_box.querySelector("[data-shape=Brush]")
-      );
       this.canvas.isDrawingMode = this.drawning = true;
-      target.textContent = "M";
-      target.title = "Enable modify mode";
+
+      if (!["Brush", "Erase"].includes(this.type))
+        this.canvas.isDrawingMode = false;
+
+      target.textContent = "Selection";
+      target.title = "Enable selection mode";
       showHide(this.manipulation_box, nextElement);
       this.canvas.renderAll();
     }
@@ -271,7 +269,7 @@ class Painter {
     };
     // Event change stroke width
     this.strokeWidth.onchange = () => {
-      if (this.type == "Brush" || this.type == "Erase") {
+      if (["Brush", "Erase"].includes(this.type)) {
         this.changePropertyBrush(this.type);
       }
       this.canvas.renderAll();
@@ -280,8 +278,6 @@ class Painter {
     this.canvas.on("mouse:down", (o) => {
       this.canvas.isDrawingMode = this.drawning;
       if (!this.canvas.isDrawingMode) return;
-
-      if (this.type == "Brush" && this.type == "Erase") return;
 
       let pointer = this.canvas.getPointer(o.e),
         shape = null;
@@ -377,7 +373,7 @@ class Painter {
         return;
       }
 
-      if (this.type == "Brush" || this.type == "Erase") return;
+      if (["Brush", "Erase"].includes(this.type)) return;
 
       let pointer = this.canvas.getPointer(o.e),
         activeObj = this.canvas.getActiveObject();
@@ -421,7 +417,7 @@ class Painter {
         }
       });
 
-      if (this.type !== "Brush" && this.type !== "Erase") {
+      if (!["Brush", "Erase"].includes(this.type)) {
         this.canvas.isDrawingMode = false;
       }
       this.canvas.renderAll();
@@ -495,12 +491,14 @@ function PainterWidget(node, inputName, inputData, app) {
     draw: function (ctx, _, widgetWidth, y, widgetHeight) {
       const t = ctx.getTransform(),
         margin = 10,
-        visible = app.canvas.ds.scale > 0.5 && this.type === "painter_widget";
-      let w = (widgetWidth - margin * 2 - 3) * t.a;
+        left_offset = 9,
+        top_offset = 30,
+        visible = app.canvas.ds.scale > 0.6 && this.type === "painter_widget",
+        w = (widgetWidth - margin * 2 - 80) * t.a;
 
       Object.assign(this.painter_wrap.style, {
-        left: `${t.a * margin + t.e}px`,
-        top: `${t.d * (y + widgetHeight - margin - 3) + t.f}px`,
+        left: `${t.a * margin * left_offset + t.e}px`,
+        top: `${t.d * (y + widgetHeight - margin - 3 + top_offset) + t.f}px`,
         width: w + "px",
         height: w + "px",
         position: "absolute",
@@ -519,7 +517,7 @@ function PainterWidget(node, inputName, inputData, app) {
 
       Array.from(
         this.painter_wrap.children[2].querySelectorAll(
-          "input, button, input:after, span"
+          "input, button, input:after, span, div.painter_drawning_box"
         )
       ).forEach((element) => {
         if (element.type == "number") {
@@ -530,15 +528,27 @@ function PainterWidget(node, inputName, inputData, app) {
           });
         } else if (element.tagName == "SPAN") {
           // NOPE
+        } else if (element.tagName == "DIV") {
+          Object.assign(element.style, {
+            width: `${88 * t.a}px`,
+            left: `${-90 * t.a}px`,
+          });
         } else {
           Object.assign(element.style, {
-            width: `${(element.id.includes("lock") ? 75 : 25) * t.a}px`,
+            cursor: "pointer",
+            width: `${
+              (element.id.includes("lock")
+                ? 75
+                : element.id.includes("painter_change_mode")
+                ? 84
+                : 25) * t.a
+            }px`,
             height: `${(element.id.includes("lock") ? 15 : 25) * t.d}px`,
             fontSize: `${t.d * 10.0}px`,
           });
         }
-        element.hidden = !visible;
       });
+      this.painter_wrap.hidden = !visible;
     },
   };
 
@@ -652,6 +662,7 @@ app.registerExtension({
     .painter_manipulation_box {
       position: absolute;
       left: 50%;
+      top: -20px;
       transform: translateX(-50%);
       width: 100%;
     }
@@ -666,15 +677,17 @@ app.registerExtension({
     .painter_drawning_box {
       position: absolute;
       top: 0;
+      //left: -20%;
+      width: 88px;
     }
     .painter_drawning_box button {
       width: 24px;
     }
-    .painter_drawning_box .painter_shapes_box, .painter_drawning_box .painter_colors_box {
+    .painter_colors_box, .painter_mode_box, .painter_stroke_box {
       display: flex;
       flex-direction: column;
       gap: 2px;
-      align-items: stretch;
+      align-items: center;
     }
     .painter_drawning_box input[type="number"] {
       width: 2.6rem;
@@ -685,26 +698,31 @@ app.registerExtension({
       padding: 0;
       margin-bottom: 5px;
     }    
-    #bgColor:after
+    .painter_colors_box #bgColor:after
     {
       content: attr(data-label);
       position: absolute;
       color: white;
-      left: 45%;
+      left: 70%;
       font-size: 0.5rem;
-      margin-top: -20%;
+      margin-top: -18%;
     }
     .painter_colors_box input[type="color"]::-webkit-color-swatch-wrapper {
       padding: 1px !important;
     }
-    .painter_colors_alpha{
+    .painter_grid_style{
       display: grid;
-      grid-template-columns: 0.7fr 0.7fr;
+      gap: 3px;
       font-size: 0.55rem;
       text-align: center;
       align-items: start;
       justify-items: center;
-      gap: 3px;
+    }
+    .painter_shapes_box {
+      grid-template-columns: 1fr 1fr 1fr;
+   }   
+    .painter_colors_alpha{
+      grid-template-columns: 0.7fr 0.7fr;
     }
     .fieldset_box {
       padding: 2px;
@@ -729,6 +747,7 @@ app.registerExtension({
         let widgetImage = n.widgets.find((w) => w.name == "image");
         if (widgetImage && Object.hasOwn(LS_Painters, n.name)) {
           let painter_ls = LS_Painters[n.name].undo_history;
+          n.setSize([530, 550]);
           /*n.painter.loadPreset(
             painter_ls.length > 0
               ? painter_ls[painter_ls.length - 1]
@@ -776,7 +795,7 @@ app.registerExtension({
           this.painter.uploadPaintFile(nodeNamePNG);
         }, 1);
 
-        this.setSize([530, 620]);
+        this.setSize([530, 550]);
 
         return r;
       };
