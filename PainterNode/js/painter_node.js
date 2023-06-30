@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.06.21
+ * Version: 2023.06.30
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -379,6 +379,13 @@ class Painter {
         activeObj = this.canvas.getActiveObject();
 
       if (!activeObj) return;
+
+      if (this.origX > pointer.x) {
+        activeObj.set({ left: Math.abs(pointer.x) });
+      }
+      if (this.origY > pointer.y) {
+        activeObj.set({ top: Math.abs(pointer.y) });
+      }
 
       if (this.type == "Circle") {
         let radius =
