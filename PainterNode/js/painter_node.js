@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.06.30
+ * Version: 2023.07.09
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -61,8 +61,8 @@ function LS_Save() {
 // ================= CLASS PAINTER ================
 class Painter {
   constructor(node, canvas) {
-    this.origX = 0;
-    this.origY = 0;
+    this.originX = 0;
+    this.originY = 0;
     this.drawning = true;
     this.type = "Brush";
 
@@ -210,6 +210,67 @@ class Painter {
     this.canvas.freeDrawingBrush.width = parseInt(this.strokeWidth.value, 10);
   }
 
+  shapeCreate({ pointer, strokeColor, fillColor, strokeWidth }) {
+    let shape = null;
+    this.originX = pointer.x;
+    this.originY = pointer.y;
+
+    if (this.type == "Rect") {
+      shape = new fabric.Rect({
+        left: this.originX,
+        top: this.originY,
+        originX: "left",
+        originY: "top",
+        width: pointer.x - this.originX,
+        height: pointer.y - this.originY,
+        angle: 0,
+        fill: fillColor,
+        strokeWidth: strokeWidth,
+        stroke: strokeColor,
+        transparentCorners: false,
+        hasBorders: false,
+        hasControls: false,
+      });
+    } else if (this.type == "Circle") {
+      shape = new fabric.Circle({
+        left: this.originX,
+        top: this.originY,
+        radius: 1,
+        originX: "left",
+        originY: "top",
+        angle: 0,
+        fill: fillColor,
+        strokeWidth: strokeWidth,
+        stroke: strokeColor,
+        hasBorders: false,
+        hasControls: false,
+      });
+    } else if (this.type == "Triangle") {
+      shape = new fabric.Triangle({
+        left: this.originX,
+        top: this.originY,
+        originX: "left",
+        originY: "top",
+        angle: 0,
+        fill: fillColor,
+        strokeWidth: strokeWidth,
+        stroke: strokeColor,
+        hasBorders: false,
+        hasControls: false,
+      });
+    } else if (this.type == "Line") {
+      let points = [pointer.x, pointer.y, pointer.x, pointer.y];
+      shape = new fabric.Line(points, {
+        fill: fillColor,
+        strokeWidth: strokeWidth,
+        stroke: strokeColor,
+        hasBorders: false,
+        hasControls: false,
+      });
+    }
+    return shape;
+  }
+
   bindEvents() {
     // Button tools select
     this.shapes_box.onclick = (e) => {
@@ -232,6 +293,7 @@ class Painter {
         this.setActiveElement(target);
       }
     };
+
     // Button Mode select
     this.change_mode.onclick = (e) => this.changeMode(e);
 
@@ -256,17 +318,20 @@ class Painter {
         }
       }
     };
+
     // Event input bgcolor
     this.bgColor.oninput = () => {
       this.canvas.backgroundColor = this.bgColor.value;
       this.canvas.renderAll();
     };
+
     // Event input stroke transparent
     this.strokeColorTransparent.oninput = () => {
       if (this.type == "Brush") {
         this.changePropertyBrush();
       }
     };
+
     // Event change stroke width
     this.strokeWidth.onchange = () => {
       if (["Brush", "Erase"].includes(this.type)) {
@@ -275,170 +340,132 @@ class Painter {
       this.canvas.renderAll();
     };
 
-    this.canvas.on("mouse:down", (o) => {
-      this.canvas.isDrawingMode = this.drawning;
-      if (!this.canvas.isDrawingMode) return;
+    // ----- Canvas Events -----
+    this.canvas.on({
+      // Mouse button down event
+      "mouse:down": (o) => {
+        this.canvas.isDrawingMode = this.drawning;
+        if (!this.canvas.isDrawingMode) return;
 
-      let pointer = this.canvas.getPointer(o.e),
-        shape = null;
-      this.origX = pointer.x;
-      this.origY = pointer.y;
-      let colors = ["red", "blue", "green", "yellow", "purple", "orange"],
-        strokeWidth = +this.strokeWidth.value,
-        strokeColor =
-          strokeWidth == 0
-            ? "transparent"
-            : toRGBA(
-                this.strokeColor.value,
-                this.strokeColorTransparent.value
-              ) || colors[Math.floor(Math.random() * colors.length)],
-        fillColor = toRGBA(
-          this.fillColor.value,
-          this.fillColorTransparent.value
-        );
-
-      if (this.type == "Rect") {
-        shape = new fabric.Rect({
-          left: this.origX,
-          top: this.origY,
-          originX: "left",
-          originY: "top",
-          width: pointer.x - this.origX,
-          height: pointer.y - this.origY,
-          angle: 0,
-          fill: fillColor,
-          strokeWidth: strokeWidth,
-          stroke: strokeColor,
-          transparentCorners: false,
-          hasBorders: false,
-          hasControls: false,
-        });
-      } else if (this.type == "Circle") {
-        shape = new fabric.Circle({
-          left: this.origX,
-          top: this.origY,
-          radius: 1,
-          originX: "left",
-          originY: "top",
-          angle: 0,
-          fill: fillColor,
-          strokeWidth: strokeWidth,
-          stroke: strokeColor,
-          hasBorders: false,
-          hasControls: false,
-        });
-      } else if (this.type == "Triangle") {
-        shape = new fabric.Triangle({
-          left: this.origX,
-          top: this.origY,
-          originX: "left",
-          originY: "top",
-          angle: 0,
-          fill: fillColor,
-          strokeWidth: strokeWidth,
-          stroke: strokeColor,
-          hasBorders: false,
-          hasControls: false,
-        });
-      } else if (this.type == "Line") {
-        let points = [pointer.x, pointer.y, pointer.x, pointer.y];
-        shape = new fabric.Line(points, {
-          fill: fillColor,
-          strokeWidth: strokeWidth,
-          stroke: strokeColor,
-          hasBorders: false,
-          hasControls: false,
-        });
-      }
-      if (shape) {
-        this.canvas.add(shape).renderAll().setActiveObject(shape);
-      }
-    });
-
-    this.canvas.on("mouse:move", (o) => {
-      if (!this.drawning) {
-        try {
-          let activeObjManipul = this.canvas.getActiveObject();
-          activeObjManipul.set({
-            hasControls: true,
-            lockMovementX: this.lockX,
-            lockMovementY: this.lockY,
-            lockScalingX: this.lockScaleX,
-            lockScalingY: this.lockScaleY,
-            lockRotation: this.lockRotate,
+        let pointer = this.canvas.getPointer(o.e),
+          colors = ["red", "blue", "green", "yellow", "purple", "orange"],
+          strokeWidth = +this.strokeWidth.value,
+          strokeColor =
+            strokeWidth == 0
+              ? "transparent"
+              : toRGBA(
+                  this.strokeColor.value,
+                  this.strokeColorTransparent.value
+                ) || colors[Math.floor(Math.random() * colors.length)],
+          fillColor = toRGBA(
+            this.fillColor.value,
+            this.fillColorTransparent.value
+          ),
+          shape = this.shapeCreate({
+            pointer,
+            strokeColor,
+            fillColor,
+            strokeWidth,
           });
-        } catch (e) {}
-      }
-      if (!this.canvas.isDrawingMode) {
-        return;
-      }
 
-      if (["Brush", "Erase"].includes(this.type)) return;
-
-      let pointer = this.canvas.getPointer(o.e),
-        activeObj = this.canvas.getActiveObject();
-
-      if (!activeObj) return;
-
-      if (this.origX > pointer.x) {
-        activeObj.set({ left: Math.abs(pointer.x) });
-      }
-      if (this.origY > pointer.y) {
-        activeObj.set({ top: Math.abs(pointer.y) });
-      }
-
-      if (this.type == "Circle") {
-        let radius =
-          Math.max(
-            Math.abs(this.origY - pointer.y),
-            Math.abs(this.origX - pointer.x)
-          ) / 2;
-        if (radius > activeObj.strokeWidth) radius -= activeObj.strokeWidth / 2;
-        activeObj.set({ radius: radius });
-      } else if (this.type == "Line") {
-        activeObj.set({ x2: pointer.x, y2: pointer.y });
-      } else {
-        activeObj.set({ width: Math.abs(this.origX - pointer.x) });
-        activeObj.set({ height: Math.abs(this.origY - pointer.y) });
-      }
-      activeObj.setCoords();
-      this.canvas.renderAll();
-    });
-
-    this.canvas.on("mouse:up", (o) => {
-      this.canvas._objects.forEach((object) => {
-        if (!object.hasOwnProperty("controls")) {
-          object.controls = {
-            ...object.controls,
-            removeControl: new fabric.Control({
-              x: 0.5,
-              y: -0.5,
-              offsetY: -16,
-              offsetX: 16,
-              cursorStyle: "pointer",
-              mouseUpHandler: removeObject,
-              render: renderIcon(removeImg),
-              cornerSize: 24,
-            }),
-          };
+        if (shape) {
+          this.canvas.add(shape).renderAll().setActiveObject(shape);
         }
-      });
+      },
 
-      if (!["Brush", "Erase"].includes(this.type)) {
+      // Mouse move event
+      "mouse:move": (o) => {
+        if (!this.drawning) {
+          try {
+            let activeObjManipul = this.canvas.getActiveObject();
+            activeObjManipul.set({
+              hasControls: true,
+              lockMovementX: this.lockX,
+              lockMovementY: this.lockY,
+              lockScalingX: this.lockScaleX,
+              lockScalingY: this.lockScaleY,
+              lockRotation: this.lockRotate,
+            });
+          } catch (e) {}
+        }
+        if (!this.canvas.isDrawingMode) {
+          return;
+        }
+
+        if (["Brush", "Erase"].includes(this.type)) return;
+
+        let pointer = this.canvas.getPointer(o.e),
+          activeObj = this.canvas.getActiveObject();
+
+        if (!activeObj) return;
+
+        if (this.originX > pointer.x) {
+          activeObj.set({ left: pointer.x });
+        }
+        if (this.originY > pointer.y) {
+          activeObj.set({ top: pointer.y });
+        }
+
+        if (this.type == "Circle") {
+          let radius =
+            Math.max(
+              Math.abs(this.originY - pointer.y),
+              Math.abs(this.originX - pointer.x)
+            ) / 2;
+          if (radius > activeObj.strokeWidth)
+            radius -= activeObj.strokeWidth / 2;
+          activeObj.set({ radius: radius });
+        } else if (this.type == "Line") {
+          activeObj.set({ x2: pointer.x, y2: pointer.y });
+        } else {
+          activeObj.set({ width: Math.abs(this.originX - pointer.x) });
+          activeObj.set({ height: Math.abs(this.originY - pointer.y) });
+        }
+
+        this.canvas.renderAll();
+      },
+
+      // Mouse button up event
+      "mouse:up": (o) => {
+        this.canvas._objects.forEach((object) => {
+          if (!object.hasOwnProperty("controls")) {
+            object.controls = {
+              ...object.controls,
+              removeControl: new fabric.Control({
+                x: 0.5,
+                y: -0.5,
+                offsetY: -16,
+                offsetX: 16,
+                cursorStyle: "pointer",
+                mouseUpHandler: removeObject,
+                render: renderIcon(removeImg),
+                cornerSize: 24,
+              }),
+            };
+          }
+        });
+
+        this.canvas.getActiveObject()?.setCoords();
+
+        if (!["Brush", "Erase"].includes(this.type))
+          this.canvas.isDrawingMode = false;
+
+        this.canvas.renderAll();
+        this.uploadPaintFile(this.node.name);
+      },
+
+      // Object moving event
+      "object:moving": (o) => {
         this.canvas.isDrawingMode = false;
-      }
-      this.canvas.renderAll();
-      this.uploadPaintFile(this.node.name);
-    });
+      },
 
-    this.canvas.on("object:moving", (o) => {
-      this.canvas.isDrawingMode = false;
+      // Object modify event
+      "object:modified": () => {
+        this.canvas.isDrawingMode = false;
+        this.uploadPaintFile(this.node.name);
+      },
     });
-
-    this.canvas.on("object:modified", () => {
-      this.canvas.isDrawingMode = false;
-      this.uploadPaintFile(this.node.name);
-    });
+    // ----- Canvas Events -----
   }
 
   uploadPaintFile(fileName) {
