@@ -42,5 +42,7 @@ class TranslateCLIPTextEncodeNode:
 
     def translate_text(self, from_translate, to_translate, text, clip):
         text = self.translate(text, from_translate, to_translate)
-        return ([[clip.encode(text), {}]],)
+        tokens = clip.tokenize(text)
+        cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
+        return ([[cond, {"pooled_output": pooled}]], )
 
