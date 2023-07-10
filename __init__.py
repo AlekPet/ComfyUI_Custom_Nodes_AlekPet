@@ -20,7 +20,7 @@ folder_web = os.path.join(os.path.dirname(os.path.realpath(__main__.__file__)), 
 folder_web_extensions = os.path.join(folder_web, "extensions")
 folder__web_lib = os.path.join(folder_web, 'lib')
 #
-DEBUG = True
+DEBUG = False
 NODE_CLASS_MAPPINGS = {}
 
 def log(*text):
