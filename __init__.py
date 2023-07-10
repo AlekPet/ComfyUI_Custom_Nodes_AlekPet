@@ -20,7 +20,7 @@ folder_web = os.path.join(os.path.dirname(os.path.realpath(__main__.__file__)), 
 folder_web_extensions = os.path.join(folder_web, "extensions")
 folder__web_lib = os.path.join(folder_web, 'lib')
 #
-DEBUG = False
+DEBUG = True
 NODE_CLASS_MAPPINGS = {}
 
 def log(*text):
@@ -92,13 +92,14 @@ def addComfyUINodesToMapping(nodeElement):
             spec = importlib.util.spec_from_file_location(module_without_py, os.path.join(node_folder, f))
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            class_module_name = list(filter(lambda p: p.find('Node')!=-1, dir(module)))[0]
-            # Check module 
-            if class_module_name and class_module_name not in NODE_CLASS_MAPPINGS.keys():
-                log(f"    [*] Class node found '{class_module_name}' add to NODE_CLASS_MAPPINGS...")
-                NODE_CLASS_MAPPINGS.update({
-                    class_module_name:getattr(module, class_module_name)
-                    })
+            classes_names = list(filter(lambda p: p.find('Node')!=-1, dir(module)))
+            for class_module_name in classes_names:
+                # Check module 
+                if class_module_name and class_module_name not in NODE_CLASS_MAPPINGS.keys():
+                    log(f"    [*] Class node found '{class_module_name}' add to NODE_CLASS_MAPPINGS...")
+                    NODE_CLASS_MAPPINGS.update({
+                        class_module_name:getattr(module, class_module_name)
+                        })
    
 def installNodes():   
     for nodeElement in os.listdir(extension_folder):
