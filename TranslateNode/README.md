@@ -2,9 +2,9 @@
 
 Custom nodes for ComfyUI, translate promt from other languages into english
 
-Includes:
-TranslateCLIPTextEncodeNode - return CONDITIONING
-TranslateTextNode - return STRING
+> Includes:
+> **TranslateCLIPTextEncodeNode** - translate text, and return CONDITIONING
+> **TranslateTextNode** - translte text and return text (STRING)
 
 ## Image:
 
