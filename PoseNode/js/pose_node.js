@@ -6,8 +6,8 @@
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
-import { app } from "../scripts/app.js";
-import { fabric } from "/lib/fabric.js";
+import { app } from "../../scripts/app.js";
+import { fabric } from "../../lib/fabric.js";
 
 fabric.Object.prototype.transparentCorners = false;
 fabric.Object.prototype.cornerColor = "#108ce6";

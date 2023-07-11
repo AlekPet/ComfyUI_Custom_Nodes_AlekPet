@@ -19,6 +19,7 @@ extension_folder = os.path.dirname(os.path.realpath(__file__))
 folder_web = os.path.join(os.path.dirname(os.path.realpath(__main__.__file__)), "web")
 folder_web_extensions = os.path.join(folder_web, "extensions")
 folder__web_lib = os.path.join(folder_web, 'lib')
+extension_dirs = ["AlekPet_Nodes",]
 #
 DEBUG = False
 NODE_CLASS_MAPPINGS = {}
@@ -79,6 +80,22 @@ def addFilesToFolder(folderSrc, folderDst, nodeElement):
                 shutil.copy(src_f, dst_f)
 
 
+def removeFilesOldFolder(folderSrc, folderDst, nodeElement):
+    if os.path.exists(folderSrc):
+        folder = os.path.split(folderDst)[-1]
+        log(f"  -> Find old js files and remove in '{folder}' folder")
+        find_files = filecmp.dircmp(folderDst,folderSrc)
+        if find_files.common:
+            listFiles = list()
+            listFiles.extend(f for f in find_files.common if f not in listFiles)
+
+            log(f"    [*] Found old files in '{folder}' folder: {', '.join(listFiles)}")
+            for f in listFiles:              
+                dst_f = os.path.join(folderDst, f)
+                if os.path.exists(dst_f):
+                    log(f"    [*] File '{f}' is removed.")
+                    os.remove(dst_f)
+
 def addComfyUINodesToMapping(nodeElement):
     log(f"  -> Find class execute node <{nodeElement}>, add NODE_CLASS_MAPPINGS ...")
     node_folder = os.path.join(extension_folder, nodeElement)
@@ -100,16 +117,32 @@ def addComfyUINodesToMapping(nodeElement):
                     NODE_CLASS_MAPPINGS.update({
                         class_module_name:getattr(module, class_module_name)
                         })
+
+def checkFolderIsset():
+    log(f"*  Check and make not isset dirs...")
+    for d in extension_dirs:
+        dir_= os.path.join(folder_web_extensions, d)
+        if not os.path.exists(dir_):
+            log(f"* Dir <{d}> is not found, create...")
+            os.mkdir(dir_)
+            log(f"* Dir <{d}> created!")
    
-def installNodes():   
+def installNodes():
+    log(f"\n-------> AlekPet Node Installing [DEBUG] <-------")
+    checkFolderIsset()   
+    web_extensions_dir = os.path.join(folder_web_extensions, extension_dirs[0])
+    
     for nodeElement in os.listdir(extension_folder):
         if not nodeElement.startswith('__') and nodeElement.endswith('Node') and os.path.isdir(os.path.join(extension_folder, nodeElement)):
             log(f"* Node <{nodeElement}> is found, installing...")
             js_folder = os.path.join(extension_folder, nodeElement, "js")
             lib_folder = os.path.join(extension_folder, nodeElement, "lib")
             
+            # Removes old files
+            removeFilesOldFolder(js_folder, folder_web_extensions, nodeElement)
+            
             # Add missing or updates files
-            addFilesToFolder(js_folder, folder_web_extensions, nodeElement)             
+            addFilesToFolder(js_folder, web_extensions_dir, nodeElement)             
             addFilesToFolder(lib_folder, folder__web_lib, nodeElement)
 
             checkModules(nodeElement)

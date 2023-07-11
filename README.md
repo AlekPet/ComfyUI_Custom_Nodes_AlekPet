@@ -4,11 +4,11 @@ Custom nodes that extend the capabilities of [ComfyUI](https://github.com/comfya
 
 # List Nodes:
 
-| Name            |                                                   Description                                                    | ComfyUI category |
-| :-------------- | :--------------------------------------------------------------------------------------------------------------: | :--------------: |
-| _PoseNode_      |                                               Set pose ControlNet                                                |      image       |
-| _PainterNode_   |                              Set sketch, scrumble image ControlNet and other nodes                               |      image       |
-| _TranslateNode_ | Node translate promt from other languages into english. Includes: TranslateCLIPTextEncodeNode, TranslateTextNode |   conditioning   |
+| Name            |                                                   Description                                                    |               ComfyUI category               |
+| :-------------- | :--------------------------------------------------------------------------------------------------------------: | :------------------------------------------: |
+| _PoseNode_      |                                               Set pose ControlNet                                                |              AlekPet Node/image              |
+| _PainterNode_   |                              Set sketch, scrumble image ControlNet and other nodes                               |              AlekPet Node/image              |
+| _TranslateNode_ | Node translate promt from other languages into english. Includes: TranslateCLIPTextEncodeNode, TranslateTextNode | AlekPet Node/conditioning, AlekPet Node/text |
 
 # Installing
 

@@ -22,7 +22,7 @@ class PoseNode(object):
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "output_pose"
 
-    CATEGORY = "image"
+    CATEGORY = "AlekPet Nodes/image"
 
     def output_pose(self, image):
         image_path = os.path.join(

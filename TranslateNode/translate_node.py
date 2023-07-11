@@ -1,5 +1,6 @@
 import re
 from googletrans import Translator, LANGUAGES
+import folder_paths
 
 translator = Translator()
 empty_str = re.compile('^\s*$', re.I | re.M)
@@ -38,7 +39,7 @@ class TranslateCLIPTextEncodeNode:
     RETURN_TYPES = ("CONDITIONING",)
     FUNCTION = "translate_text"
 
-    CATEGORY = "conditioning"
+    CATEGORY = "AlekPet Nodes/conditioning"
 
     def translate_text(self, from_translate, to_translate, text, clip):
         text = translate(text, from_translate, to_translate)
@@ -66,9 +67,32 @@ class TranslateTextNode:
     RETURN_TYPES = ("STRING",)
     FUNCTION = "translate_text"
 
-    CATEGORY = "conditioning"
+    CATEGORY = "AlekPet Nodes/text"
 
     def translate_text(self, from_translate, to_translate, text):
         text_tranlsated = translate(text, from_translate, to_translate)
         return (text_tranlsated,)
+
+# class PreviewTextNode:
+
+#     def __init__(self):
+#         self.output_dir = folder_paths.get_temp_directory()
+    
+#     @classmethod
+#     def INPUT_TYPES(s):
+
+#         return {
+#             "required": {        
+#                 "text": ("STRING", {"forceInput": True}),     
+#                 }
+#             }
+#     OUTPUT_NODE = True
+#     RETURN_TYPES = ()
+#     FUNCTION = "preview_text"
+
+#     CATEGORY = "AlekPet Nodes/text"
+
+#     def preview_text(self, text):
+#         print(text)
+#         return { "ui": { "string": text } }
 

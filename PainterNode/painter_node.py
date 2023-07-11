@@ -22,7 +22,7 @@ class PainterNode(object):
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "painter_execute"
 
-    CATEGORY = "image"
+    CATEGORY = "AlekPet Nodes/image"
 
     def painter_execute(self, image):
         image_path = os.path.join(
