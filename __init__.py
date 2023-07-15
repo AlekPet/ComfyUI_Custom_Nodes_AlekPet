@@ -109,7 +109,7 @@ def addComfyUINodesToMapping(nodeElement):
             spec = importlib.util.spec_from_file_location(module_without_py, os.path.join(node_folder, f))
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            classes_names = list(filter(lambda p: p.find('Node')!=-1, dir(module)))
+            classes_names = list(filter(lambda p: callable(getattr(module, p)) and p.find('Node')!=-1, dir(module)))
             for class_module_name in classes_names:
                 # Check module 
                 if class_module_name and class_module_name not in NODE_CLASS_MAPPINGS.keys():

@@ -2,7 +2,7 @@
  * Title: Set Poses in ComflyUI from ControlNet
  * Author: AlekPet
  * Description: I rewrote the main.js file as a class, from fkunn1326's openpose-editor (https://github.com/fkunn1326/openpose-editor/blob/master/javascript/main.js)
- * Version: 2023.05.16
+ * Version: 2023.07.15
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -499,7 +499,7 @@ function createOpenPose(node, inputName, inputData, app) {
     redoButton = document.createElement("button"),
     historyClearButton = document.createElement("button");
 
-  panelButtons.className = "panelButtons";
+  panelButtons.className = "panelButtons comfy-menu-btns";
   undoButton.textContent = "⟲";
   redoButton.textContent = "⟳";
   historyClearButton.textContent = "✖";
@@ -600,13 +600,11 @@ app.registerExtension({
       display: flex;
       gap: 4px;
       flex-direction: column;
-    }
-    .panelButtons button{
-      background: #ffffff52;
-      color: white;
+      width: fit-content;
     }
     .panelButtons button:last-child{
-      background: #ff000052;
+      border-color: var(--error-text);
+      color: var(--error-text) !important;
     }
     
     `;

@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.07.09
+ * Version: 2023.07.17
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -97,7 +97,7 @@ class Painter {
   makeElements() {
     const panelPaintBox = document.createElement("div");
     panelPaintBox.innerHTML = `<div class="painter_manipulation_box" f_name="Locks" style="display:none;">
-    <div>
+    <div class="comfy-menu-btns">
     <button id="lockX">Lock X</button>
     <button id="lockY">Lock Y</button>
     <button id="lockScaleX">Lock ScaleX</button>
@@ -106,11 +106,14 @@ class Painter {
     </div>
     </div>
     <div class="painter_drawning_box">
-    <div class="painter_mode_box fieldset_box" f_name="Mode">
+    <div class="painter_mode_box fieldset_box comfy-menu-btns" f_name="Mode">
     <button id="painter_change_mode" title="Enable selection mode">Selection</button>
+    <div class="list_objects_panel" style="display:none;">
+    <div class="list_objects_panel__items"></div>
+    </div>
     </div>
     <div class="painter_drawning_elements" style="display:block;">
-    <div class="painter_grid_style painter_shapes_box fieldset_box" f_name="Shapes">
+    <div class="painter_grid_style painter_shapes_box fieldset_box comfy-menu-btns" f_name="Shapes">
     <button class="active" data-shape='Brush' title="Brush">B</button>
     <button data-shape='Erase' title="Erase">E</button>
     <button data-shape='Circle' title="Draw circle">◯</button>
@@ -150,6 +153,10 @@ class Painter {
     this.strokeColor = panelPaintBox.querySelector("#strokeColor");
     this.fillColor = panelPaintBox.querySelector("#fillColor");
 
+    this.list_objects_panel__items = panelPaintBox.querySelector(
+      ".list_objects_panel__items"
+    );
+
     this.strokeColorTransparent = panelPaintBox.querySelector(
       "#strokeColorTransparent"
     );
@@ -166,17 +173,48 @@ class Painter {
   clearCanvas() {
     this.canvas.clear();
     this.canvas.backgroundColor = this.bgColor.value;
+    this.canvas.requestRenderAll();
+  }
+
+  viewListObjects(list_body) {
+    list_body.innerHTML = "";
+
+    let objectNames = [];
+    this.canvas.getObjects().forEach((o) => {
+      let type = o.type,
+        obEl = document.createElement("button"),
+        countType = objectNames.filter((t) => t == type).length + 1,
+        text_value = type + `_${countType}`;
+
+      obEl.setAttribute("painter_object", text_value);
+      obEl.textContent = text_value;
+
+      objectNames.push(o.type);
+
+      obEl.addEventListener("click", () => {
+        // Style active
+        this.setActiveElement(obEl, list_body);
+        // Select element
+        this.canvas.discardActiveObject();
+        this.canvas.setActiveObject(o);
+        this.canvas.renderAll();
+      });
+
+      list_body.appendChild(obEl);
+    });
   }
 
   changeMode(b) {
     let target = b.target,
-      nextElement = target.parentElement.nextElementSibling;
+      nextElement = target.parentElement.nextElementSibling,
+      panelListObjects = target.nextElementSibling;
 
     if (this.drawning) {
       this.canvas.isDrawingMode = this.drawning = false;
       target.textContent = "Drawing";
       target.title = "Enable drawing mode";
-      showHide(this.manipulation_box, nextElement);
+      this.viewListObjects(this.list_objects_panel__items);
+      showHide(this.manipulation_box, nextElement, panelListObjects);
     } else {
       this.canvas.discardActiveObject();
       this.canvas.isDrawingMode = this.drawning = true;
@@ -186,13 +224,13 @@ class Painter {
 
       target.textContent = "Selection";
       target.title = "Enable selection mode";
-      showHide(this.manipulation_box, nextElement);
+      showHide(this.manipulation_box, nextElement, panelListObjects);
       this.canvas.renderAll();
     }
   }
 
-  setActiveElement(element_active) {
-    let elementActive = this.shapes_box.querySelector(".active");
+  setActiveElement(element_active, parent) {
+    let elementActive = parent?.querySelector(".active");
     if (elementActive) elementActive.classList.remove("active");
     element_active.classList.add("active");
   }
@@ -290,7 +328,7 @@ class Painter {
             this.canvas.isDrawingMode = false;
             break;
         }
-        this.setActiveElement(target);
+        this.setActiveElement(target, this.shapes_box);
       }
     };
 
@@ -446,6 +484,7 @@ class Painter {
         });
 
         this.canvas.getActiveObject()?.setCoords();
+        this.canvas.getActiveObjects()?.forEach((a) => a.setCoords());
 
         if (!["Brush", "Erase"].includes(this.type))
           this.canvas.isDrawingMode = false;
@@ -470,6 +509,20 @@ class Painter {
 
   uploadPaintFile(fileName) {
     // Upload paint to temp folder ComfyUI
+    let activeObj = null;
+    if (!this.canvas.isDrawingMode) {
+      activeObj = this.canvas.getActiveObject();
+
+      if (activeObj) {
+        activeObj.hasControls = false;
+        activeObj.hasBorders = false;
+        this.canvas.getActiveObjects().forEach((a_obs) => {
+          a_obs.hasControls = false;
+          a_obs.hasBorders = false;
+        });
+        this.canvas.renderAll();
+      }
+    }
 
     const uploadFile = async (blobFile) => {
       try {
@@ -484,8 +537,18 @@ class Painter {
           if (!this.image.options.values.includes(data.name)) {
             this.image.options.values.push(data.name);
           }
-
           this.image.value = data.name;
+
+          if (activeObj) {
+            activeObj.hasControls = true;
+            activeObj.hasBorders = true;
+
+            this.canvas.getActiveObjects().forEach((a_obs) => {
+              a_obs.hasControls = true;
+              a_obs.hasBorders = true;
+            });
+            this.canvas.renderAll();
+          }
         } else {
           alert(resp.status + " - " + resp.statusText);
         }
@@ -568,16 +631,17 @@ function PainterWidget(node, inputName, inputData, app) {
             left: `${-90 * t.a}px`,
           });
         } else {
+          let sizesEl = { w: 25, h: 25 };
+
+          if (element.id.includes("lock")) sizesEl = { w: 75, h: 15 };
+          if (element.id.includes("painter_change_mode")) sizesEl.w = 75;
+          if (element.hasAttribute("painter_object"))
+            sizesEl = { w: 58, h: 16 };
+
           Object.assign(element.style, {
             cursor: "pointer",
-            width: `${
-              (element.id.includes("lock")
-                ? 75
-                : element.id.includes("painter_change_mode")
-                ? 84
-                : 25) * t.a
-            }px`,
-            height: `${(element.id.includes("lock") ? 15 : 25) * t.d}px`,
+            width: `${sizesEl.w * t.a}px`,
+            height: `${sizesEl.h * t.d}px`,
             fontSize: `${t.d * 10.0}px`,
           });
         }
@@ -635,6 +699,7 @@ function PainterWidget(node, inputName, inputData, app) {
   document.body.appendChild(widget.painter_wrap);
 
   node.addWidget("button", "Clear Canvas", "clear_painer", () => {
+    node.painter.list_objects_panel__items.innerHTML = "";
     node.painter.clearCanvas();
   });
 
@@ -688,8 +753,8 @@ app.registerExtension({
       position: absolute;
       width: 100%;
     }
-    .active {
-      color: red;
+    .comfy-menu-btns button.active {
+      color: var(--error-text) !important;
       font-weight: bold;
       border: 1px solid;
     }
@@ -711,13 +776,14 @@ app.registerExtension({
     .painter_drawning_box {
       position: absolute;
       top: 0;
-      //left: -20%;
       width: 88px;
     }
     .painter_drawning_box button {
       width: 24px;
     }
-    .painter_colors_box, .painter_mode_box, .painter_stroke_box {
+    .painter_colors_box,
+    .painter_mode_box,
+    .painter_stroke_box {
       display: flex;
       flex-direction: column;
       gap: 2px;
@@ -725,18 +791,29 @@ app.registerExtension({
     }
     .painter_drawning_box input[type="number"] {
       width: 2.6rem;
+      color: var(--input-text);
+      background-color: var(--comfy-input-bg);
+      border-radius: 8px;
+      border-color: var(--border-color);
+      border-style: solid;
+      font-size: inherit;
     }
     .painter_colors_box input[type="color"] {
       width: 1.5rem;
       height: 1.5rem;
       padding: 0;
       margin-bottom: 5px;
-    }    
-    .painter_colors_box #bgColor:after
-    {
+      color: var(--input-text);
+      background-color: var(--comfy-input-bg);
+      border-radius: 8px;
+      border-color: var(--border-color);
+      border-style: solid;
+      font-size: inherit;
+    }
+    .painter_colors_box #bgColor:after {
       content: attr(data-label);
       position: absolute;
-      color: white;
+      color: var(--input-text);
       left: 70%;
       font-size: 0.5rem;
       margin-top: -18%;
@@ -744,7 +821,7 @@ app.registerExtension({
     .painter_colors_box input[type="color"]::-webkit-color-swatch-wrapper {
       padding: 1px !important;
     }
-    .painter_grid_style{
+    .painter_grid_style {
       display: grid;
       gap: 3px;
       font-size: 0.55rem;
@@ -754,8 +831,8 @@ app.registerExtension({
     }
     .painter_shapes_box {
       grid-template-columns: 1fr 1fr 1fr;
-   }   
-    .painter_colors_alpha{
+    }
+    .painter_colors_alpha {
       grid-template-columns: 0.7fr 0.7fr;
     }
     .fieldset_box {
@@ -769,7 +846,31 @@ app.registerExtension({
       position: absolute;
       top: -10px;
       color: yellow;
-    }`;
+    }
+    .list_objects_panel {
+      width: 90%;
+      font-size: 0.7rem;
+    }
+    .list_objects_panel__items {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-y: auto;
+      max-height: 350px;
+    }
+    .list_objects_panel__items button {
+      width: 80% !important;
+    }
+    .list_objects_panel__items::-webkit-scrollbar {
+      width: 8px;
+    }
+    .list_objects_panel__items::-webkit-scrollbar-track {
+      background-color: var(--descrip-text);
+    }
+    .list_objects_panel__items::-webkit-scrollbar-thumb {
+      background-color: var(--fg-color);
+    }
+    `;
     document.head.appendChild(style);
   },
   async setup(app) {
