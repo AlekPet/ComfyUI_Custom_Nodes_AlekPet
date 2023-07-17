@@ -1,6 +1,6 @@
 # Title: ComfyUI Install Customs Nodes and javascript files
 # Author: AlekPet 
-# Version: 2023.05.10
+# Version: 2023.07.17
 
 import os
 import importlib.util
@@ -9,6 +9,7 @@ import sys
 import filecmp
 import shutil
 import __main__
+import re
 
 python = sys.executable
 
@@ -23,6 +24,8 @@ extension_dirs = ["AlekPet_Nodes",]
 #
 DEBUG = False
 NODE_CLASS_MAPPINGS = {}
+NODE_DISPLAY_NAME_MAPPINGS = {}
+humanReadableTextReg = re.compile('(?<=[a-z])([A-Z])|(?<=[A-Z])([A-Z][a-z]+)')
 
 def log(*text):
     if DEBUG:
@@ -116,6 +119,9 @@ def addComfyUINodesToMapping(nodeElement):
                     log(f"    [*] Class node found '{class_module_name}' add to NODE_CLASS_MAPPINGS...")
                     NODE_CLASS_MAPPINGS.update({
                         class_module_name:getattr(module, class_module_name)
+                        })
+                    NODE_DISPLAY_NAME_MAPPINGS.update({
+                        class_module_name: humanReadableTextReg.sub(" \\1\\2", class_module_name)
                         })
 
 def checkFolderIsset():
