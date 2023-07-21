@@ -2,7 +2,7 @@
  * Title: Set Poses in ComflyUI from ControlNet
  * Author: AlekPet
  * Description: I rewrote the main.js file as a class, from fkunn1326's openpose-editor (https://github.com/fkunn1326/openpose-editor/blob/master/javascript/main.js)
- * Version: 2023.07.15
+ * Version: 2023.07.21
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -535,14 +535,6 @@ function createOpenPose(node, inputName, inputData, app) {
   node.addWidget("button", "Reset pose", "reset_pose", () => {
     node.openPose.resetCanvas();
   });
-
-  // node.addWidget("button", "Undo", "undo_pose", () => {
-  //   node.openPose.undo();
-  // });
-
-  // node.addWidget("button", "Redo", "redo_pose", () => {
-  //   node.openPose.redo();
-  // });
 
   // Add customWidget to node
   node.addCustomWidget(widget);
