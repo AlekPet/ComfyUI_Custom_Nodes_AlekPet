@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.07.17
+ * Version: 2023.07.21
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -31,6 +31,7 @@ function removeObject(eventData, transform) {
   var canvas = target.canvas;
   canvas.remove(target);
   canvas.requestRenderAll();
+  this.viewListObjects(this.list_objects_panel__items);
 }
 
 function toRGBA(hex, alpha = 1.0) {
@@ -132,7 +133,11 @@ class Painter {
     <input id="strokeColor" type="color" value="#FFFFFF" title="Stroke color">    
     <input id="strokeColorTransparent" type="number" max="1.0" min="0" step="0.05" value="1.0" title="Stroke alpha value">
     </div>
-    <input id="bgColor" type="color" value="#000000" data-label="BG" title="Background color">  
+    </div>
+    <div class="painter_grid_style painter_bg_setting fieldset_box comfy-menu-btns" f_name="Background">
+    <input id="bgColor" type="color" value="#000000" data-label="BG" title="Background color">
+    <button bgImage="img_load" title="Add background image">IMG</button>
+    <button bgImage="img_reset" title="Remove background image">IMG <span style="color: var(--error-text);">✖</span></button>
     </div>
     <div class="painter_stroke_box fieldset_box" f_name="Brush width">
     <input id="strokeWidth" type="number" min="0" max="150" value="5" step="1" title="Brush width">
@@ -166,6 +171,18 @@ class Painter {
     this.bgColor = panelPaintBox.querySelector("#bgColor");
     this.clear = panelPaintBox.querySelector("#clear");
 
+    this.painter_bg_setting = panelPaintBox.querySelector(
+      ".painter_bg_setting"
+    );
+
+    this.bgImageFile = document.createElement("input");
+    Object.assign(this.bgImageFile, {
+      accept: "image/jpeg,image/png,image/webp",
+      type: "file",
+      style: "display:none",
+    });
+
+    this.painter_bg_setting.appendChild(this.bgImageFile);
     this.changePropertyBrush();
     this.bindEvents();
   }
@@ -358,9 +375,52 @@ class Painter {
     };
 
     // Event input bgcolor
-    this.bgColor.oninput = () => {
+    this.reset_set_bg = () => {
+      this.canvas.setBackgroundImage(null);
       this.canvas.backgroundColor = this.bgColor.value;
       this.canvas.renderAll();
+    };
+
+    this.bgColor.oninput = this.reset_set_bg;
+
+    // Event input bg image
+    this.bgImageFile.onchange = (e) => {
+      let file = e.target.files[0],
+        reader = new FileReader();
+
+      reader.onload = (f) => {
+        let data = f.target.result;
+        fabric.Image.fromURL(data, (img) => {
+          this.canvas.setBackgroundImage(
+            img,
+            () => {
+              this.canvas.renderAll();
+              this.uploadPaintFile(this.node.name);
+              this.bgImageFile.value = "";
+            },
+            {
+              scaleX: this.canvas.width / img.width,
+              scaleY: this.canvas.height / img.height,
+            }
+          );
+        });
+      };
+      reader.readAsDataURL(file);
+    };
+
+    this.painter_bg_setting.onclick = (e) => {
+      let target = e.target;
+      if (target.hasAttribute("bgImage")) {
+        let typeEvent = target.getAttribute("bgImage");
+        switch (typeEvent) {
+          case "img_load":
+            this.bgImageFile.click();
+            break;
+          case "img_reset":
+            this.reset_set_bg();
+            break;
+        }
+      }
     };
 
     // Event input stroke transparent
@@ -475,7 +535,7 @@ class Painter {
                 offsetY: -16,
                 offsetX: 16,
                 cursorStyle: "pointer",
-                mouseUpHandler: removeObject,
+                mouseUpHandler: removeObject.bind(this),
                 render: renderIcon(removeImg),
                 cornerSize: 24,
               }),
@@ -539,7 +599,7 @@ class Painter {
           }
           this.image.value = data.name;
 
-          if (activeObj) {
+          if (activeObj && !this.drawning) {
             activeObj.hasControls = true;
             activeObj.hasBorders = true;
 
@@ -637,6 +697,7 @@ function PainterWidget(node, inputName, inputData, app) {
           if (element.id.includes("painter_change_mode")) sizesEl.w = 75;
           if (element.hasAttribute("painter_object"))
             sizesEl = { w: 58, h: 16 };
+          if (element.hasAttribute("bgImage")) sizesEl = { w: 60, h: 20 };
 
           Object.assign(element.style, {
             cursor: "pointer",
@@ -798,7 +859,7 @@ app.registerExtension({
       border-style: solid;
       font-size: inherit;
     }
-    .painter_colors_box input[type="color"] {
+    .painter_colors_box input[type="color"], .painter_bg_setting input[type="color"] {
       width: 1.5rem;
       height: 1.5rem;
       padding: 0;
@@ -810,7 +871,12 @@ app.registerExtension({
       border-style: solid;
       font-size: inherit;
     }
-    .painter_colors_box #bgColor:after {
+
+    .painter_bg_setting button{
+      width: 40px;
+      height: 20px;
+    }
+    .painter_bg_setting #bgColor:after {
       content: attr(data-label);
       position: absolute;
       color: var(--input-text);
@@ -818,7 +884,7 @@ app.registerExtension({
       font-size: 0.5rem;
       margin-top: -18%;
     }
-    .painter_colors_box input[type="color"]::-webkit-color-swatch-wrapper {
+    .painter_colors_box input[type="color"]::-webkit-color-swatch-wrapper, .painter_bg_setting input[type="color"]::-webkit-color-swatch-wrapper {
       padding: 1px !important;
     }
     .painter_grid_style {
