@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.07.21
+ * Version: 2023.07.22
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -99,11 +99,15 @@ class Painter {
     const panelPaintBox = document.createElement("div");
     panelPaintBox.innerHTML = `<div class="painter_manipulation_box" f_name="Locks" style="display:none;">
     <div class="comfy-menu-btns">
-    <button id="lockX">Lock X</button>
-    <button id="lockY">Lock Y</button>
-    <button id="lockScaleX">Lock ScaleX</button>
-    <button id="lockScaleY">Lock ScaleY</button>
-    <button id="lockRotate">Lock Rotate</button>
+    <button id="lockX" title="Lock move X">Lock X</button>
+    <button id="lockY" title="Lock move Y">Lock Y</button>
+    <button id="lockScaleX" title="Lock scale X">Lock ScaleX</button>
+    <button id="lockScaleY" title="Lock scale Y">Lock ScaleY</button>
+    <button id="lockRotate" title="Lock rotate">Lock Rotate</button>
+    </div>
+    <div class="comfy-menu-btns">
+    <button id="lock_BringFront" title="Bring object to front">Bring Front</button>
+    <button id="lock_BringBack" title="Bring object to back">Bring Back</button>
     </div>
     </div>
     <div class="painter_drawning_box">
@@ -121,6 +125,7 @@ class Painter {
     <button data-shape='Rect' title="Draw rectangle">▭</button>
     <button data-shape='Triangle' title="Draw triangle">△</button>
     <button data-shape='Line' title="Draw line">|</button>
+    <button data-shape='Image' title="Add picture">P</button>
     </div>
     <div class="painter_colors_box fieldset_box" f_name="Colors">
     <div class="painter_grid_style painter_colors_alpha">
@@ -226,8 +231,13 @@ class Painter {
       nextElement = target.parentElement.nextElementSibling,
       panelListObjects = target.nextElementSibling;
 
+    if (this.type == "Image") {
+      this.drawning = true;
+    }
+
     if (this.drawning) {
-      this.canvas.isDrawingMode = this.drawning = false;
+      this.canvas.isDrawingMode = false;
+      this.drawning = false;
       target.textContent = "Drawing";
       target.title = "Enable drawing mode";
       this.viewListObjects(this.list_objects_panel__items);
@@ -236,7 +246,7 @@ class Painter {
       this.canvas.discardActiveObject();
       this.canvas.isDrawingMode = this.drawning = true;
 
-      if (!["Brush", "Erase"].includes(this.type))
+      if (!["Brush", "Erase", "Image"].includes(this.type))
         this.canvas.isDrawingMode = false;
 
       target.textContent = "Selection";
@@ -340,9 +350,28 @@ class Painter {
           case "Brush":
             this.changePropertyBrush(currentTarget);
             this.canvas.isDrawingMode = true;
+            this.drawning = true;
+            break;
+          case "Image":
+            this.bgImageFile.func = (img) => {
+              let img_ = img
+                .set({
+                  left: 0,
+                  top: 0,
+                  angle: 0,
+                })
+                .scale(0.3);
+              this.canvas.add(img_).renderAll();
+              this.uploadPaintFile(this.node.name);
+              this.bgImageFile.value = "";
+            };
+            this.bgImageFile.click();
+            this.canvas.isDrawingMode = false;
+            this.drawning = false;
             break;
           default:
             this.canvas.isDrawingMode = false;
+            this.drawning = true;
             break;
         }
         this.setActiveElement(target, this.shapes_box);
@@ -361,15 +390,25 @@ class Painter {
           "lockScaleX",
           "lockScaleY",
           "lockRotate",
+          "lock_BringFront",
+          "lock_BringBack",
         ],
         index = listButtons.indexOf(target.id);
       if (index != -1) {
-        let buttonSel = listButtons[index];
-        this[buttonSel] = !this[buttonSel];
-        if (this[buttonSel]) {
-          target.classList.add("active");
+        if (listButtons[index].includes("_Bring")) {
+          let a_object = this.canvas.getActiveObject();
+          listButtons[index] == "lock_BringFront"
+            ? this.canvas.bringToFront(a_object)
+            : this.canvas.sendToBack(a_object);
+          this.canvas.renderAll();
         } else {
-          target.classList.remove("active");
+          let buttonSel = listButtons[index];
+          this[buttonSel] = !this[buttonSel];
+          if (this[buttonSel]) {
+            target.classList.add("active");
+          } else {
+            target.classList.remove("active");
+          }
         }
       }
     };
@@ -381,31 +420,22 @@ class Painter {
       this.canvas.renderAll();
     };
 
-    this.bgColor.oninput = this.reset_set_bg;
-
-    // Event input bg image
-    this.bgImageFile.onchange = (e) => {
+    const fileReaderFunc = (e, func) => {
       let file = e.target.files[0],
         reader = new FileReader();
 
       reader.onload = (f) => {
         let data = f.target.result;
-        fabric.Image.fromURL(data, (img) => {
-          this.canvas.setBackgroundImage(
-            img,
-            () => {
-              this.canvas.renderAll();
-              this.uploadPaintFile(this.node.name);
-              this.bgImageFile.value = "";
-            },
-            {
-              scaleX: this.canvas.width / img.width,
-              scaleY: this.canvas.height / img.height,
-            }
-          );
-        });
+        fabric.Image.fromURL(data, (img) => func(img));
       };
       reader.readAsDataURL(file);
+    };
+
+    this.bgColor.oninput = this.reset_set_bg;
+
+    // Event input bg image
+    this.bgImageFile.onchange = (e) => {
+      fileReaderFunc(e, this.bgImageFile.func);
     };
 
     this.painter_bg_setting.onclick = (e) => {
@@ -414,6 +444,20 @@ class Painter {
         let typeEvent = target.getAttribute("bgImage");
         switch (typeEvent) {
           case "img_load":
+            this.bgImageFile.func = (img) => {
+              this.canvas.setBackgroundImage(
+                img,
+                () => {
+                  this.canvas.renderAll();
+                  this.uploadPaintFile(this.node.name);
+                  this.bgImageFile.value = "";
+                },
+                {
+                  scaleX: this.canvas.width / img.width,
+                  scaleY: this.canvas.height / img.height,
+                }
+              );
+            };
             this.bgImageFile.click();
             break;
           case "img_reset":
@@ -442,6 +486,9 @@ class Painter {
     this.canvas.on({
       // Mouse button down event
       "mouse:down": (o) => {
+        if (!this.canvas.isDrawingMode)
+          this.canvas.bringToFront(this.canvas.getActiveObject());
+
         this.canvas.isDrawingMode = this.drawning;
         if (!this.canvas.isDrawingMode) return;
 
@@ -546,7 +593,7 @@ class Painter {
         this.canvas.getActiveObject()?.setCoords();
         this.canvas.getActiveObjects()?.forEach((a) => a.setCoords());
 
-        if (!["Brush", "Erase"].includes(this.type))
+        if (!["Brush", "Erase", "Image"].includes(this.type))
           this.canvas.isDrawingMode = false;
 
         this.canvas.renderAll();
@@ -822,14 +869,15 @@ app.registerExtension({
     .painter_manipulation_box {
       position: absolute;
       left: 50%;
-      top: -20px;
+      top: -40px;
       transform: translateX(-50%);
-      width: 100%;
     }
     .painter_manipulation_box > div {
-      display: flex;
+      display: grid;
       gap: 2px;
+      grid-template-columns: 0.1fr 0.1fr 0.1fr 0.1fr 0.1fr;
       justify-content: center;
+      margin-bottom: 2px;
     }
     .painter_manipulation_box > div button {
       font-size: 0.5rem;
