@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.07.22
+ * Version: 2023.07.27
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -72,6 +72,7 @@ class Painter {
     this.lockScaleX = false;
     this.lockScaleY = false;
     this.lockRotate = false;
+    this.bringFrontSelected = true;
 
     this.node = node;
     this.undo_history = LS_Painters[node.name].undo_history || [];
@@ -85,10 +86,9 @@ class Painter {
     this.canvas = new fabric.Canvas(canvasEl, {
       isDrawingMode: true,
       backgroundColor: "transparent",
+      width: 512,
+      height: 512,
     });
-
-    this.canvas.setWidth(512);
-    this.canvas.setHeight(512);
 
     this.canvas.backgroundColor = "#000000";
 
@@ -106,8 +106,13 @@ class Painter {
     <button id="lockRotate" title="Lock rotate">Lock Rotate</button>
     </div>
     <div class="comfy-menu-btns">
-    <button id="lock_BringFront" title="Bring object to front">Bring Front</button>
-    <button id="lock_BringBack" title="Bring object to back">Bring Back</button>
+    <button id="zpos_BringForward" title="Moves an object or a selection up in stack of drawn objects">Bring Forward</button>
+    <button id="zpos_SendBackwards" title="Moves an object or a selection down in stack of drawn objects">Send Backwards</button>
+    <button id="zpos_BringToFront" title="Moves an object or the objects of a multiple selection to the top">Bring Front</button>
+    <button id="zpos_SendToBack" title="Moves an object or the objects of a multiple selection to the bottom">Send Back</button>
+    <button id="zpos_BringFrontSelected" title="Moves an object or the objects of a multiple selection to the top after mouse click" class="${
+      this.bringFrontSelected ? "active" : ""
+    }">Bring Up Always</button>
     </div>
     </div>
     <div class="painter_drawning_box">
@@ -382,6 +387,30 @@ class Painter {
     this.change_mode.onclick = (e) => this.changeMode(e);
 
     // Buttons Lock events
+    function stackPositionObjects(tool, target) {
+      let a_object = this.canvas.getActiveObject();
+      if (tool) {
+        switch (tool) {
+          case "zpos_BringForward":
+            this.canvas.bringForward(a_object);
+            break;
+          case "zpos_BringToFront":
+            this.canvas.bringToFront(a_object);
+            break;
+          case "zpos_SendToBack":
+            this.canvas.sendToBack(a_object);
+            break;
+          case "zpos_SendBackwards":
+            this.canvas.sendBackwards(a_object);
+            break;
+          case "zpos_BringFrontSelected":
+            this.bringFrontSelected = !this.bringFrontSelected;
+            target.classList.toggle("active");
+            break;
+        }
+        this.canvas.renderAll();
+      }
+    }
     this.manipulation_box.onclick = (e) => {
       let target = e.target,
         listButtons = [
@@ -390,24 +419,24 @@ class Painter {
           "lockScaleX",
           "lockScaleY",
           "lockRotate",
-          "lock_BringFront",
-          "lock_BringBack",
+          "zpos_BringForward",
+          "zpos_BringToFront",
+          "zpos_SendToBack",
+          "zpos_SendBackwards",
+          "zpos_BringFrontSelected",
         ],
         index = listButtons.indexOf(target.id);
       if (index != -1) {
-        if (listButtons[index].includes("_Bring")) {
-          let a_object = this.canvas.getActiveObject();
-          listButtons[index] == "lock_BringFront"
-            ? this.canvas.bringToFront(a_object)
-            : this.canvas.sendToBack(a_object);
-          this.canvas.renderAll();
+        if (
+          listButtons[index].includes("_Send") ||
+          listButtons[index].includes("_Bring")
+        ) {
+          stackPositionObjects.call(this, listButtons[index], target);
         } else {
           let buttonSel = listButtons[index];
           this[buttonSel] = !this[buttonSel];
           if (this[buttonSel]) {
-            target.classList.add("active");
-          } else {
-            target.classList.remove("active");
+            target.classList.toggle("active");
           }
         }
       }
@@ -486,7 +515,7 @@ class Painter {
     this.canvas.on({
       // Mouse button down event
       "mouse:down": (o) => {
-        if (!this.canvas.isDrawingMode)
+        if (!this.canvas.isDrawingMode && this.bringFrontSelected)
           this.canvas.bringToFront(this.canvas.getActiveObject());
 
         this.canvas.isDrawingMode = this.drawning;
@@ -738,19 +767,21 @@ function PainterWidget(node, inputName, inputData, app) {
             left: `${-90 * t.a}px`,
           });
         } else {
-          let sizesEl = { w: 25, h: 25 };
+          let sizesEl = { w: 25, h: 25, fs: 10 };
 
-          if (element.id.includes("lock")) sizesEl = { w: 75, h: 15 };
+          if (element.id.includes("lock")) sizesEl = { w: 75, h: 15, fs: 10 };
+          if (element.id.includes("zpos")) sizesEl = { w: 80, h: 15, fs: 8 };
           if (element.id.includes("painter_change_mode")) sizesEl.w = 75;
           if (element.hasAttribute("painter_object"))
-            sizesEl = { w: 58, h: 16 };
-          if (element.hasAttribute("bgImage")) sizesEl = { w: 60, h: 20 };
+            sizesEl = { w: 58, h: 16, fs: 10 };
+          if (element.hasAttribute("bgImage"))
+            sizesEl = { w: 60, h: 20, fs: 10 };
 
           Object.assign(element.style, {
             cursor: "pointer",
             width: `${sizesEl.w * t.a}px`,
             height: `${sizesEl.h * t.d}px`,
-            fontSize: `${t.d * 10.0}px`,
+            fontSize: `${t.d * sizesEl.fs}px`,
           });
         }
       });
@@ -882,9 +913,12 @@ app.registerExtension({
     .painter_manipulation_box > div button {
       font-size: 0.5rem;
     }
+    .painter_manipulation_box > div button[id^=zpos]:active {
+      background-color: #484848;
+    }
     .painter_drawning_box {
       position: absolute;
-      top: 0;
+      top: -40px;
       width: 88px;
     }
     .painter_drawning_box button {
@@ -996,7 +1030,7 @@ app.registerExtension({
         let widgetImage = n.widgets.find((w) => w.name == "image");
         if (widgetImage && Object.hasOwn(LS_Painters, n.name)) {
           let painter_ls = LS_Painters[n.name].undo_history;
-          n.setSize([530, 550]);
+          n.setSize([530, 560]);
           /*n.painter.loadPreset(
             painter_ls.length > 0
               ? painter_ls[painter_ls.length - 1]
@@ -1044,7 +1078,7 @@ app.registerExtension({
           this.painter.uploadPaintFile(nodeNamePNG);
         }, 1);
 
-        this.setSize([530, 550]);
+        this.setSize([530, 560]);
 
         return r;
       };
