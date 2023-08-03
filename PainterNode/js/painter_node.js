@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.07.27
+ * Version: 2023.08.03
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -54,7 +54,7 @@ function showHide() {
 
 window.LS_Painters = {};
 function LS_Save() {
-  ///console.log("Save:", LS_Painters);
+  // console.log("Save:", LS_Painters);
   localStorage.setItem("ComfyUI_Painter", JSON.stringify(LS_Painters));
 }
 // ================= END FUNCTIONS ================
@@ -201,6 +201,8 @@ class Painter {
     this.canvas.clear();
     this.canvas.backgroundColor = this.bgColor.value;
     this.canvas.requestRenderAll();
+    LS_Painters[this.node.name].objects_canvas = [];
+    LS_Save();
   }
 
   viewListObjects(list_body) {
@@ -280,64 +282,45 @@ class Painter {
     this.canvas.freeDrawingBrush.width = parseInt(this.strokeWidth.value, 10);
   }
 
-  shapeCreate({ pointer, strokeColor, fillColor, strokeWidth }) {
+  shapeCreate({
+    type,
+    left,
+    top,
+    stroke,
+    fill,
+    strokeWidth,
+    points = [],
+    path = "",
+  }) {
     let shape = null;
-    this.originX = pointer.x;
-    this.originY = pointer.y;
 
-    if (this.type == "Rect") {
-      shape = new fabric.Rect({
-        left: this.originX,
-        top: this.originY,
-        originX: "left",
-        originY: "top",
-        width: pointer.x - this.originX,
-        height: pointer.y - this.originY,
-        angle: 0,
-        fill: fillColor,
-        strokeWidth: strokeWidth,
-        stroke: strokeColor,
-        transparentCorners: false,
-        hasBorders: false,
-        hasControls: false,
-      });
-    } else if (this.type == "Circle") {
-      shape = new fabric.Circle({
-        left: this.originX,
-        top: this.originY,
-        radius: 1,
-        originX: "left",
-        originY: "top",
-        angle: 0,
-        fill: fillColor,
-        strokeWidth: strokeWidth,
-        stroke: strokeColor,
-        hasBorders: false,
-        hasControls: false,
-      });
-    } else if (this.type == "Triangle") {
-      shape = new fabric.Triangle({
-        left: this.originX,
-        top: this.originY,
-        originX: "left",
-        originY: "top",
-        angle: 0,
-        fill: fillColor,
-        strokeWidth: strokeWidth,
-        stroke: strokeColor,
-        hasBorders: false,
-        hasControls: false,
-      });
-    } else if (this.type == "Line") {
-      let points = [pointer.x, pointer.y, pointer.x, pointer.y];
-      shape = new fabric.Line(points, {
-        fill: fillColor,
-        strokeWidth: strokeWidth,
-        stroke: strokeColor,
-        hasBorders: false,
-        hasControls: false,
-      });
+    if (type == "Rect") {
+      shape = new fabric.Rect();
+    } else if (type == "Circle") {
+      shape = new fabric.Circle();
+    } else if (type == "Triangle") {
+      shape = new fabric.Triangle();
+    } else if (type == "Line") {
+      shape = new fabric.Line(points);
+    } else if (type == "Path") {
+      shape = new fabric.Path(path);
     }
+
+    Object.assign(shape, {
+      angle: 0,
+      left: left,
+      top: top,
+      originX: "left",
+      originY: "top",
+      strokeWidth: strokeWidth,
+      stroke: stroke,
+      transparentCorners: false,
+      hasBorders: false,
+      hasControls: false,
+      radius: 1,
+      fill: type == "Path" ? false : fill,
+    });
+
     return shape;
   }
 
@@ -387,7 +370,7 @@ class Painter {
     this.change_mode.onclick = (e) => this.changeMode(e);
 
     // Buttons Lock events
-    function stackPositionObjects(tool, target) {
+    const stackPositionObjects = (tool, target) => {
       let a_object = this.canvas.getActiveObject();
       if (tool) {
         switch (tool) {
@@ -410,7 +393,7 @@ class Painter {
         }
         this.canvas.renderAll();
       }
-    }
+    };
     this.manipulation_box.onclick = (e) => {
       let target = e.target,
         listButtons = [
@@ -431,7 +414,7 @@ class Painter {
           listButtons[index].includes("_Send") ||
           listButtons[index].includes("_Bring")
         ) {
-          stackPositionObjects.call(this, listButtons[index], target);
+          stackPositionObjects(listButtons[index], target);
         } else {
           let buttonSel = listButtons[index];
           this[buttonSel] = !this[buttonSel];
@@ -496,8 +479,8 @@ class Painter {
       }
     };
 
-    // Event input stroke transparent
-    this.strokeColorTransparent.oninput = () => {
+    // Event input stroke color and transparent
+    this.strokeColorTransparent.oninput = this.strokeColor.oninput = () => {
       if (this.type == "Brush") {
         this.changePropertyBrush();
       }
@@ -520,27 +503,31 @@ class Painter {
 
         this.canvas.isDrawingMode = this.drawning;
         if (!this.canvas.isDrawingMode) return;
+        if (["Brush", "Erase"].includes(this.type)) return;
 
-        let pointer = this.canvas.getPointer(o.e),
+        let { x: left, y: top } = this.canvas.getPointer(o.e),
           colors = ["red", "blue", "green", "yellow", "purple", "orange"],
           strokeWidth = +this.strokeWidth.value,
-          strokeColor =
+          stroke =
             strokeWidth == 0
               ? "transparent"
               : toRGBA(
                   this.strokeColor.value,
                   this.strokeColorTransparent.value
                 ) || colors[Math.floor(Math.random() * colors.length)],
-          fillColor = toRGBA(
-            this.fillColor.value,
-            this.fillColorTransparent.value
-          ),
+          fill = toRGBA(this.fillColor.value, this.fillColorTransparent.value),
           shape = this.shapeCreate({
-            pointer,
-            strokeColor,
-            fillColor,
+            type: this.type,
+            left,
+            top,
+            stroke,
+            fill,
             strokeWidth,
+            points: [left, top, left, top],
           });
+
+        this.originX = left;
+        this.originY = top;
 
         if (shape) {
           this.canvas.add(shape).renderAll().setActiveObject(shape);
@@ -643,6 +630,95 @@ class Painter {
     // ----- Canvas Events -----
   }
 
+  // Save canvas objects
+  updateCanvasObjects() {
+    try {
+      const objs_list = this.canvas.getObjects(),
+        objects_ls = [];
+
+      objs_list.forEach((ob) => {
+        let type = ob.type,
+          save_property = {
+            type,
+            left: ob.left,
+            top: ob.top,
+            width: ob.width,
+            height: ob.height,
+            fill: ob.fill,
+            stroke: ob.stroke,
+            strokeWidth: ob.strokeWidth,
+            angle: ob.angle,
+            zoomX: ob.zoomX,
+            zoomY: ob.zoomY,
+            scaleX: ob.scaleX,
+            scaleY: ob.scaleY,
+            radius: ob.radius,
+            x1: ob.x1,
+            x2: ob.x2,
+            y1: ob.y1,
+            y2: ob.y2,
+          };
+
+        if (type === "path" && ob.path.length > 0) {
+          let path = fabric.util.joinPath(ob.path).replace(/([a-z])\s/gi, "$1");
+          Object.assign(save_property, { path });
+        }
+
+        objects_ls.push(save_property);
+      });
+
+      if (objects_ls.length > 0) {
+        LS_Painters[this.node.name].objects_canvas = objects_ls;
+        LS_Save();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Load saved objects for LocalStorage and create
+  createCanvasObjects(json) {
+    try {
+      if (json["objects_canvas"].length > 0) {
+        json.objects_canvas.forEach((ob) => {
+          if (ob.type == "image") return;
+          let type = ob.type[0].toLocaleUpperCase() + ob.type.slice(1),
+            shape = this.shapeCreate({
+              type,
+              path: ob.path ? ob.path : [],
+            });
+
+          if (shape) {
+            Object.assign(shape, {
+              fill: ob.fill,
+              stroke: ob.stroke,
+              strokeWidth: ob.strokeWidth,
+              angle: ob.angle,
+              left: ob.left,
+              top: ob.top,
+              width: ob.width,
+              height: ob.height,
+              angle: ob.angle,
+              zoomX: ob.zoomX,
+              zoomY: ob.zoomY,
+              scaleX: ob.scaleX,
+              scaleY: ob.scaleY,
+              radius: ob.radius,
+              x1: ob.x1,
+              x2: ob.x2,
+              y1: ob.y1,
+              y2: ob.y2,
+            });
+
+            this.canvas.add(shape);
+          }
+        });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   uploadPaintFile(fileName) {
     // Upload paint to temp folder ComfyUI
     let activeObj = null;
@@ -685,6 +761,7 @@ class Painter {
             });
             this.canvas.renderAll();
           }
+          this.updateCanvasObjects();
         } else {
           alert(resp.status + " - " + resp.statusText);
         }
@@ -1029,13 +1106,9 @@ app.registerExtension({
         console.log(`Setup PainterNode: ${n.name}`);
         let widgetImage = n.widgets.find((w) => w.name == "image");
         if (widgetImage && Object.hasOwn(LS_Painters, n.name)) {
-          let painter_ls = LS_Painters[n.name].undo_history;
+          const painter_ls = LS_Painters[n.name];
           n.setSize([530, 560]);
-          /*n.painter.loadPreset(
-            painter_ls.length > 0
-              ? painter_ls[painter_ls.length - 1]
-              : { keypoints: [] }
-          );*/
+          n.painter.createCanvasObjects(painter_ls);
         }
       });
     }
@@ -1069,6 +1142,8 @@ app.registerExtension({
           LS_Painters[nodeNamePNG] = {
             undo_history: [],
             redo_history: [],
+            objects_canvas: [],
+            settings: {},
           };
           LS_Save();
         }
