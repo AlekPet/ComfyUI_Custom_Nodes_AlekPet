@@ -2,7 +2,7 @@
  * Title: Set Poses in ComflyUI from ControlNet
  * Author: AlekPet
  * Description: I rewrote the main.js file as a class, from fkunn1326's openpose-editor (https://github.com/fkunn1326/openpose-editor/blob/master/javascript/main.js)
- * Version: 2023.07.21
+ * Version: 2023.08.04
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -445,14 +445,21 @@ function createOpenPose(node, inputName, inputData, app) {
     name: `w${inputName}`,
 
     draw: function (ctx, _, widgetWidth, y, widgetHeight) {
-      const t = ctx.getTransform(),
-        margin = 10,
-        visible = app.canvas.ds.scale > 0.5 && this.type === "openpose";
-      let w = (widgetWidth - margin * 2 - 3) * t.a;
+      const margin = 10,
+        visible = app.canvas.ds.scale > 0.5 && this.type === "openpose",
+        clientRectBound = ctx.canvas.getBoundingClientRect(),
+        transform = new DOMMatrix()
+          .scaleSelf(
+            clientRectBound.width / ctx.canvas.width,
+            clientRectBound.height / ctx.canvas.height
+          )
+          .multiplySelf(ctx.getTransform())
+          .translateSelf(margin, margin + y),
+        w = (widgetWidth - margin * 2 - 3) * transform.a;
 
       Object.assign(this.openpose.style, {
-        left: `${t.a * margin + t.e}px`,
-        top: `${t.d * (y + widgetHeight - margin - 3) + t.f}px`,
+        left: `${transform.a * margin + transform.e}px`,
+        top: `${transform.d + transform.f}px`,
         width: w + "px",
         height: w + "px",
         position: "absolute",
@@ -471,9 +478,9 @@ function createOpenPose(node, inputName, inputData, app) {
 
       Array.from(this.openpose.children[2].children).forEach((element) => {
         Object.assign(element.style, {
-          width: `${28.0 * t.a}px`,
-          height: `${22.0 * t.d}px`,
-          fontSize: `${t.d * 10.0}px`,
+          width: `${28.0 * transform.a}px`,
+          height: `${22.0 * transform.d}px`,
+          fontSize: `${transform.d * 10.0}px`,
         });
         element.hidden = !visible;
       });

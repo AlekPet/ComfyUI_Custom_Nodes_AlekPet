@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.08.03
+ * Version: 2023.08.04
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -799,28 +799,40 @@ function PainterWidget(node, inputName, inputData, app) {
     name: `w${inputName}`,
 
     draw: function (ctx, _, widgetWidth, y, widgetHeight) {
-      const t = ctx.getTransform(),
-        margin = 10,
-        left_offset = 9,
+      const margin = 10,
+        left_offset = 8,
         top_offset = 30,
         visible = app.canvas.ds.scale > 0.6 && this.type === "painter_widget",
-        w = (widgetWidth - margin * 2 - 80) * t.a;
+        w = widgetWidth - margin * 2 - 80,
+        clientRectBound = ctx.canvas.getBoundingClientRect(),
+        transform = new DOMMatrix()
+          .scaleSelf(
+            clientRectBound.width / ctx.canvas.width,
+            clientRectBound.height / ctx.canvas.height
+          )
+          .multiplySelf(ctx.getTransform())
+          .translateSelf(margin, margin + y),
+        scale = new DOMMatrix().scaleSelf(transform.a, transform.d);
 
       Object.assign(this.painter_wrap.style, {
-        left: `${t.a * margin * left_offset + t.e}px`,
-        top: `${t.d * (y + widgetHeight - margin - 3 + top_offset) + t.f}px`,
-        width: w + "px",
-        height: w + "px",
+        left: `${transform.a * margin * left_offset + transform.e}px`,
+        top: `${transform.d + transform.f + top_offset}px`,
+        width: `${w * transform.a}px`,
+        height: `${w * transform.d}px`,
         position: "absolute",
         zIndex: app.graph._nodes.indexOf(node),
       });
 
       Object.assign(this.painter_wrap.children[0].style, {
+        transformOrigin: "0 0",
+        transform: scale,
         width: w + "px",
         height: w + "px",
       });
 
       Object.assign(this.painter_wrap.children[1].style, {
+        transformOrigin: "0 0",
+        transform: scale,
         width: w + "px",
         height: w + "px",
       });
@@ -832,22 +844,22 @@ function PainterWidget(node, inputName, inputData, app) {
       ).forEach((element) => {
         if (element.type == "number") {
           Object.assign(element.style, {
-            width: `${40 * t.a}px`,
-            height: `${21 * t.d}px`,
-            fontSize: `${t.d * 10.0}px`,
+            width: `${40 * transform.a}px`,
+            height: `${21 * transform.d}px`,
+            fontSize: `${transform.d * 10.0}px`,
           });
         } else if (element.tagName == "SPAN") {
           // NOPE
         } else if (element.tagName == "DIV") {
           Object.assign(element.style, {
-            width: `${88 * t.a}px`,
-            left: `${-90 * t.a}px`,
+            width: `${88 * transform.a}px`,
+            left: `${-90 * transform.a}px`,
           });
         } else {
           let sizesEl = { w: 25, h: 25, fs: 10 };
 
           if (element.id.includes("lock")) sizesEl = { w: 75, h: 15, fs: 10 };
-          if (element.id.includes("zpos")) sizesEl = { w: 80, h: 15, fs: 8 };
+          if (element.id.includes("zpos")) sizesEl = { w: 80, h: 15, fs: 7 };
           if (element.id.includes("painter_change_mode")) sizesEl.w = 75;
           if (element.hasAttribute("painter_object"))
             sizesEl = { w: 58, h: 16, fs: 10 };
@@ -856,9 +868,9 @@ function PainterWidget(node, inputName, inputData, app) {
 
           Object.assign(element.style, {
             cursor: "pointer",
-            width: `${sizesEl.w * t.a}px`,
-            height: `${sizesEl.h * t.d}px`,
-            fontSize: `${t.d * sizesEl.fs}px`,
+            width: `${sizesEl.w * transform.a}px`,
+            height: `${sizesEl.h * transform.d}px`,
+            fontSize: `${transform.d * sizesEl.fs}px`,
           });
         }
       });
