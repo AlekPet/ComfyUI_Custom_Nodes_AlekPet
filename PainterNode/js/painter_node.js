@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.08.04
+ * Version: 2023.08.08
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -653,17 +653,25 @@ class Painter {
             scaleX: ob.scaleX,
             scaleY: ob.scaleY,
             radius: ob.radius,
-            x1: ob.x1,
-            x2: ob.x2,
-            y1: ob.y1,
-            y2: ob.y2,
           };
-
         if (type === "path" && ob.path.length > 0) {
           let path = fabric.util.joinPath(ob.path).replace(/([a-z])\s/gi, "$1");
           Object.assign(save_property, { path });
         }
-
+        if (type === "line") {
+          Object.assign(save_property, {
+            x1: ob.x1,
+            x2: ob.x2,
+            y1: ob.y1,
+            y2: ob.y2,
+          });
+        }
+        if (type === "image" && ob?._element?.currentSrc) {
+          Object.assign(save_property, {
+            image_src: ob?._element?.currentSrc,
+            cacheKey: ob.cacheKey,
+          });
+        }
         objects_ls.push(save_property);
       });
 
@@ -680,39 +688,68 @@ class Painter {
   createCanvasObjects(json) {
     try {
       if (json["objects_canvas"].length > 0) {
-        json.objects_canvas.forEach((ob) => {
-          if (ob.type == "image") return;
-          let type = ob.type[0].toLocaleUpperCase() + ob.type.slice(1),
-            shape = this.shapeCreate({
-              type,
-              path: ob.path ? ob.path : [],
-            });
+        let promises = json["objects_canvas"].map(
+          (ob) =>
+            new Promise((res, rej) => {
+              if (ob.type == "image" && ob.image_src) {
+                fabric.Image.fromURL(ob.image_src, (img) => {
+                  img.set({
+                    fill: ob.fill,
+                    angle: ob.angle,
+                    left: ob.left,
+                    top: ob.top,
+                    width: ob.width,
+                    height: ob.height,
+                    angle: ob.angle,
+                    zoomX: ob.zoomX,
+                    zoomY: ob.zoomY,
+                    scaleX: ob.scaleX,
+                    scaleY: ob.scaleY,
+                  });
+                  res(img);
+                });
+              } else {
+                let type = ob.type[0].toLocaleUpperCase() + ob.type.slice(1),
+                  shape = this.shapeCreate({
+                    type,
+                    path: ob.path ? ob.path : [],
+                  });
 
-          if (shape) {
-            Object.assign(shape, {
-              fill: ob.fill,
-              stroke: ob.stroke,
-              strokeWidth: ob.strokeWidth,
-              angle: ob.angle,
-              left: ob.left,
-              top: ob.top,
-              width: ob.width,
-              height: ob.height,
-              angle: ob.angle,
-              zoomX: ob.zoomX,
-              zoomY: ob.zoomY,
-              scaleX: ob.scaleX,
-              scaleY: ob.scaleY,
-              radius: ob.radius,
-              x1: ob.x1,
-              x2: ob.x2,
-              y1: ob.y1,
-              y2: ob.y2,
-            });
+                if (ob.type == "line")
+                  Object.assign(shape, {
+                    x1: ob.x1,
+                    x2: ob.x2,
+                    y1: ob.y1,
+                    y2: ob.y2,
+                  });
 
-            this.canvas.add(shape);
-          }
-        });
+                if (shape) {
+                  Object.assign(shape, {
+                    fill: ob.fill,
+                    stroke: ob.stroke,
+                    strokeWidth: ob.strokeWidth,
+                    angle: ob.angle,
+                    left: ob.left,
+                    top: ob.top,
+                    width: ob.width,
+                    height: ob.height,
+                    angle: ob.angle,
+                    zoomX: ob.zoomX,
+                    zoomY: ob.zoomY,
+                    scaleX: ob.scaleX,
+                    scaleY: ob.scaleY,
+                    radius: ob.radius,
+                  });
+                  res(shape);
+                }
+              }
+            })
+        );
+        Promise.allSettled(promises).then((results) =>
+          results.forEach((ob_p) => {
+            this.canvas.add(ob_p.value);
+          })
+        );
       }
     } catch (e) {
       console.error(e);
