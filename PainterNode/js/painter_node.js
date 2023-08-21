@@ -373,6 +373,7 @@ class Painter {
       this.canvas.freeDrawingBrush = new fabric.EraserBrush(this.canvas);
     }
     this.canvas.freeDrawingBrush.width = parseInt(this.strokeWidth.value, 10);
+    this.canvas.renderAll();
   }
 
   // Make shape
@@ -686,20 +687,22 @@ class Painter {
       }
     };
 
-    // Event input stroke color and transparent
-    this.strokeColorTransparent.oninput = this.strokeColor.oninput = () => {
-      if (["Brush", "Textbox"].includes(this.type)) {
-        this.changePropertyBrush(this.type);
-      }
-      this.canvas.renderAll();
-    };
+    // Event inputs stroke, fill colors and transparent
+    this.strokeColorTransparent.oninput =
+      this.strokeColor.oninput =
+      this.fillColor.oninput =
+      this.fillColorTransparent.oninput =
+        () => {
+          if (["Brush", "Textbox"].includes(this.type)) {
+            this.changePropertyBrush(this.type);
+          }
+        };
 
     // Event change stroke width
     this.strokeWidth.onchange = () => {
       if (["Brush", "Erase", "Textbox"].includes(this.type)) {
         this.changePropertyBrush(this.type);
       }
-      this.canvas.renderAll();
     };
 
     // ----- Canvas Events -----
