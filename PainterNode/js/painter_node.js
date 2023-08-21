@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.08.08
+ * Version: 2023.08.21
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -44,12 +44,15 @@ function toRGBA(hex, alpha = 1.0) {
   return hex;
 }
 
-function showHide() {
-  Array.from(arguments).forEach(
-    (el) =>
-      (el.style.display =
-        !el.style.display || el.style.display == "none" ? "block" : "none")
-  );
+function showHide({ elements = [], hide = null }) {
+  Array.from(elements).forEach((el) => {
+    if (hide !== null) {
+      el.style.display = !hide ? "block" : "none";
+    } else {
+      el.style.display =
+        !el.style.display || el.style.display == "none" ? "block" : "none";
+    }
+  });
 }
 
 window.LS_Painters = {};
@@ -67,11 +70,24 @@ class Painter {
     this.drawning = true;
     this.type = "Brush";
 
-    this.lockX = false;
-    this.lockY = false;
-    this.lockScaleX = false;
-    this.lockScaleY = false;
-    this.lockRotate = false;
+    this.locks = {
+      lockMovementX: false,
+      lockMovementY: false,
+      lockScalingX: false,
+      lockScalingY: false,
+      lockRotation: false,
+    };
+
+    this.fonts = {
+      Arial: "arial",
+      "Times New Roman": "Times New Roman",
+      Verdana: "verdana",
+      Georgia: "georgia",
+      Courier: "courier",
+      "Comic Sans MS": "comic sans ms",
+      Impact: "impact",
+    };
+
     this.bringFrontSelected = true;
 
     this.node = node;
@@ -99,11 +115,11 @@ class Painter {
     const panelPaintBox = document.createElement("div");
     panelPaintBox.innerHTML = `<div class="painter_manipulation_box" f_name="Locks" style="display:none;">
     <div class="comfy-menu-btns">
-    <button id="lockX" title="Lock move X">Lock X</button>
-    <button id="lockY" title="Lock move Y">Lock Y</button>
-    <button id="lockScaleX" title="Lock scale X">Lock ScaleX</button>
-    <button id="lockScaleY" title="Lock scale Y">Lock ScaleY</button>
-    <button id="lockRotate" title="Lock rotate">Lock Rotate</button>
+    <button id="lockMovementX" title="Lock move X">Lock X</button>
+    <button id="lockMovementY" title="Lock move Y">Lock Y</button>
+    <button id="lockScalingX" title="Lock scale X">Lock ScaleX</button>
+    <button id="lockScalingY" title="Lock scale Y">Lock ScaleY</button>
+    <button id="lockRotation" title="Lock rotate">Lock Rotate</button>
     </div>
     <div class="comfy-menu-btns">
     <button id="zpos_BringForward" title="Moves an object or a selection up in stack of drawn objects">Bring Forward</button>
@@ -113,6 +129,15 @@ class Painter {
     <button id="zpos_BringFrontSelected" title="Moves an object or the objects of a multiple selection to the top after mouse click" class="${
       this.bringFrontSelected ? "active" : ""
     }">Bring Up Always</button>
+    </div>
+    </div>
+    <div class="painter_drawning_box_property" style="display: block;">
+    <div class="property_textBox comfy-menu-btns" style="display:none;">
+    <button id="prop_fontStyle" title="Italic" style="font-style:italic;">I</button>
+    <button id="prop_fontWeight" title="Bold" style="font-weight:bold;">B</button>
+    <button id="prop_textDecoration" title="Underline" style="text-decoration: underline;">U</button>
+    <div class="separator"></div>
+    <select class="font_family_select"></select>
     </div>
     </div>
     <div class="painter_drawning_box">
@@ -131,6 +156,7 @@ class Painter {
     <button data-shape='Triangle' title="Draw triangle">△</button>
     <button data-shape='Line' title="Draw line">|</button>
     <button data-shape='Image' title="Add picture">P</button>
+    <button data-shape='Textbox' title="Add text">T</button>
     </div>
     <div class="painter_colors_box fieldset_box" f_name="Colors">
     <div class="painter_grid_style painter_colors_alpha">
@@ -155,13 +181,34 @@ class Painter {
     </div>
     <div>
     </div>`;
+
+    // Main panelpaint box
     panelPaintBox.className = "panelPaintBox";
 
     this.canvas.wrapperEl.appendChild(panelPaintBox);
-
+    // Manipulation box
     this.manipulation_box = panelPaintBox.querySelector(
       ".painter_manipulation_box"
     );
+    this.painter_drawning_box_property = panelPaintBox.querySelector(
+      ".painter_drawning_box_property"
+    );
+    this.property_textBox =
+      this.painter_drawning_box_property.querySelector(".property_textBox");
+
+    // Make select font
+    this.font_family_select = this.property_textBox.querySelector(
+      ".font_family_select"
+    );
+
+    for (let f in this.fonts) {
+      let option = document.createElement("option");
+      if (f === "Arial") option.setAttribute("selected", true);
+      option.value = this.fonts[f];
+      option.textContent = f;
+      this.font_family_select.appendChild(option);
+    }
+    //
     this.change_mode = panelPaintBox.querySelector("#painter_change_mode");
     this.shapes_box = panelPaintBox.querySelector(".painter_shapes_box");
     this.strokeWidth = panelPaintBox.querySelector("#strokeWidth");
@@ -233,12 +280,30 @@ class Painter {
     });
   }
 
+  clearLocks() {
+    try {
+      const locksElements =
+        this.manipulation_box.querySelectorAll("[id^=lock]");
+      if (locksElements) {
+        locksElements.forEach((element) => {
+          const id = element.id;
+          if (id) {
+            this.locks[id] = false;
+            element.classList.remove("active");
+          }
+        });
+      }
+    } catch (e) {
+      console.log("Clear locks error:" + e.message);
+    }
+  }
+
   changeMode(b) {
     let target = b.target,
       nextElement = target.parentElement.nextElementSibling,
       panelListObjects = target.nextElementSibling;
 
-    if (this.type == "Image") {
+    if (["Image", "Textbox"].includes(this.type)) {
       this.drawning = true;
     }
 
@@ -248,17 +313,32 @@ class Painter {
       target.textContent = "Drawing";
       target.title = "Enable drawing mode";
       this.viewListObjects(this.list_objects_panel__items);
-      showHide(this.manipulation_box, nextElement, panelListObjects);
+      showHide({
+        elements: [
+          this.manipulation_box,
+          nextElement,
+          panelListObjects,
+          this.painter_drawning_box_property,
+        ],
+      });
+      this.clearLocks();
     } else {
       this.canvas.discardActiveObject();
       this.canvas.isDrawingMode = this.drawning = true;
 
-      if (!["Brush", "Erase", "Image"].includes(this.type))
+      if (!["Brush", "Erase", "Image", "Textbox"].includes(this.type))
         this.canvas.isDrawingMode = false;
 
       target.textContent = "Selection";
       target.title = "Enable selection mode";
-      showHide(this.manipulation_box, nextElement, panelListObjects);
+      showHide({
+        elements: [
+          this.manipulation_box,
+          nextElement,
+          panelListObjects,
+          this.painter_drawning_box_property,
+        ],
+      });
       this.canvas.renderAll();
     }
   }
@@ -269,6 +349,7 @@ class Painter {
     element_active.classList.add("active");
   }
 
+  // Chancge properties brush and shapes, when change color and strokeWidth
   changePropertyBrush(type = "Brush") {
     if (type == "Brush") {
       this.canvas.freeDrawingBrush = new fabric.PencilBrush(this.canvas);
@@ -276,12 +357,25 @@ class Painter {
         this.strokeColor.value,
         this.strokeColorTransparent.value
       );
+    } else if (type != "Erase") {
+      let a_o = this.canvas.getActiveObject();
+      if (a_o) {
+        a_o.set({
+          strokeWidth: parseInt(this.strokeWidth.value, 10),
+          stroke: toRGBA(
+            this.strokeColor.value,
+            this.strokeColorTransparent.value
+          ),
+          fill: toRGBA(this.fillColor.value, this.fillColorTransparent.value),
+        });
+      }
     } else {
       this.canvas.freeDrawingBrush = new fabric.EraserBrush(this.canvas);
     }
     this.canvas.freeDrawingBrush.width = parseInt(this.strokeWidth.value, 10);
   }
 
+  // Make shape
   shapeCreate({
     type,
     left,
@@ -324,6 +418,14 @@ class Painter {
     return shape;
   }
 
+  selectPropertyToolbar(type) {
+    if (["Textbox"].includes(this.type)) {
+      this.property_textBox.style.display = "block";
+    } else {
+      this.property_textBox.style.display = "none";
+    }
+  }
+
   bindEvents() {
     // Button tools select
     this.shapes_box.onclick = (e) => {
@@ -357,72 +459,177 @@ class Painter {
             this.canvas.isDrawingMode = false;
             this.drawning = false;
             break;
+          case "Textbox":
+            let textbox = new fabric.Textbox("Text here", {
+              fontFamily: "Arial",
+              stroke: toRGBA(
+                this.strokeColor.value,
+                this.strokeColorTransparent.value
+              ),
+              fill: toRGBA(
+                this.fillColor.value,
+                this.fillColorTransparent.value
+              ),
+              strokeWidth: parseInt(this.strokeWidth.value, 10),
+            });
+            this.canvas.add(textbox).setActiveObject(textbox);
+            this.canvas.isDrawingMode = false;
+            this.drawning = false;
+            break;
           default:
             this.canvas.isDrawingMode = false;
             this.drawning = true;
             break;
         }
         this.setActiveElement(target, this.shapes_box);
+        this.selectPropertyToolbar(this.type);
       }
-    };
 
-    // Button Mode select
-    this.change_mode.onclick = (e) => this.changeMode(e);
+      // Button Mode select
+      this.change_mode.onclick = (e) => this.changeMode(e);
 
-    // Buttons Lock events
-    const stackPositionObjects = (tool, target) => {
-      let a_object = this.canvas.getActiveObject();
-      if (tool) {
-        switch (tool) {
-          case "zpos_BringForward":
-            this.canvas.bringForward(a_object);
-            break;
-          case "zpos_BringToFront":
-            this.canvas.bringToFront(a_object);
-            break;
-          case "zpos_SendToBack":
-            this.canvas.sendToBack(a_object);
-            break;
-          case "zpos_SendBackwards":
-            this.canvas.sendBackwards(a_object);
-            break;
-          case "zpos_BringFrontSelected":
-            this.bringFrontSelected = !this.bringFrontSelected;
-            target.classList.toggle("active");
-            break;
+      // Buttons Lock events
+      const stackPositionObjects = (tool, target) => {
+        let a_object = this.canvas.getActiveObject();
+        if (tool) {
+          switch (tool) {
+            case "zpos_BringForward":
+              this.canvas.bringForward(a_object);
+              break;
+            case "zpos_BringToFront":
+              this.canvas.bringToFront(a_object);
+              break;
+            case "zpos_SendToBack":
+              this.canvas.sendToBack(a_object);
+              break;
+            case "zpos_SendBackwards":
+              this.canvas.sendBackwards(a_object);
+              break;
+            case "zpos_BringFrontSelected":
+              this.bringFrontSelected = !this.bringFrontSelected;
+              target.classList.toggle("active");
+              break;
+          }
+          this.canvas.renderAll();
         }
-        this.canvas.renderAll();
-      }
-    };
-    this.manipulation_box.onclick = (e) => {
-      let target = e.target,
-        listButtons = [
-          "lockX",
-          "lockY",
-          "lockScaleX",
-          "lockScaleY",
-          "lockRotate",
-          "zpos_BringForward",
-          "zpos_BringToFront",
-          "zpos_SendToBack",
-          "zpos_SendBackwards",
-          "zpos_BringFrontSelected",
-        ],
-        index = listButtons.indexOf(target.id);
-      if (index != -1) {
-        if (
-          listButtons[index].includes("_Send") ||
-          listButtons[index].includes("_Bring")
-        ) {
-          stackPositionObjects(listButtons[index], target);
-        } else {
-          let buttonSel = listButtons[index];
-          this[buttonSel] = !this[buttonSel];
-          if (this[buttonSel]) {
+      };
+
+      // Manipulation box events
+      this.manipulation_box.onclick = (e) => {
+        let target = e.target,
+          listButtons = [
+            ...Object.keys(this.locks),
+            "zpos_BringForward",
+            "zpos_BringToFront",
+            "zpos_SendToBack",
+            "zpos_SendBackwards",
+            "zpos_BringFrontSelected",
+          ],
+          index = listButtons.indexOf(target.id);
+        if (index != -1) {
+          if (
+            listButtons[index].includes("_Send") ||
+            listButtons[index].includes("_Bring")
+          ) {
+            stackPositionObjects(listButtons[index], target);
+          } else {
+            let buttonSel = listButtons[index];
+            this.locks[buttonSel] = !this[buttonSel];
             target.classList.toggle("active");
           }
         }
-      }
+      };
+
+      // Drawning box property box events
+      const getActiveStyle = (styleName, object) => {
+        object = object || this.canvas.getActiveObject();
+        if (!object) return "";
+
+        return object.getSelectionStyles && object.isEditing
+          ? object.getSelectionStyles()[styleName] || ""
+          : object[styleName] || "";
+      };
+
+      const setActiveStyle = (styleName, value, object) => {
+        object = object || this.canvas.getActiveObject();
+        if (!object) return;
+
+        if (object.setSelectionStyles && object.isEditing) {
+          var style = {};
+          style[styleName] = value;
+          object.setSelectionStyles(style);
+          object.setCoords();
+        } else {
+          object.set(styleName, value);
+        }
+
+        object.setCoords();
+        this.canvas.requestRenderAll();
+      };
+
+      this.painter_drawning_box_property.onclick = (e) => {
+        let target = e.target,
+          listButtonsStyles = [
+            "prop_fontStyle",
+            "prop_fontWeight",
+            "prop_textDecoration",
+          ],
+          index = listButtonsStyles.indexOf(target.id);
+        if (index != -1) {
+          if (listButtonsStyles[index].includes("prop_")) {
+            let buttonSelStyle = listButtonsStyles[index].replace("prop_", ""),
+              activeOb = this.canvas.getActiveObject();
+
+            if (activeOb.type === "textbox") {
+              switch (buttonSelStyle) {
+                case "fontWeight":
+                  if (getActiveStyle("fontWeight") == "bold") {
+                    setActiveStyle(buttonSelStyle, "");
+                    target.classList.remove("active");
+                  } else {
+                    setActiveStyle(buttonSelStyle, "bold");
+                    target.classList.add("active");
+                  }
+                  break;
+                case "fontStyle":
+                  if (getActiveStyle("fontStyle") == "italic") {
+                    setActiveStyle(buttonSelStyle, "");
+                    target.classList.remove("active");
+                  } else {
+                    setActiveStyle(buttonSelStyle, "italic");
+                    target.classList.add("active");
+                  }
+                  break;
+                case "textDecoration":
+                  let value = "";
+                  if (
+                    getActiveStyle("textDecoration").includes("underline") ||
+                    getActiveStyle("underline")
+                  ) {
+                    value = getActiveStyle("textDecoration").replace(
+                      "underline",
+                      ""
+                    );
+                    target.classList.remove("active");
+                  } else {
+                    value = getActiveStyle("textDecoration") + " underline";
+                    target.classList.add("active");
+                  }
+                  setActiveStyle("textDecoration", value);
+                  setActiveStyle("underline", !getActiveStyle("underline"));
+
+                  break;
+              }
+            }
+          }
+        }
+      };
+
+      // Select front event
+      this.font_family_select.onchange = (e) => {
+        if (getActiveStyle("fontFamily") != this.font_family_select.value)
+          setActiveStyle("fontFamily", this.font_family_select.value);
+      };
     };
 
     // Event input bgcolor
@@ -481,14 +688,15 @@ class Painter {
 
     // Event input stroke color and transparent
     this.strokeColorTransparent.oninput = this.strokeColor.oninput = () => {
-      if (this.type == "Brush") {
-        this.changePropertyBrush();
+      if (["Brush", "Textbox"].includes(this.type)) {
+        this.changePropertyBrush(this.type);
       }
+      this.canvas.renderAll();
     };
 
     // Event change stroke width
     this.strokeWidth.onchange = () => {
-      if (["Brush", "Erase"].includes(this.type)) {
+      if (["Brush", "Erase", "Textbox"].includes(this.type)) {
         this.changePropertyBrush(this.type);
       }
       this.canvas.renderAll();
@@ -503,34 +711,40 @@ class Painter {
 
         this.canvas.isDrawingMode = this.drawning;
         if (!this.canvas.isDrawingMode) return;
+
         if (["Brush", "Erase"].includes(this.type)) return;
 
-        let { x: left, y: top } = this.canvas.getPointer(o.e),
-          colors = ["red", "blue", "green", "yellow", "purple", "orange"],
-          strokeWidth = +this.strokeWidth.value,
-          stroke =
-            strokeWidth == 0
-              ? "transparent"
-              : toRGBA(
-                  this.strokeColor.value,
-                  this.strokeColorTransparent.value
-                ) || colors[Math.floor(Math.random() * colors.length)],
-          fill = toRGBA(this.fillColor.value, this.fillColorTransparent.value),
-          shape = this.shapeCreate({
-            type: this.type,
-            left,
-            top,
-            stroke,
-            fill,
-            strokeWidth,
-            points: [left, top, left, top],
-          });
+        if (this.type != "Textbox") {
+          let { x: left, y: top } = this.canvas.getPointer(o.e),
+            colors = ["red", "blue", "green", "yellow", "purple", "orange"],
+            strokeWidth = +this.strokeWidth.value,
+            stroke =
+              strokeWidth == 0
+                ? "transparent"
+                : toRGBA(
+                    this.strokeColor.value,
+                    this.strokeColorTransparent.value
+                  ) || colors[Math.floor(Math.random() * colors.length)],
+            fill = toRGBA(
+              this.fillColor.value,
+              this.fillColorTransparent.value
+            ),
+            shape = this.shapeCreate({
+              type: this.type,
+              left,
+              top,
+              stroke,
+              fill,
+              strokeWidth,
+              points: [left, top, left, top],
+            });
 
-        this.originX = left;
-        this.originY = top;
+          this.originX = left;
+          this.originY = top;
 
-        if (shape) {
-          this.canvas.add(shape).renderAll().setActiveObject(shape);
+          if (shape) {
+            this.canvas.add(shape).renderAll().setActiveObject(shape);
+          }
         }
       },
 
@@ -539,14 +753,15 @@ class Painter {
         if (!this.drawning) {
           try {
             let activeObjManipul = this.canvas.getActiveObject();
-            activeObjManipul.set({
-              hasControls: true,
-              lockMovementX: this.lockX,
-              lockMovementY: this.lockY,
-              lockScalingX: this.lockScaleX,
-              lockScalingY: this.lockScaleY,
-              lockRotation: this.lockRotate,
-            });
+            activeObjManipul.hasControls = true;
+            activeObjManipul.lockScalingX = this.locks.lockScalingX;
+            activeObjManipul.lockScalingY = this.locks.lockScalingY;
+            activeObjManipul.lockRotation = this.locks.lockRotation;
+
+            if (!activeObjManipul.isEditing) {
+              activeObjManipul.lockMovementX = this.locks.lockMovementX;
+              activeObjManipul.lockMovementY = this.locks.lockMovementY;
+            }
           } catch (e) {}
         }
         if (!this.canvas.isDrawingMode) {
@@ -609,7 +824,7 @@ class Painter {
         this.canvas.getActiveObject()?.setCoords();
         this.canvas.getActiveObjects()?.forEach((a) => a.setCoords());
 
-        if (!["Brush", "Erase", "Image"].includes(this.type))
+        if (!["Brush", "Erase", "Image", "Textbox"].includes(this.type))
           this.canvas.isDrawingMode = false;
 
         this.canvas.renderAll();
@@ -654,6 +869,8 @@ class Painter {
             scaleY: ob.scaleY,
             radius: ob.radius,
           };
+
+        if (type == "text") return;
         if (type === "path" && ob.path.length > 0) {
           let path = fabric.util.joinPath(ob.path).replace(/([a-z])\s/gi, "$1");
           Object.assign(save_property, { path });
@@ -747,7 +964,7 @@ class Painter {
         );
         Promise.allSettled(promises).then((results) =>
           results.forEach((ob_p) => {
-            this.canvas.add(ob_p.value);
+            if (ob_p.status === "fulfilled") this.canvas.add(ob_p.value);
           })
         );
       }
@@ -1050,6 +1267,25 @@ app.registerExtension({
     .painter_drawning_box button {
       width: 24px;
     }
+    .painter_drawning_box_property {
+      position: absolute;
+      top: -36px;
+    }
+    .painter_drawning_box_property select {
+      color: var(--input-text);
+      background-color: var(--comfy-input-bg);
+      border-radius: 4px;
+      border-color: var(--border-color);
+      border-style: solid;
+    }
+    .separator {
+      width: 1px;
+      height: 25px;
+      background-color: var(--border-color);
+      display: inline-block;
+      vertical-align: middle;
+      margin: 0 2px 0 2px;
+  }
     .painter_colors_box,
     .painter_mode_box,
     .painter_stroke_box {
