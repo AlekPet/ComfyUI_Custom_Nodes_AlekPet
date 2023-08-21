@@ -135,7 +135,7 @@ class Painter {
     <div class="property_textBox comfy-menu-btns" style="display:none;">
     <button id="prop_fontStyle" title="Italic" style="font-style:italic;">I</button>
     <button id="prop_fontWeight" title="Bold" style="font-weight:bold;">B</button>
-    <button id="prop_textDecoration" title="Underline" style="text-decoration: underline;">U</button>
+    <button id="prop_underline" title="Underline" style="text-decoration: underline;">U</button>
     <div class="separator"></div>
     <select class="font_family_select"></select>
     </div>
@@ -542,7 +542,7 @@ class Painter {
       };
 
       // Drawning box property box events
-      const getActiveStyle = (styleName, object) => {
+      this.getActiveStyle = (styleName, object) => {
         object = object || this.canvas.getActiveObject();
         if (!object) return "";
 
@@ -551,7 +551,7 @@ class Painter {
           : object[styleName] || "";
       };
 
-      const setActiveStyle = (styleName, value, object) => {
+      this.setActiveStyle = (styleName, value, object) => {
         object = object || this.canvas.getActiveObject();
         if (!object) return;
 
@@ -573,7 +573,7 @@ class Painter {
           listButtonsStyles = [
             "prop_fontStyle",
             "prop_fontWeight",
-            "prop_textDecoration",
+            "prop_underline",
           ],
           index = listButtonsStyles.indexOf(target.id);
         if (index != -1) {
@@ -584,40 +584,33 @@ class Painter {
             if (activeOb.type === "textbox") {
               switch (buttonSelStyle) {
                 case "fontWeight":
-                  if (getActiveStyle("fontWeight") == "bold") {
-                    setActiveStyle(buttonSelStyle, "");
+                  if (this.getActiveStyle("fontWeight") == "bold") {
+                    this.setActiveStyle(buttonSelStyle, "");
                     target.classList.remove("active");
                   } else {
-                    setActiveStyle(buttonSelStyle, "bold");
+                    this.setActiveStyle(buttonSelStyle, "bold");
                     target.classList.add("active");
                   }
                   break;
                 case "fontStyle":
-                  if (getActiveStyle("fontStyle") == "italic") {
-                    setActiveStyle(buttonSelStyle, "");
+                  if (this.getActiveStyle("fontStyle") == "italic") {
+                    this.setActiveStyle(buttonSelStyle, "");
                     target.classList.remove("active");
                   } else {
-                    setActiveStyle(buttonSelStyle, "italic");
+                    this.setActiveStyle(buttonSelStyle, "italic");
                     target.classList.add("active");
                   }
                   break;
-                case "textDecoration":
-                  let value = "";
-                  if (
-                    getActiveStyle("textDecoration").includes("underline") ||
-                    getActiveStyle("underline")
-                  ) {
-                    value = getActiveStyle("textDecoration").replace(
-                      "underline",
-                      ""
-                    );
+                case "underline":
+                  if (Boolean(this.getActiveStyle("underline"))) {
+                    this.setActiveStyle("underline", false);
                     target.classList.remove("active");
                   } else {
-                    value = getActiveStyle("textDecoration") + " underline";
+                    this.setActiveStyle("underline", true);
                     target.classList.add("active");
                   }
-                  setActiveStyle("textDecoration", value);
-                  setActiveStyle("underline", !getActiveStyle("underline"));
+
+                  this.setActiveStyle("fill", toRGBA(this.fillColor.value));
 
                   break;
               }
@@ -628,8 +621,8 @@ class Painter {
 
       // Select front event
       this.font_family_select.onchange = (e) => {
-        if (getActiveStyle("fontFamily") != this.font_family_select.value)
-          setActiveStyle("fontFamily", this.font_family_select.value);
+        if (this.getActiveStyle("fontFamily") != this.font_family_select.value)
+          this.setActiveStyle("fontFamily", this.font_family_select.value);
       };
     };
 
@@ -707,6 +700,29 @@ class Painter {
 
     // ----- Canvas Events -----
     this.canvas.on({
+      "selection:updated": (o) => {
+        const setProps = (style, check) => {
+          this.painter_drawning_box_property
+            .querySelector(`#prop_${style}`)
+            .classList[check ? "remove" : "add"]("active");
+        };
+
+        const target = o.target;
+        if (target && target.type == "textbox") {
+          setProps(
+            "fontWeight",
+            this.getActiveStyle("fontWeight", target) == "normal"
+          );
+          setProps(
+            "fontStyle",
+            this.getActiveStyle("fontStyle", target) == "normal"
+          );
+          setProps(
+            "underline",
+            Boolean(this.getActiveStyle("underline", target)) == false
+          );
+        }
+      },
       // Mouse button down event
       "mouse:down": (o) => {
         if (!this.canvas.isDrawingMode && this.bringFrontSelected)
