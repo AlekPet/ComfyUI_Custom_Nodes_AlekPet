@@ -990,8 +990,10 @@ class Painter {
         json.canvas_settings.length > 0
       ) {
         const data = JSON.parse(LS_Painters[this.node.name].canvas_settings);
-        this.canvas.loadFromJSON(data, () => this.canvas.renderAll());
-        this.bgColor.value = getColorHEX(data.backgroundColor).color || "";
+        this.canvas.loadFromJSON(data, () => {
+          this.canvas.renderAll();
+          this.bgColor.value = getColorHEX(data.background).color || "";
+        });
       }
     } catch (e) {
       console.error(e);
