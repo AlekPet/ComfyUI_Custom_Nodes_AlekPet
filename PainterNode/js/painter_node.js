@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.08.24
+ * Version: 2023.08.26
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -275,7 +275,7 @@ class Painter {
     this.canvas.clear();
     this.canvas.backgroundColor = this.bgColor.value;
     this.canvas.requestRenderAll();
-    LS_Painters[this.node.name].objects_canvas = [];
+    LS_Painters[this.node.name].canvas_settings = [];
     LS_Save();
   }
 
@@ -400,15 +400,24 @@ class Painter {
       );
     }
     if (type != "Erase" || (type == "Erase" && !this.drawning)) {
-      let a_o = this.canvas.getActiveObject();
-      if (a_o) {
-        a_o.set({
-          strokeWidth: parseInt(this.strokeWidth.value, 10),
-          stroke: toRGBA(
-            this.strokeColor.value,
-            this.strokeColorTransparent.value
-          ),
-          fill: toRGBA(this.fillColor.value, this.fillColorTransparent.value),
+      let a_obs = this.canvas.getActiveObjects();
+      if (a_obs) {
+        a_obs.forEach((a_o) => {
+          this.setActiveStyle(
+            "strokeWidth",
+            parseInt(this.strokeWidth.value, 10),
+            a_o
+          );
+          this.setActiveStyle(
+            "stroke",
+            toRGBA(this.strokeColor.value, this.strokeColorTransparent.value),
+            a_o
+          );
+          this.setActiveStyle(
+            "fill",
+            toRGBA(this.fillColor.value, this.fillColorTransparent.value),
+            a_o
+          );
         });
       }
     } else {
@@ -513,8 +522,9 @@ class Painter {
                 this.fillColor.value,
                 this.fillColorTransparent.value
               ),
-              strokeWidth: parseInt(this.strokeWidth.value, 10),
+              strokeWidth: 1,
             });
+            this.strokeWidth.value = +textbox.strokeWidth;
             this.canvas.add(textbox).setActiveObject(textbox);
             this.canvas.isDrawingMode = false;
             this.drawning = false;
@@ -737,6 +747,18 @@ class Painter {
           }
         };
 
+    this.strokeColorTransparent.onchange =
+      this.strokeColor.onchange =
+      this.fillColor.onchange =
+      this.fillColorTransparent.onchange =
+        () => {
+          if (this.canvas.getActiveObject()) {
+            this.uploadPaintFile(this.node.name);
+          }
+        };
+
+    this.bgColor.onchange = () => this.uploadPaintFile(this.node.name);
+
     // Event change stroke width
     this.strokeWidth.onchange = () => {
       if (
@@ -745,65 +767,69 @@ class Painter {
       ) {
         this.changePropertyBrush(this.type);
       }
+
+      if (this.canvas.getActiveObject()) {
+        this.uploadPaintFile(this.node.name);
+      }
     };
 
-    this.setInputsStyleObject = (target) => {
-      if (
-        target &&
-        !this.drawning &&
-        !["Erase", "Brush"].includes(target.type)
-      ) {
-        this.strokeWidth.value = parseInt(
-          this.getActiveStyle("strokeWidth", target),
-          10
-        );
+    this.setInputsStyleObject = () => {
+      let targets = this.canvas.getActiveObjects();
+      if (!targets || targets.length == 0) return;
 
-        let { color: strokeColor, alpha: alpha_stroke } = getColorHEX(
-            this.getActiveStyle("stroke", target)
-          ),
-          { color: fillColor, alpha: alpha_fill } = getColorHEX(
-            this.getActiveStyle("fill", target)
+      // Selected tools
+      const setProps = (style, check) => {
+        this.painter_drawning_box_property
+          .querySelector(`#prop_${style}`)
+          .classList[check ? "remove" : "add"]("active");
+      };
+
+      targets.forEach((target) => {
+        if (target.type == "textbox") {
+          setProps(
+            "fontWeight",
+            this.getActiveStyle("fontWeight", target) == "normal"
+          );
+          setProps(
+            "fontStyle",
+            this.getActiveStyle("fontStyle", target) == "normal"
+          );
+          setProps(
+            "underline",
+            Boolean(this.getActiveStyle("underline", target)) == false
+          );
+        }
+
+        if (!this.drawning && !["Erase", "Brush"].includes(target.type)) {
+          this.strokeWidth.value = parseInt(
+            this.getActiveStyle("strokeWidth", target),
+            10
           );
 
-        this.strokeColor.value = strokeColor;
-        this.strokeColorTransparent.value = alpha_stroke;
+          let { color: strokeColor, alpha: alpha_stroke } = getColorHEX(
+              this.getActiveStyle("stroke", target)
+            ),
+            { color: fillColor, alpha: alpha_fill } = getColorHEX(
+              this.getActiveStyle("fill", target)
+            );
 
-        this.fillColor.value = fillColor;
-        this.fillColorTransparent.value = alpha_fill;
-        this.canvas.renderAll();
-      }
+          this.strokeColor.value = strokeColor;
+          this.strokeColorTransparent.value = alpha_stroke;
+
+          this.fillColor.value = fillColor;
+          this.fillColorTransparent.value = alpha_fill;
+        }
+      });
+      this.canvas.renderAll();
     };
 
     // ----- Canvas Events -----
     this.canvas.on({
       "selection:created": (o) => {
-        o?.target && this.setInputsStyleObject(o.target);
+        this.setInputsStyleObject();
       },
       "selection:updated": (o) => {
-        const setProps = (style, check) => {
-          this.painter_drawning_box_property
-            .querySelector(`#prop_${style}`)
-            .classList[check ? "remove" : "add"]("active");
-        };
-
-        const target = o.target;
-        if (target) {
-          if (target.type == "textbox") {
-            setProps(
-              "fontWeight",
-              this.getActiveStyle("fontWeight", target) == "normal"
-            );
-            setProps(
-              "fontStyle",
-              this.getActiveStyle("fontStyle", target) == "normal"
-            );
-            setProps(
-              "underline",
-              Boolean(this.getActiveStyle("underline", target)) == false
-            );
-          }
-          this.setInputsStyleObject(target);
-        }
+        this.setInputsStyleObject();
       },
       // Mouse button down event
       "mouse:down": (o) => {
@@ -946,128 +972,26 @@ class Painter {
     // ----- Canvas Events -----
   }
 
-  // Save canvas objects
-  updateCanvasObjects() {
+  // Save canvas data to localStorage
+  canvasSaveLocalStorage() {
     try {
-      const objs_list = this.canvas.getObjects(),
-        objects_ls = [];
-
-      objs_list.forEach((ob) => {
-        let type = ob.type,
-          save_property = {
-            type,
-            left: ob.left,
-            top: ob.top,
-            width: ob.width,
-            height: ob.height,
-            fill: ob.fill,
-            stroke: ob.stroke,
-            strokeWidth: ob.strokeWidth,
-            angle: ob.angle,
-            zoomX: ob.zoomX,
-            zoomY: ob.zoomY,
-            scaleX: ob.scaleX,
-            scaleY: ob.scaleY,
-            radius: ob.radius,
-          };
-
-        if (type == "text") return;
-        if (type === "path" && ob.path.length > 0) {
-          let path = fabric.util.joinPath(ob.path).replace(/([a-z])\s/gi, "$1");
-          Object.assign(save_property, { path });
-        }
-        if (type === "line") {
-          Object.assign(save_property, {
-            x1: ob.x1,
-            x2: ob.x2,
-            y1: ob.y1,
-            y2: ob.y2,
-          });
-        }
-        if (type === "image" && ob?._element?.currentSrc) {
-          Object.assign(save_property, {
-            image_src: ob?._element?.currentSrc,
-            cacheKey: ob.cacheKey,
-          });
-        }
-        objects_ls.push(save_property);
-      });
-
-      if (objects_ls.length > 0) {
-        LS_Painters[this.node.name].objects_canvas = objects_ls;
-        LS_Save();
-      }
+      const data = this.canvas.toJSON();
+      LS_Painters[this.node.name].canvas_settings = JSON.stringify(data);
+      LS_Save();
     } catch (e) {
       console.error(e);
     }
   }
-
-  // Load saved objects for LocalStorage and create
-  createCanvasObjects(json) {
+  // Load canvas data to localStorage
+  canvasLoadLocalStorage(json) {
     try {
-      if (json["objects_canvas"].length > 0) {
-        let promises = json["objects_canvas"].map(
-          (ob) =>
-            new Promise((res, rej) => {
-              if (ob.type == "image" && ob.image_src) {
-                fabric.Image.fromURL(ob.image_src, (img) => {
-                  img.set({
-                    fill: ob.fill,
-                    angle: ob.angle,
-                    left: ob.left,
-                    top: ob.top,
-                    width: ob.width,
-                    height: ob.height,
-                    angle: ob.angle,
-                    zoomX: ob.zoomX,
-                    zoomY: ob.zoomY,
-                    scaleX: ob.scaleX,
-                    scaleY: ob.scaleY,
-                  });
-                  res(img);
-                });
-              } else {
-                let type = ob.type[0].toLocaleUpperCase() + ob.type.slice(1),
-                  shape = this.shapeCreate({
-                    type,
-                    path: ob.path ? ob.path : [],
-                  });
-
-                if (ob.type == "line")
-                  Object.assign(shape, {
-                    x1: ob.x1,
-                    x2: ob.x2,
-                    y1: ob.y1,
-                    y2: ob.y2,
-                  });
-
-                if (shape) {
-                  Object.assign(shape, {
-                    fill: ob.fill,
-                    stroke: ob.stroke,
-                    strokeWidth: ob.strokeWidth,
-                    angle: ob.angle,
-                    left: ob.left,
-                    top: ob.top,
-                    width: ob.width,
-                    height: ob.height,
-                    angle: ob.angle,
-                    zoomX: ob.zoomX,
-                    zoomY: ob.zoomY,
-                    scaleX: ob.scaleX,
-                    scaleY: ob.scaleY,
-                    radius: ob.radius,
-                  });
-                  res(shape);
-                }
-              }
-            })
-        );
-        Promise.allSettled(promises).then((results) =>
-          results.forEach((ob_p) => {
-            if (ob_p.status === "fulfilled") this.canvas.add(ob_p.value);
-          })
-        );
+      if (
+        json.hasOwnProperty("canvas_settings") &&
+        json.canvas_settings.length > 0
+      ) {
+        const data = JSON.parse(LS_Painters[this.node.name].canvas_settings);
+        this.canvas.loadFromJSON(data, () => this.canvas.renderAll());
+        this.bgColor.value = getColorHEX(data.backgroundColor).color || "";
       }
     } catch (e) {
       console.error(e);
@@ -1116,7 +1040,7 @@ class Painter {
             });
             this.canvas.renderAll();
           }
-          this.updateCanvasObjects();
+          this.canvasSaveLocalStorage();
         } else {
           alert(resp.status + " - " + resp.statusText);
         }
@@ -1503,8 +1427,10 @@ app.registerExtension({
         let widgetImage = n.widgets.find((w) => w.name == "image");
         if (widgetImage && Object.hasOwn(LS_Painters, n.name)) {
           const painter_ls = LS_Painters[n.name];
+          painter_ls.hasOwnProperty("objects_canvas") &&
+            delete painter_ls.objects_canvas; // remove old property
           n.setSize([530, 560]);
-          n.painter.createCanvasObjects(painter_ls);
+          n.painter.canvasLoadLocalStorage(painter_ls);
         }
       });
     }
@@ -1538,7 +1464,7 @@ app.registerExtension({
           LS_Painters[nodeNamePNG] = {
             undo_history: [],
             redo_history: [],
-            objects_canvas: [],
+            canvas_settings: [],
             settings: {},
           };
           LS_Save();
