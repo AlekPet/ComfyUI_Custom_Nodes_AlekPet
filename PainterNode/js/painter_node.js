@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.08.26
+ * Version: 2023.08.30
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -1063,7 +1063,7 @@ class Painter {
     const callb = this.node.callback,
       self = this;
     this.image.callback = function () {
-      this.image.value = self.node.name;
+      self.image.value = self.node.name;
       if (callb) {
         return callb.apply(this, arguments);
       }
