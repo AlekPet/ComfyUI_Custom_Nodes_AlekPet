@@ -1,11 +1,12 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.08.30
+ * Version: 2023.09.02
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
-import { app } from "../../scripts/app.js";
+import { app } from "/scripts/app.js";
+import { api } from "/scripts/api.js";
 import { fabric } from "../../lib/fabric.js";
 
 // ================= FUNCTIONS ================
@@ -104,6 +105,36 @@ class Painter {
     this.history_change = false;
     this.canvas = this.initCanvas(canvas);
     this.image = node.widgets.find((w) => w.name === "image");
+
+    let default_value = this.image.value;
+    Object.defineProperty(this.image, "value", {
+      set: function (value) {
+        this._real_value = value;
+      },
+
+      get: function () {
+        let value = "";
+        if (this._real_value) {
+          value = this._real_value;
+        } else {
+          return default_value;
+        }
+
+        if (value.filename) {
+          let real_value = value;
+          value = "";
+          if (real_value.subfolder) {
+            value = real_value.subfolder + "/";
+          }
+
+          value += real_value.filename;
+
+          if (real_value.type && real_value.type !== "input")
+            value += ` [${real_value.type}]`;
+        }
+        return value;
+      },
+    });
   }
 
   initCanvas(canvasEl) {
@@ -1000,6 +1031,26 @@ class Painter {
     }
   }
 
+  showImage(name) {
+    let img = new Image();
+    img.onload = () => {
+      this.node.imgs = [img];
+      app.graph.setDirtyCanvas(true);
+    };
+
+    let folder_separator = name.lastIndexOf("/");
+    let subfolder = "";
+    if (folder_separator > -1) {
+      subfolder = name.substring(0, folder_separator);
+      name = name.substring(folder_separator + 1);
+    }
+
+    img.src = api.apiURL(
+      `/view?filename=${name}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}&${new Date().getTime()}`
+    );
+    this.node.setSizeForImage?.();
+  }
+
   uploadPaintFile(fileName) {
     // Upload paint to temp folder ComfyUI
     let activeObj = null;
@@ -1030,7 +1081,9 @@ class Painter {
           if (!this.image.options.values.includes(data.name)) {
             this.image.options.values.push(data.name);
           }
+
           this.image.value = data.name;
+          this.showImage(data.name);
 
           if (activeObj && !this.drawning) {
             activeObj.hasControls = true;
@@ -1055,7 +1108,7 @@ class Painter {
       let formData = new FormData();
       formData.append("image", blob, fileName);
       formData.append("overwrite", "true");
-      formData.append("type", "temp");
+      //formData.append("type", "temp");
       uploadFile(formData);
     }, "image/png");
     // - end
@@ -1078,7 +1131,7 @@ function PainterWidget(node, inputName, inputData, app) {
   const widget = {
     type: "painter_widget",
     name: `w${inputName}`,
-
+    callback: () => {},
     draw: function (ctx, _, widgetWidth, y, widgetHeight) {
       const margin = 10,
         left_offset = 8,
@@ -1166,45 +1219,11 @@ function PainterWidget(node, inputName, inputData, app) {
   node.painter.canvas.setWidth(512);
   node.painter.canvas.setHeight(512);
 
-  let widgetCombo = node.widgets.filter((w) => w.type === "combo");
-  widgetCombo[0].value = node.name;
-
   widget.painter_wrap = node.painter.canvas.wrapperEl;
   widget.parent = node;
 
   node.painter.makeElements();
 
-  // Create elements undo, redo, clear history
-  // let panelButtons = document.createElement("div"),
-  //   undoButton = document.createElement("button"),
-  //   redoButton = document.createElement("button"),
-  //   historyClearButton = document.createElement("button");
-
-  // panelButtons.className = "panelButtons";
-  // undoButton.textContent = "⟲";
-  // redoButton.textContent = "⟳";
-  // historyClearButton.textContent = "✖";
-  // undoButton.title = "Undo";
-  // redoButton.title = "Redo";
-  // historyClearButton.title = "Clear History";
-
-  // undoButton.addEventListener("click", () => node.painter.undo());
-  // redoButton.addEventListener("click", () => node.painter.redo());
-  // historyClearButton.addEventListener("click", () => {
-  //   if (confirm(`Delete all pose history of a node "${node.name}"?`)) {
-  //     node.painter.undo_history = [];
-  //     node.painter.redo_history = [];
-
-  //     node.painter.undo_history.push(node.openPose.getJSON());
-  //     node.painter.history_change = true;
-  //     node.painter.updateHistoryData();
-  //   }
-  // });
-
-  // panelButtons.appendChild(undoButton);
-  // panelButtons.appendChild(redoButton);
-  // panelButtons.appendChild(historyClearButton);
-  // node.painter.canvas.wrapperEl.appendChild(panelButtons);
   document.body.appendChild(widget.painter_wrap);
 
   node.addWidget("button", "Clear Canvas", "clear_painer", () => {
@@ -1233,6 +1252,42 @@ function PainterWidget(node, inputName, inputData, app) {
     widget.painter_wrap?.remove();
   };
 
+  node.onResize = function () {
+    this.size = [530, 570];
+  };
+  node.onDrawBackground = function (ctx) {
+    if (!this.flags.collapsed) {
+      node.painter.canvas.wrapperEl.hidden = false;
+      if (this.imgs && this.imgs.length) {
+        if (app.canvas.ds.scale > 0.8) {
+          let [dw, dh] = this.size;
+
+          let w = this.imgs[0].naturalWidth;
+          let h = this.imgs[0].naturalHeight;
+
+          const scaleX = dw / w;
+          const scaleY = dh / h;
+          const scale = Math.min(scaleX, scaleY, 1);
+
+          w *= scale / 8;
+          h *= scale / 8;
+
+          let x = w / 2 - 20;
+          let y = dh - h - 5;
+
+          ctx.drawImage(this.imgs[0], x, y, w, h);
+          ctx.font = "10px serif";
+          ctx.strokeStyle = "white";
+          ctx.strokeRect(x, y, w, h);
+          ctx.fillStyle = "rgba(255,255,255,0.7)";
+          ctx.fillText("Mask", w / 2, dh - 10);
+        }
+      }
+    } else {
+      node.painter.canvas.wrapperEl.hidden = true;
+    }
+  };
+
   app.canvas.onDrawBackground = function () {
     // Draw node isnt fired once the node is off the screen
     // if it goes off screen quickly, the input may not be removed
@@ -1248,6 +1303,7 @@ function PainterWidget(node, inputName, inputData, app) {
       }
     }
   };
+
   return { widget: widget };
 }
 // ================= END CREATE PAINTER WIDGET ============
@@ -1431,7 +1487,7 @@ app.registerExtension({
           const painter_ls = LS_Painters[n.name];
           painter_ls.hasOwnProperty("objects_canvas") &&
             delete painter_ls.objects_canvas; // remove old property
-          n.setSize([530, 560]);
+          n.setSize([530, 570]);
           n.painter.canvasLoadLocalStorage(painter_ls);
         }
       });
@@ -1477,7 +1533,7 @@ app.registerExtension({
           this.painter.uploadPaintFile(nodeNamePNG);
         }, 1);
 
-        this.setSize([530, 560]);
+        this.setSize([530, 570]);
 
         return r;
       };
