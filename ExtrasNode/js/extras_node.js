@@ -34,13 +34,18 @@ app.registerExtension({
         );
         return r;
       };
-      // Node Executed
-      const onNodeExecuted = nodeType.prototype.onExecuted;
-      nodeType.prototype.onExecuted = function () {
-        onNodeExecuted?.apply(this, arguments);
+
+      // On drawforeground
+      const onDrawForeground = nodeType.prototype.onDrawForeground;
+      nodeType.prototype.onDrawForeground = function () {
+        onDrawForeground?.apply(this, arguments);
 
         const output = app.nodeOutputs[this.id + ""];
-        if (output && output.string) {
+        if (
+          output &&
+          output.string &&
+          this.widgets[0].inputEl.value !== output.string[0]
+        ) {
           this.widgets[0].inputEl.value = output.string[0];
         }
       };
