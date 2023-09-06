@@ -4,11 +4,12 @@ import { ComfyWidgets } from "/scripts/widgets.js";
 app.registerExtension({
   name: "Comfy.ExtrasNode",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
+    // --- Preview Text Node
     if (nodeData.name === "PreviewTextNode") {
       // Node Created
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = function () {
-        const r = onNodeCreated
+        const ret = onNodeCreated
           ? onNodeCreated.apply(this, arguments)
           : undefined;
 
@@ -19,7 +20,7 @@ app.registerExtension({
 
         console.log(`Create PreviewTextNode: ${nodeName}`);
 
-        ComfyWidgets.STRING(
+        const wi = ComfyWidgets.STRING(
           this,
           nodeName,
           [
@@ -32,13 +33,15 @@ app.registerExtension({
           ],
           app
         );
-        return r;
+        wi.widget.inputEl.readOnly = true;
+
+        return ret;
       };
 
       // On drawforeground
       const onDrawForeground = nodeType.prototype.onDrawForeground;
       nodeType.prototype.onDrawForeground = function () {
-        onDrawForeground?.apply(this, arguments);
+        const ret = onDrawForeground?.apply(this, arguments);
 
         const output = app.nodeOutputs[this.id + ""];
         if (
@@ -48,7 +51,9 @@ app.registerExtension({
         ) {
           this.widgets[0].inputEl.value = output.string[0];
         }
+        return ret;
       };
     }
+    // --- Preview Text Node
   },
 });

@@ -12,11 +12,11 @@ class PreviewTextNode:
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
             }
 
-    RETURN_TYPES = ()
+    RETURN_TYPES = ("STRING",)
     OUTPUT_NODE = True
     FUNCTION = "preview_text"
 
     CATEGORY = "AlekPet Nodes/extras"
 
     def preview_text(self, text, prompt=None, extra_pnginfo=None):
-        return {"ui": {"string": [text,]}}
+        return {"ui": {"string": [text,]}, "result": (text,)}
