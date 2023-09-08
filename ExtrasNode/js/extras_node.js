@@ -34,24 +34,30 @@ app.registerExtension({
           app
         );
         wi.widget.inputEl.readOnly = true;
-
         return ret;
       };
 
-      // On drawforeground
-      const onDrawForeground = nodeType.prototype.onDrawForeground;
-      nodeType.prototype.onDrawForeground = function () {
-        const ret = onDrawForeground?.apply(this, arguments);
-
+      const outSet = function () {
         const output = app.nodeOutputs[this.id + ""];
         if (
           output &&
           output.string &&
           this.widgets[0].inputEl.value !== output.string[0]
-        ) {
+        )
           this.widgets[0].inputEl.value = output.string[0];
-        }
-        return ret;
+      };
+      // onSerialize
+      const onSerialize = nodeType.prototype.onSerialize;
+      nodeType.prototype.onSerialize = function () {
+        onSerialize?.apply(this, arguments);
+        outSet.call(this);
+      };
+
+      // onExecuted
+      const onExecuted = nodeType.prototype.onExecuted;
+      nodeType.prototype.onExecuted = function () {
+        onExecuted?.apply(this, arguments);
+        outSet.call(this);
       };
     }
     // --- Preview Text Node
