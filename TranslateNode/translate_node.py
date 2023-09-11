@@ -210,7 +210,7 @@ def makeDictProxies(proxies):
         return proxies_data
     
 ### Function deep translator for all deep_translator nodes
-def deep_translator_function(from_translate, to_translate, add_proxies, proxies, auth_data, service, text):
+def deep_translator_function(langs_support ,from_translate, to_translate, add_proxies, proxies, auth_data, service, text):
         text_tranlsated = ""
         proxies_data = {
         "proxy_valid": False,
@@ -224,7 +224,7 @@ def deep_translator_function(from_translate, to_translate, add_proxies, proxies,
        
             if from_translate == "auto" and service in ("DeeplTranslator","QcriTranslator","LingueeTranslator","PonsTranslator","PapagoTranslator","BaiduTranslator", "MyMemoryTranslator"):
                 lang_detect_short = single_detection(text, api_key=API_KEYS_SERVICES_DEEP_TRANSLATOR["DetectLanguage"])
-                from_translate = self.langs_support[lang_detect_short]
+                from_translate = langs_support[lang_detect_short]
                 print(f"Language detected: {from_translate}")
             
             service_correct = re.sub("\[.*\]", "", service).strip()
@@ -275,7 +275,7 @@ class DeepTranslatorTextNode:
     CATEGORY = "AlekPet Nodes/text"
 
     def deep_translate_text(self, from_translate, to_translate, add_proxies, proxies, auth_data, service, text):
-        text_tranlsated = deep_translator_function(from_translate, to_translate, add_proxies, proxies, auth_data, service, text)           
+        text_tranlsated = deep_translator_function(self.langs_support, from_translate, to_translate, add_proxies, proxies, auth_data, service, text)           
         return (text_tranlsated,)
     
 ###  Deep Translator output CONDITIONING      
@@ -317,7 +317,7 @@ class DeepTranslatorCLIPTextEncodeNode:
     CATEGORY = "AlekPet Nodes/conditioning"
 
     def deep_translate_text(self, from_translate, to_translate, add_proxies, proxies, auth_data, service, text, clip):
-        text_tranlsated = deep_translator_function(from_translate, to_translate, add_proxies, proxies, auth_data, service, text)
+        text_tranlsated = deep_translator_function(self.langs_support, from_translate, to_translate, add_proxies, proxies, auth_data, service, text)
         tokens = clip.tokenize(text_tranlsated)
         cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
         return ([[cond, {"pooled_output": pooled}]], )
