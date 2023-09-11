@@ -117,7 +117,7 @@ API_KEYS_SERVICES_DEEP_TRANSLATOR = {
 }
 
 ### Services
-def Services(service, text, from_translate="auto", to_translate="en", proxy_data={}):
+def Services(service, text, from_translate="auto", to_translate="en", proxy_data={}, auth_data={}):
         translated = "No tranlsate..."
         
         proxy_valid = proxy_data.get("proxy_valid", False)
@@ -150,10 +150,10 @@ def Services(service, text, from_translate="auto", to_translate="en", proxy_data
             # QcriTranslator
             elif service == "QcriTranslator":
                 # "domains":["dialectal","dialectal-fast","general","general-fast","general-neural","general-neural-large","medical","neural-beta","neural-opus-dev","pb-debug"]
-                api_key = self.auth_data.get("api_key", API_KEYS_SERVICES_DEEP_TRANSLATOR["QcriTranslator"])
+                api_key = auth_data.get("api_key", API_KEYS_SERVICES_DEEP_TRANSLATOR["QcriTranslator"])
                 print("Api_key: ", api_key)
-                print("language pairs: ", QcriTranslator(api_key).languages)
-                translated = QcriTranslator(api_key).translate(source=from_translate, target=to_translate, domain="general", text=text, proxies=proxyes)
+                print("language pairs: ", QcriTranslator(api_key=api_key).languages)
+                translated = QcriTranslator(api_key=api_key, source=from_translate, target=to_translate).translate(domain="general", text=text, proxies=proxyes)
    
                # BaiduTranslator    
             elif service == "BaiduTranslator":
