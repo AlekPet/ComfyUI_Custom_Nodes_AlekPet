@@ -2,7 +2,7 @@ import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 
 function get_support_langs() {
-  let node = self,
+  let node = this,
     widgetService = this.widgets.find((w) => w.name == "service"),
     widget_from_translate = this.widgets.find((w) => w.name == "from_translate"),
     widget_to_translate = this.widgets.find((w) => w.name == "to_translate"),
@@ -43,17 +43,18 @@ function get_support_langs() {
 app.registerExtension({
   name: "Comfy.TranslateNode",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
-    // --- DeepTranslatorTextNode
-    if (nodeData.name === "DeepTranslatorTextNode") {
+    // --- DeepTranslatorTextNode and DeepTranslatorCLIPTextEncodeNode
+    if (nodeData.name == "DeepTranslatorTextNode" || nodeData.name == "DeepTranslatorCLIPTextEncodeNode") {
       // Node Created
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = function () {
         onNodeCreated?.apply?.(this, arguments);
 
-        let DeepTranslatorTextNode = app.graph._nodes.filter((wi) => wi.type == "DeepTranslatorTextNode"),
-          nodeName = `DeepTranslatorTextNode_${DeepTranslatorTextNode.length}`;
+        let DeepTranslator = app.graph._nodes.filter((wi) => wi.type == nodeData.name),
+          nodeName = `${nodeData.name}_${DeepTranslator.length}`;
 
-        console.log(`Create DeepTranslatorTextNode: ${nodeName}`);
+        console.log(`Create {nodeData.name}: ${nodeName}`);
+
         get_support_langs.apply(this);
       };
     }

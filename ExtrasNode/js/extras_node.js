@@ -9,16 +9,12 @@ app.registerExtension({
       // Node Created
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = function () {
-        const ret = onNodeCreated
-          ? onNodeCreated.apply(this, arguments)
-          : undefined;
+        const ret = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
 
-        let PreviewTextNode = app.graph._nodes.filter(
-            (wi) => wi.type == "PreviewTextNode"
-          ),
-          nodeName = `PreviewTextNode_${PreviewTextNode.length}`;
+        let PreviewTextNode = app.graph._nodes.filter((wi) => wi.type == nodeData.name),
+          nodeName = `${nodeData.name}_${PreviewTextNode.length}`;
 
-        console.log(`Create PreviewTextNode: ${nodeName}`);
+        console.log(`Create ${nodeData.name}: ${nodeName}`);
 
         const wi = ComfyWidgets.STRING(
           this,
@@ -39,14 +35,14 @@ app.registerExtension({
 
       const outSet = function () {
         const output = app.nodeOutputs[this.id + ""];
-        if (
-          output &&
-          output.string &&
-          this.widgets[0].inputEl.value !== output.string[0]
-        )
-          this.widgets[0].inputEl.value = output.string[0];
+        const inputEl = this.widgets.find((w) => w.type === "customtext");
+        if (output && output.string && inputEl && inputEl.value !== output.string[0]) {
+          inputEl.value = output.string[0];
+          app.graph.setDirtyCanvas(true);
+        }
       };
-      // onSerialize
+
+      // onSerialize;
       const onSerialize = nodeType.prototype.onSerialize;
       nodeType.prototype.onSerialize = function () {
         onSerialize?.apply(this, arguments);
