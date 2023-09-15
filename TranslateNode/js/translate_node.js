@@ -8,13 +8,15 @@ function get_support_langs() {
     widget_to_translate = this.widgets.find((w) => w.name == "to_translate"),
     widget_auth_data = this.widgets.find((w) => w.name == "auth_data"),
     placeholders = {
-      "GoogleTranslator,LingueeTranslator,MyMemoryTranslator,PonsTranslator": "No need authorization data",
-      "ChatGptTranslator,YandexTranslator,MicrosoftTranslator,DeeplTranslator": "api_key=your_api_key",
-      LibreTranslator: "No need used free_api or your api_key:\napi_key=your_api_key",
-      PapagoTranslator: "client_id=your_client_id\nsecret_key=your_secret_key",
-      BaiduTranslator: "appid=your-appid\nappkey=your-appkey",
+      "GoogleTranslator,LingueeTranslator,MyMemoryTranslator,PonsTranslator": "Authorization data:\nThis service does not require api_key or other information.",
+      "ChatGptTranslator,YandexTranslator,MicrosoftTranslator,DeeplTranslator": "Authorization data:\napi_key=your_api_key",
+      LibreTranslator: "Authorization data:\nThis service uses the already specified api_key, if you want you can replace it with your own:\napi_key=your_api_key",
+      PapagoTranslator: "Authorization data:\nclient_id=your_client_id\nsecret_key=your_secret_key",
+      BaiduTranslator: "Authorization data:\nappid=your-appid\nappkey=your-appkey",
       QcriTranslator:
-        "No need used free_api or your api_key, default domain=general:\napi_key=your_api_key\ndomain=dialectal,dialectal-fast,general,general-fast,general-neural,general-neural-large,medical,neural-beta,neural-opus-dev,pb-debug",
+        "Information:\nThis service uses the already specified api_key, if you want you can replace it with your own.\n" +
+        "You can select one of the domains, default domain=general\nList domains: dialectal, dialectal-fast, general, general-fast, general-neural, general-neural-large, medical, neural-beta, neural-opus-dev, pb-debug:\n" +
+        "Authorization data:\napi_key=your_api_key",
     };
 
   widgetService.callback = async function () {
@@ -57,7 +59,15 @@ app.registerExtension({
 
         get_support_langs.apply(this);
       };
+
+      // Node Configure
+      const onConfigure = nodeType.prototype.onConfigure;
+      nodeType.prototype.onConfigure = function () {
+        onConfigure?.apply?.(this, arguments);
+        get_support_langs.apply(this);
+      };
     }
+
     // --- DeepTranslatorTextNode
   },
 });

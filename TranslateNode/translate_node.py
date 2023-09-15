@@ -1,10 +1,16 @@
 import re
 from googletrans import Translator, LANGUAGES
 
-translator = Translator()
+# RegExp
 empty_str = re.compile('^\s*$', re.I | re.M)
 key_val_reg = re.compile('^[\w-]+=([^=][\w-]+)$', re.I)
-debug = False
+service_correct_reg = re.compile("\s*\[.*\]")
+
+# Debug mode
+DEBUG = False
+
+### =====  Translate Nodes [googletrans module]  ===== ###
+translator = Translator()
 
 def translate(prompt, srcTrans=None, toTrans=None):
     if not srcTrans:
@@ -73,9 +79,11 @@ class TranslateTextNode:
 
     def translate_text(self, from_translate, to_translate, text):
         text_tranlsated = translate(text, from_translate, to_translate)
-        return (text_tranlsated,)
+        return (text_tranlsated,) 
     
-### ===== Deep Translator Node  ===== ###
+### =====  Translate Nodes [googletrans module] -> end ===== ###
+    
+### =====  Deep Translator Nodes  ===== ###
 from server import PromptServer
 from aiohttp import web
 import requests
@@ -96,38 +104,26 @@ from deep_translator import (BaiduTranslator,
                              batch_detection)
 
 
-'''
->> INFORMATION <<
-auto support
---------------
-"GoogleTranslator"
-"ChatGptTranslator"
-"MyMemoryTranslator" - reference auto yes, no detect work
-"YandexTranslator"
-"MicrosoftTranslator"
-"LibreTranslator"
+def log(*text,desc="[Deep Translator =>"):
+    if DEBUG:
+        print(desc)
+        print(*text, sep=", ")
 
-no support
-------------------
-"DeeplTranslator"
-"QcriTranslator"
-"LingueeTranslator"
-"PonsTranslator"
-"PapagoTranslator"
-"BaiduTranslator"
-'''
 
+# API Keys
 API_KEYS_SERVICES_DEEP_TRANSLATOR = {
     "QcriTranslator": "c8af063b6c350215bc74340e16eebf51",
     "DetectLanguage": "26838885af95f01110f154dac9d6a235",
 }
 
-detect_langs_support = requests.get('https://ws.detectlanguage.com/0.2/languages').json()
 
-def log(*text,desc="[Deep Translator =>"):
-    if debug:
-        print(desc)
-        print(*text, sep=", ")
+# Support languages - detectlanguage
+detect_langs_support = {}
+try:
+    detect_langs_support = requests.get('https://ws.detectlanguage.com/0.2/languages').json()
+    log(f"[Deep Translator] Loading of the dictionary to determine the language is completed successfully!")
+except Exception as e:
+    log(f"[Deep Translator] Error loading of the dictionary to determine the language: {e}")
 
 
 def selectService(service):
@@ -159,6 +155,7 @@ def selectService(service):
             
         return langs_support    
 
+
 @PromptServer.instance.routes.get("/alekpet/tranlsate_langs_support/{service}")
 async def langs_support(request):
     service = request.match_info["service"]
@@ -173,7 +170,7 @@ async def langs_support(request):
 
 ### Services
 def Services(service, text, from_translate="auto", to_translate="en", prop_data={}):
-        translated = "No tranlsate..."
+        translated = "No tranlsate, see ComfyUI console..."
         
         proxyes = prop_data.get("proxyes", {})
         proxyes = proxyes if bool(proxyes) and len(proxyes)>0  else {}
@@ -244,6 +241,7 @@ def Services(service, text, from_translate="auto", to_translate="en", prop_data=
         finally:
             return translated
 
+
 ### Proxyes
 def makeDictText(name_prop, text=""):
     data = {
@@ -266,14 +264,23 @@ def makeDictText(name_prop, text=""):
     finally:
         return data
 
+
 # Detect languages in input
-def isset_languages(text, service, from_translate, langs_support = {}):
+def isset_languages(text, service, from_translate, langs_support = {}, auth_data = {}):
     global detect_langs_support
 
     is_support = False
-    detect_lang_short = single_detection(text, api_key=API_KEYS_SERVICES_DEEP_TRANSLATOR["DetectLanguage"])
-    detect = list(filter(lambda d: d['code'] == detect_lang_short, detect_langs_support))[0]
-    log(f"[{service}] Detect short: {detect_lang_short}, detect: {detect}")  
+    detect_lang_short = ""
+    detect = []
+    detect_lang_key = auth_data.get("detect_lang_key", API_KEYS_SERVICES_DEEP_TRANSLATOR["DetectLanguage"])
+    
+    try:
+        detect_lang_short = single_detection(text, api_key=detect_lang_key)
+        detect = list(filter(lambda d: d['code'] == detect_lang_short, detect_langs_support))[0]
+    except Exception as e:
+        print(f"[Deep Translator] Error detect language: {e}")
+    
+    log(f"[Deep Translator> [{service}] Detect short: {detect_lang_short}, detect: {detect}, lang support: {len(langs_support.keys())}")  
     
     if detect_lang_short and detect and "name" in detect and langs_support:
         detect_lang_full = detect["name"].lower()
@@ -289,9 +296,9 @@ def isset_languages(text, service, from_translate, langs_support = {}):
                            
             from_translate = detect_lang_full
             is_support = True
-            log(f"Detect in base: {detect_lang_full} in {list(langs_support_keys)}")
+            log(f"[Deep Translator> Detect in base: {detect_lang_full} in {list(langs_support_keys)}")
         else:
-            log(f"No detect in base: {detect_lang_full} in {list(langs_support_keys)}")                      
+            log(f"[Deep Translator>No detect in base: {detect_lang_full} in {list(langs_support_keys)}")                      
         
     return (from_translate, is_support, detect)
 
@@ -301,7 +308,8 @@ def deep_translator_function(from_translate, to_translate, add_proxies, proxies,
         text_tranlsated = ""
         prop_data = {}
         try:
-            if text:
+            if text:            
+                print(f"[Deep Translator] Service: \"{service}\"")
                 # Proxy prop        
                 if add_proxies == "enable" and not empty_str.match(proxies):
                     prop_data = makeDictText("proxies", proxies)
@@ -313,16 +321,17 @@ def deep_translator_function(from_translate, to_translate, add_proxies, proxies,
                     prop_data.update(makeDictText("auth_data", auth_data))
                 else:
                     print("[Deep Translator] Authorization input field is empty!")
-                
-                log(f"Service: <{service}>")
+                     
                 tServices = ("DeeplTranslator", "QcriTranslator", "LingueeTranslator", "PonsTranslator", "PapagoTranslator", "BaiduTranslator", "MyMemoryTranslator")
-                
+
                 # Detect language
                 if from_translate == "auto" and service in tServices:
-                    from_translate, is_support, detect = isset_languages(text, service, from_translate, lang_support)                       
+                    from_translate, is_support, detect = isset_languages(text, service, from_translate, lang_support, prop_data)                       
                     log(f"Detect turple: {(from_translate, is_support, detect)}")
+                else:
+                    print(f"Deep Translator] Service detect language disabled! Services support: {', '.join(tServices)}.\nThe selected service has its own way of detecting the language.\nProperty \"detect_lang_key\" in Authorization data is empty or incorrect!")
                         
-                log(f"[{service}] => Data: {prop_data}")
+                log(f"[Deep Translator> [{service}] => Data: {prop_data}")
                 
                 text_tranlsated = Services(service, text, from_translate, to_translate, prop_data)
                         
@@ -341,18 +350,21 @@ def deep_translator_function(from_translate, to_translate, add_proxies, proxies,
 class DeepTranslatorTextNode:
     def __init__(self):
         self.langs_support = {}
+        self.current_service = ""
       
     @classmethod
     def INPUT_TYPES(self):
+        self.current_service = ""
         self.langs_support = selectService("GoogleTranslator")        
-        langs_support = list(self.langs_support.keys())  
+        langs_support = list(self.langs_support.keys())
+        
         return {
             "required": {
                 "from_translate": (['auto']+langs_support, {"default": "auto"}),
                 "to_translate": (langs_support, {"default": "english"} ),
                 "add_proxies": (["enable", "disable"], {"default": "disable"} ),
                 "proxies": ("STRING", {"multiline": True, "placeholder": "Proxies list (http=proxy), example:\nhttps=34.195.196.27:8080\nhttp=34.195.196.27:8080"}),
-                "auth_data": ("STRING", {"multiline": True, "placeholder": "Authorization data...\napi_key=your_api_key\nclient_id=your_client_id\nsecret_key=your_secret_key\nappid=your-appid\nappkey=your-appkey"}),
+                "auth_data": ("STRING", {"multiline": True, "placeholder": "Authorization data...\nExample:\napi_key=your_api_key\ndetect_lang_key=your_key\nclient_id=your_client_id\nsecret_key=your_secret_key\nappid=your-appid\nappkey=your-appkey"}),
                 "service": (["BaiduTranslator [api-key]",
                              "ChatGptTranslator [api-key]",
                              "DeeplTranslator [api-key]",
@@ -375,40 +387,45 @@ class DeepTranslatorTextNode:
 
     CATEGORY = "AlekPet Nodes/text"
 
-    def deep_translate_text(self, from_translate, to_translate, add_proxies, proxies, auth_data, service, text):      
-        # Translate  
-        service = re.sub("\s*\[.*\]", "", service)
-        self.langs_support = selectService(service)       
+    def deep_translate_text(self, from_translate, to_translate, add_proxies, proxies, auth_data, service, text): 
+        # Select service
+        service = service_correct_reg.sub("", service)
+        if self.current_service != service:
+            self.langs_support = selectService(service)
+            self.current_service = service
+                                  
+        # Translate      
         text_tranlsated = deep_translator_function(from_translate, to_translate, add_proxies, proxies, auth_data, service, text, self.langs_support)           
         return (text_tranlsated,)
-    
+
     @classmethod
     def VALIDATE_INPUTS(self, from_translate, to_translate, add_proxies, proxies, auth_data, service, text):
-        service = re.sub("\s*\[.*\]", "", service)
-        self.langs_support = selectService(service)
-        
         # lang, is_support, detect = isset_languages(text, service, from_translate, self.langs_support)
         # if not is_support:
         #     return f"[Deep Translator] Service \"{service}\", no support for the provided language: {detect}!"
         return True
+    
     
 ###  Deep Translator output -> CONDITIONING      
 class DeepTranslatorCLIPTextEncodeNode:
 
     def __init__(self):
         self.langs_support = {}
-    
+        self.current_service = ""
+           
     @classmethod
     def INPUT_TYPES(self):
+        self.current_service = ""        
         self.langs_support = selectService("GoogleTranslator")        
-        langs_support = list(self.langs_support.keys())  
+        langs_support = list(self.langs_support.keys())
+        
         return {
             "required": {
                 "from_translate": (['auto']+langs_support, {"default": "auto"}),
                 "to_translate": (langs_support, {"default": "english"} ),
                 "add_proxies": (["enable", "disable"], {"default": "disable"} ),
                 "proxies": ("STRING", {"multiline": True, "placeholder": "Proxies list (http=proxy), example:\nhttps=34.195.196.27:8080\nhttp=34.195.196.27:8080"}),
-                "auth_data": ("STRING", {"multiline": True, "placeholder": "Authorization data...\napi_key=your_api_key\nclient_id=your_client_id\nsecret_key=your_secret_key\nappid=your-appid\nappkey=your-appkey"}),
+                "auth_data": ("STRING", {"multiline": True, "placeholder": "Authorization data...\nExample:\napi_key=your_api_key\ndetect_lang_key=your_key\nclient_id=your_client_id\nsecret_key=your_secret_key\nappid=your-appid\nappkey=your-appkey"}),
                 "service": (["BaiduTranslator [api-key]",
                              "ChatGptTranslator [api-key]",
                              "DeeplTranslator [api-key]",
@@ -431,22 +448,25 @@ class DeepTranslatorCLIPTextEncodeNode:
 
     CATEGORY = "AlekPet Nodes/conditioning"
 
-    def deep_translate_text(self, from_translate, to_translate, add_proxies, proxies, auth_data, service, text, clip):  
-        # Translate
-        service = re.sub("\s*\[.*\]", "", service)
-        self.langs_support = selectService(service)      
+    def deep_translate_text(self, from_translate, to_translate, add_proxies, proxies, auth_data, service, text, clip):
+        # Select service
+        service = service_correct_reg.sub("", service)
+        if self.current_service != service:
+            self.langs_support = selectService(service)
+            self.current_service = service
+                     
+        # Translate   
         text_tranlsated = deep_translator_function(from_translate, to_translate, add_proxies, proxies, auth_data, service, text, self.langs_support)
         
         tokens = clip.tokenize(text_tranlsated)
         cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
-        return ([[cond, {"pooled_output": pooled}]], text_tranlsated,)
-
+        return ([[cond, {"pooled_output": pooled}]], text_tranlsated,)  
+    
     @classmethod
     def VALIDATE_INPUTS(self, from_translate, to_translate, add_proxies, proxies, auth_data, service, text, clip):
-        service = re.sub("\s*\[.*\]", "", service)
-        self.langs_support = selectService(service)
-        
         # lang, is_support, detect = isset_languages(text, service, from_translate, self.langs_support)
         # if not is_support:
         #     return f"[Deep Translator] Service \"{service}\", no support for the provided language: {detect}!"
         return True
+    
+### =====  Deep Translator Node  -> end ===== ###
