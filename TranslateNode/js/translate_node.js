@@ -5,7 +5,7 @@ const properties_widget = {};
 const findWidget = (node, name, attr = "name") => node.widgets.find((w) => w[attr] === name);
 const doesInputWithNameExist = (node, name) => (node.inputs ? node.inputs.some((input) => input.name === name) : false);
 
-/*  Thanks "Teerer" for the toggleWidget function, which hides the widget.
+/*  Thanks "TinyTerra" for the toggleWidget function, which hides the widget.
  *  Github: https://github.com/TinyTerra
  *  Code line: https://github.com/TinyTerra/ComfyUI_tinyterraNodes/blob/main/js/ttNdynamicWidgets.js#L9
  */
