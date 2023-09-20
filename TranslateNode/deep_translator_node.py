@@ -326,9 +326,7 @@ def deep_translator_function(from_translate, to_translate, add_proxies, proxies,
             if text:          
                 print(f"[Deep Translator] Service: \"{service}\"")                
                 # Proxy prop        
-                print(f"a: {auth_data} ser: {service} pro: {proxies}")
                 if add_proxies == "enable":
-                    print(isinstance(proxies, (str,)),proxies.strip() != "")
                     if isinstance(proxies, (str,)) and proxies.strip() != "":
                          prop_data.update(makeDictText("proxies", proxies, key_val_proxy_reg))
                          
