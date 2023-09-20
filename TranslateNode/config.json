@@ -1,0 +1,98 @@
+{
+  "deep_translator_node": {
+    "services": {
+      "GoogleTranslator": {
+        "free_api": true,
+        "show_service": true,
+        "help": "[free]"
+      },
+      "MyMemoryTranslator": {
+        "free_api": true,
+        "show_service": true,
+        "help": "[free]"
+      },
+      "LingueeTranslator": {
+        "free_api": true,
+        "show_service": true,
+        "help": "[free - word(s) only]"
+      },
+      "PonsTranslator": {
+        "free_api": true,
+        "show_service": true,
+        "help": "[free - word(s) only]"
+      },
+      "LibreTranslator": {
+        "api_key": "your_api_key",
+        "free_api": true,
+        "show_service": true,
+        "help": "[free or api_key]"
+      },
+      "QcriTranslator": {
+        "__comment": "Domains list here https://mt.qcri.org/api/v1/getDomains?key=your_api_key .You can get your API here https://mt.qcri.org/api/register",
+        "api_key": "c8af063b6c350215bc74340e16eebf51",
+        "domain": "general",
+        "free_api": false,
+        "show_service": true,
+        "help": "[free or api_key]"
+      },
+      "DeeplTranslator": {
+        "__comment": "If you have a paid key, turn off the option 'use_free_api=false'. You get free API key here, after registration https://www.deepl.com/pro-api?cta=header-pro-api , and option 'use_free_api=true'",
+        "api_key": "your_api_key",
+        "use_free_api": true,
+        "free_api": false,
+        "show_service": true,
+        "help": "[api-key]"
+      },
+      "BaiduTranslator": {
+        "appid": "your_appid",
+        "appkey": "your_appkey",
+        "free_api": false,
+        "show_service": true,
+        "help": "[appid and appkey]"
+      },
+      "ChatGptTranslator": {
+        "api_key": "your_api_key",
+        "free_api": false,
+        "show_service": true,
+        "help": "[api-key]"
+      },
+      "MicrosoftTranslator": {
+        "api_key": "your_api_key",
+        "free_api": false,
+        "show_service": true,
+        "help": "[api-key]"
+      },
+      "PapagoTranslator": {
+        "client_id": "your_client_id",
+        "secret_key": "your_secret_key",
+        "free_api": false,
+        "show_service": true,
+        "help": "[client_id, secret_key]"
+      },
+      "YandexTranslator": {
+        "api_key": "your_api_key",
+        "free_api": false,
+        "show_service": true,
+        "help": "[api-key]"
+      },
+      "DetectLanguage": {
+        "__comment": "Language definitions if the translation service does not support the definition. You can get your API here https://detectlanguage.com/users/sign_up",
+        "api_key": "26838885af95f01110f154dac9d6a235",
+        "free_api": false,
+        "show_service": false,
+        "help": "Detect language"
+      }
+    },
+    "proxies": {
+      "http": "",
+      "https": ""
+    },
+    "settings": {
+      "__comment": "Properties 'auth_input_in_node' and 'proxyes_input_in_node' add input fields in nodes. Property 'show_services_no_check_api' show services if property 'show_service=true' and not check property api_key and other...",
+      "auth_input_in_node": false,
+      "proxyes_input_in_node": false,
+      "show_services_no_check_api": false,
+      "help_text_services": true
+    }
+  }
+}
