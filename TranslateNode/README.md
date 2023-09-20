@@ -25,7 +25,7 @@ Used module **deep_translator**: https://pypi.org/project/deep-translator/
 
 **Info nodes:**
 
-**The settings nodes are in the config.js file**
+> **The settings nodes are in the config.json file**
 
 > You can select a service for text translation in the service field. In the description of the service there is a note asking whether **api_key** is required, if required, enter the appropriate values in the authorization field.
 
