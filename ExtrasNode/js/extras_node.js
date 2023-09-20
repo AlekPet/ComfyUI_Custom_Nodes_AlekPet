@@ -33,27 +33,28 @@ app.registerExtension({
         return ret;
       };
 
-      const outSet = function () {
-        const output = app.nodeOutputs[this.id + ""];
-        const inputEl = this.widgets.find((w) => w.type === "customtext");
-        if (output && output.string && inputEl && inputEl.value !== output.string[0]) {
-          inputEl.value = output.string[0];
-          app.graph.setDirtyCanvas(true);
-        }
-      };
+      const outSet = function (texts) {
+        if (texts.length > 0) {
+          let widget = this?.widgets.find((w) => w.type == "customtext");
 
-      // onSerialize;
-      const onSerialize = nodeType.prototype.onSerialize;
-      nodeType.prototype.onSerialize = function () {
-        onSerialize?.apply(this, arguments);
-        outSet.call(this);
+          if (Array.isArray(texts))
+            texts = texts
+              .filter((word) => word.trim() !== "")
+              .map((word) => word.trim())
+              .join(" ");
+
+          if (widget.inputEl.value !== texts) {
+            widget.inputEl.value = texts;
+            app.graph.setDirtyCanvas(true);
+          }
+        }
       };
 
       // onExecuted
       const onExecuted = nodeType.prototype.onExecuted;
-      nodeType.prototype.onExecuted = function () {
+      nodeType.prototype.onExecuted = function (texts) {
         onExecuted?.apply(this, arguments);
-        outSet.call(this);
+        outSet.call(this, texts?.string);
       };
     }
     // --- Preview Text Node
