@@ -63,12 +63,22 @@ function get_support_langs() {
 
   widgetService.callback = async function () {
     let service = this.value.replace(/\s*\[.*\]/g, ""),
-      responseData = await api.fetchApi(`/alekpet/tranlsate_langs_support/${service}`);
+      responseData = await api.fetchApi(`/alekpet/tranlsate_langs_support/${service}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
     responseData = await responseData?.json();
 
     if (!responseData || responseData == undefined) {
       console.log("Invalid service, select default: GoogleTranslator !");
-      responseData = await api.fetchApi(`/alekpet/tranlsate_langs_support/GoogleTranslator`);
+      responseData = await api.fetchApi(`/alekpet/tranlsate_langs_support/GoogleTranslator`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
       responseData = await responseData?.json();
     }
 
