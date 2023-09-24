@@ -75,7 +75,7 @@ function get_support_langs() {
     if (responseData && Object.keys(responseData).length) {
       // Proxies
       const proxies = responseData?.proxyes;
-      if (proxies && Object.keys(proxies).length) {
+      if (proxies) {
         if (widget_proxies) widget_proxies.inputEl.value = obj_to_text(proxies);
       }
 
@@ -100,7 +100,7 @@ function get_support_langs() {
 
         // Auth
         const auth_data = responseData?.auth_data;
-        if (widget_auth_data && Object.keys(auth_data).length) {
+        if (widget_auth_data) {
           let placeholder = Object.keys(placeholders).find((ph_key) => ph_key.includes(service) || ph_key === service);
           widget_auth_data.inputEl.placeholder = placeholders[placeholder];
           widget_auth_data.inputEl.value = obj_to_text(auth_data, "your_");

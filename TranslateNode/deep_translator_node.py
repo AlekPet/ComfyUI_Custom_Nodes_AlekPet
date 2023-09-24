@@ -32,7 +32,7 @@ DEBUG = False
 
 ### =====  Deep Translator Nodes  ===== ###
 
-def log(*text,desc="[Deep Translator =>"):
+def log(*text,desc="[Deep Translator => "):
     if DEBUG:
         print(desc)
         print(*text, sep=", ")
@@ -57,6 +57,7 @@ DETECT_LANGS_SUPPORT = {}
 # Directory translate node and config file
 dir_translate_node = os.path.dirname(__file__)
 config_path = os.path.join(os.path.abspath(dir_translate_node),"config.json")
+detect_languages_list = os.path.join(os.path.abspath(dir_translate_node),"detect_languages_list.json")
 
 # Check service view and api_key 
 def check_service_view(services_prop={}, service=""):   
@@ -109,11 +110,19 @@ else:
 
 # Support languages - detectlanguage
 try:
-    DETECT_LANGS_SUPPORT = requests.get('https://ws.detectlanguage.com/0.2/languages').json()
-    log(f"[Deep Translator] Loading of the dictionary to determine the language is completed successfully!")
-except Exception as e:
-    log(f"[Deep Translator] Error loading of the dictionary to determine the language: {e}")
+    if not os.path.exists(detect_languages_list):
+        log("File detect_languages_list.json file not found! Get List from site!")
+        DETECT_LANGS_SUPPORT = requests.get('https://ws.detectlanguage.com/0.2/languages').json()
+        with open(detect_languages_list, "w") as f:
+            json.dump(DETECT_LANGS_SUPPORT, f)
+            log("Loading detect languages list support from site complete and save!")
+    else:
+        with open(detect_languages_list, "r") as f:
+            DETECT_LANGS_SUPPORT = json.load(f)   
+            log("Loading detect languages list support from json file!")           
 
+except Exception as e:
+    log(f"Error loading of the dictionary to determine the language: {e}")
 
 def selectService(service):
     if service:
@@ -288,7 +297,7 @@ def isset_languages(text, service, from_translate, langs_support = {}, auth_data
         detect = list(filter(lambda d: d['code'] == detect_lang_short, DETECT_LANGS_SUPPORT))[0]
 
 
-        log(f"[Deep Translator> [{service}] Detect short: {detect_lang_short}, detect: {detect}, lang support: {len(langs_support.keys())}")  
+        log(f"[{service}] Detect short: {detect_lang_short}, detect: {detect}, lang support: {len(langs_support.keys())}")  
     
         if detect_lang_short and len(detect)>0 and detect.get("name", "") and langs_support:
             detect_lang_full = detect["name"].lower()
@@ -348,14 +357,14 @@ def deep_translator_function(from_translate, to_translate, add_proxies, proxies,
        
                 # Detect language
                 tServices = ("DeeplTranslator", "QcriTranslator", "LingueeTranslator", "PonsTranslator", "PapagoTranslator", "BaiduTranslator", "MyMemoryTranslator")
-                
+
                 if from_translate == "auto" and service in tServices:
                     from_translate, is_support, detect = isset_languages(text, service, from_translate, lang_support, prop_data)                       
                     log(f"Detect turple: {(from_translate, is_support, detect)}")
                 else:
                     print(f"Deep Translator] Service detect language disabled! Services support: {', '.join(tServices)}.\nThe selected service has its own way of detecting the language.\nProperty \"detect_lang_api_key\" in Authorization data is empty or incorrect!")
                         
-                log(f"[Deep Translator> [{service}] => Data: {prop_data}")
+                log(f"[{service}] => Data: {prop_data}")
                 
 
                 text_tranlsated = service_translate(service, text, from_translate, to_translate, prop_data)
@@ -385,9 +394,9 @@ def makeRequiredFields(langs_support=[]):
             
     if CONFIG_SERVICES and isinstance(CONFIG_SERVICES, (dict,)):
         if CONFIG_SETTINGS and CONFIG_SETTINGS.get("help_text_services"):
-            params["service"] = ([service_key+" "+service_prop.get("help","") for service_key, service_prop in CONFIG_SERVICES.items() if service_key !="DetectLanguage"], {"default": "GoogleTranslator"},)
+            params["service"] = ([service_key+" "+service_prop.get("help","") for service_key, service_prop in CONFIG_SERVICES.items() if service_prop.get("show_service", False)], {"default": "GoogleTranslator"},)
         else:
-            params["service"] = (list(filter(lambda s:s!="DetectLanguage",CONFIG_SERVICES.keys())), {"default": "GoogleTranslator"},)
+            params["service"] = (list(filter(lambda s: CONFIG_SERVICES[s].get("show_service", False),CONFIG_SERVICES.keys())), {"default": "GoogleTranslator"},)
     else:
         params["service"] = ([
                             "GoogleTranslator [free]",
