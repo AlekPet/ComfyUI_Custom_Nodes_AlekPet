@@ -20,7 +20,9 @@ function toggleWidget(node, widget, show = false, button = {}) {
   const origSize = node.size;
 
   if (button?.type == "button" && button?.name) {
-    button.name = show ? `Hide ${button.value}` : `Show ${button.value}`;
+    const textButton = button.value.slice(0, button.value.indexOf("_"));
+    button.name = show ? `Hide ${textButton}` : `Show ${textButton}`;
+    button.value = show ? `${textButton}_show` : `${textButton}_hide`;
   }
 
   widget.type = show ? properties_widget[widget.name].origType : "hidden_" + widget.name;
@@ -34,6 +36,8 @@ function toggleWidget(node, widget, show = false, button = {}) {
 
 function get_support_langs() {
   let node = this,
+    // Widgets values
+    widgets_values = node?.widgets_values?.length > 0 ? node.widgets_values : [],
     // Widgets
     widgetService = findWidget(node, "service"),
     widget_from_translate = findWidget(node, "from_translate"),
@@ -89,10 +93,17 @@ function get_support_langs() {
         if (widget_proxies) widget_proxies.inputEl.value = obj_to_text(proxies);
       }
 
+      // Settings show or hide widgets auth and proxy
       const settings = responseData?.settings;
       if (settings && Object.keys(settings).length) {
-        toggleWidget(node, widget_auth_data, properties_widget[widget_auth_data.name]?.show || settings?.auth_input_in_node || false, widget_hide_auth);
-        toggleWidget(node, widget_proxies, properties_widget[widget_proxies.name]?.show || settings?.proxyes_input_in_node || false, widget_hide_proxy);
+        let auth_show = null,
+          proxy_show = null;
+        if (widgets_values?.length > 0) {
+          auth_show = widgets_values.includes("authorization_hide") ? false : true;
+          proxy_show = widgets_values.includes("proxy_hide") ? false : true;
+        }
+        toggleWidget(node, widget_auth_data, auth_show || settings?.auth_input_in_node || false, widget_hide_auth);
+        toggleWidget(node, widget_proxies, proxy_show || settings?.proxyes_input_in_node || false, widget_hide_proxy);
       }
 
       const langs_service = responseData?.langs_service;
@@ -138,12 +149,12 @@ app.registerExtension({
 
         console.log(`Create ${nodeData.name}: ${nodeName}`);
 
-        node.addWidget("button", "hide_proxy", "proxy", function () {
+        node.addWidget("button", "hide_proxy", "proxy_hide", function () {
           let w = findWidget(node, "proxies");
           toggleWidget(node, w, !properties_widget[w.name].show, this);
         });
 
-        node.addWidget("button", "hide_authorization", "authorization", function () {
+        node.addWidget("button", "hide_authorization", "authorization_hide", function () {
           let w = findWidget(node, "auth_data");
           toggleWidget(node, w, !properties_widget[w.name].show, this);
         });
@@ -155,7 +166,7 @@ app.registerExtension({
       const onConfigure = nodeType.prototype.onConfigure;
       nodeType.prototype.onConfigure = function () {
         onConfigure?.apply?.(this, arguments);
-        get_support_langs.apply(this);
+        if (this?.widgets_values.length) get_support_langs.apply(this);
       };
     }
 

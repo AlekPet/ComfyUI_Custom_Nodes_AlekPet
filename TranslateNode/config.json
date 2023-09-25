@@ -4,28 +4,28 @@
       "GoogleTranslator": {
         "free_api": true,
         "show_service": true,
-        "help": "[free]"
+        "help": "free"
       },
       "MyMemoryTranslator": {
         "free_api": true,
         "show_service": true,
-        "help": "[free]"
+        "help": "free"
       },
       "LingueeTranslator": {
         "free_api": true,
         "show_service": true,
-        "help": "[free - word(s) only]"
+        "help": "free - word(s) only"
       },
       "PonsTranslator": {
         "free_api": true,
         "show_service": true,
-        "help": "[free - word(s) only]"
+        "help": "free - word(s) only"
       },
       "LibreTranslator": {
         "api_key": "your_api_key",
         "free_api": true,
         "show_service": true,
-        "help": "[free or api_key]"
+        "help": "free or api_key"
       },
       "QcriTranslator": {
         "__comment": "Domains list here https://mt.qcri.org/api/v1/getDomains?key=your_api_key .You can get your API here https://mt.qcri.org/api/register",
@@ -33,7 +33,7 @@
         "domain": "general",
         "free_api": false,
         "show_service": true,
-        "help": "[free or api_key]"
+        "help": "free or api_key"
       },
       "DeeplTranslator": {
         "__comment": "If you have a paid key, turn off the option 'use_free_api=false'. You get free API key here, after registration https://www.deepl.com/pro-api?cta=header-pro-api , and option 'use_free_api=true'",
@@ -41,39 +41,39 @@
         "use_free_api": true,
         "free_api": false,
         "show_service": true,
-        "help": "[api-key]"
+        "help": "api-key"
       },
       "BaiduTranslator": {
         "appid": "your_appid",
         "appkey": "your_appkey",
         "free_api": false,
         "show_service": true,
-        "help": "[appid and appkey]"
+        "help": "appid and appkey"
       },
       "ChatGptTranslator": {
         "api_key": "your_api_key",
         "free_api": false,
         "show_service": true,
-        "help": "[api-key]"
+        "help": "api-key"
       },
       "MicrosoftTranslator": {
         "api_key": "your_api_key",
         "free_api": false,
         "show_service": true,
-        "help": "[api-key]"
+        "help": "api-key"
       },
       "PapagoTranslator": {
         "client_id": "your_client_id",
         "secret_key": "your_secret_key",
         "free_api": false,
         "show_service": true,
-        "help": "[client_id, secret_key]"
+        "help": "client_id, secret_key"
       },
       "YandexTranslator": {
         "api_key": "your_api_key",
         "free_api": false,
         "show_service": true,
-        "help": "[api-key]"
+        "help": "api-key"
       },
       "DetectLanguage": {
         "__comment": "Language definitions if the translation service does not support the definition. You can get your API here https://detectlanguage.com/users/sign_up",

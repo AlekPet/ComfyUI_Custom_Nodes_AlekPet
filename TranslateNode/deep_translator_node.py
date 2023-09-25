@@ -22,6 +22,7 @@ from deep_translator import (BaiduTranslator,
 
 # RegExp
 empty_str = re.compile('^\s*$', re.I | re.M)
+remove_brackets_reg = re.compile("[\[\]]*")
 key_val_reg = re.compile('^[\w-]+=[^=][.\w-]*$', re.I)
 key_val_proxy_reg = re.compile('^[https]+=[^=]((?:\d{1,3}\.){1,3}\d{1,3}):(\d{1,5})$', re.I)
 service_correct_reg = re.compile("\s*\[.*\]")
@@ -394,7 +395,15 @@ def makeRequiredFields(langs_support=[]):
             
     if CONFIG_SERVICES and isinstance(CONFIG_SERVICES, (dict,)):
         if CONFIG_SETTINGS and CONFIG_SETTINGS.get("help_text_services"):
-            params["service"] = ([service_key+" "+service_prop.get("help","") for service_key, service_prop in CONFIG_SERVICES.items() if service_prop.get("show_service", False)], {"default": "GoogleTranslator"},)
+            services_combo = []
+            for service_key, service_prop in CONFIG_SERVICES.items():
+                if service_prop.get("show_service", False):
+                    service_help = service_prop.get("help","")
+                    service_help = remove_brackets_reg.sub("", service_help)
+                    service_val = f"{service_key} [{service_help}]" if service_help.strip() != "" else service_key
+                    services_combo.append(service_val)
+                    
+            params["service"] = (services_combo,{"default": "GoogleTranslator"})
         else:
             params["service"] = (list(filter(lambda s: CONFIG_SERVICES[s].get("show_service", False),CONFIG_SERVICES.keys())), {"default": "GoogleTranslator"},)
     else:
