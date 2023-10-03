@@ -1253,7 +1253,15 @@ function PainterWidget(node, inputName, inputData, app) {
   };
 
   node.onResize = function () {
-    this.size = [530, 570];
+    let [w, h] = this.size;
+    if (w <= 531) w = 530;
+    if (h <= 571) h = 570;
+
+    if (w > 531) {
+      h = w + 40;
+    }
+
+    this.size = [w, h];
   };
   node.onDrawBackground = function (ctx) {
     if (!this.flags.collapsed) {
