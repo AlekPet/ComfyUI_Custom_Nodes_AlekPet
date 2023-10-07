@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.09.02
+ * Version: 2023.10.07
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -10,6 +10,7 @@ import { api } from "/scripts/api.js";
 import { fabric } from "../../lib/fabric.js";
 
 // ================= FUNCTIONS ================
+const painters_settings_json = false; // save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
 const removeIcon =
   "data:image/svg+xml,%3Csvg version='1.1' id='Ebene_1' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3C/defs%3E%3Crect x='125.3' y='264.6' width='350.378' height='349.569' style='fill: rgb(237, 0, 0); stroke: rgb(197, 2, 2);' rx='58.194' ry='58.194'%3E%3C/rect%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18' rx='32.772' ry='32.772'%3E%3C/rect%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179' rx='32.772' ry='32.772'%3E%3C/rect%3E%3C/g%3E%3C/svg%3E";
 
@@ -65,8 +66,11 @@ function showHide({ elements = [], hide = null }) {
 
 window.LS_Painters = {};
 function LS_Save() {
-  // console.log("Save:", LS_Painters);
-  localStorage.setItem("ComfyUI_Painter", JSON.stringify(LS_Painters));
+  if (painters_settings_json) {
+    saveData();
+  } else {
+    localStorage.setItem("ComfyUI_Painter", JSON.stringify(LS_Painters));
+  }
 }
 // ================= END FUNCTIONS ================
 
@@ -1003,24 +1007,32 @@ class Painter {
     // ----- Canvas Events -----
   }
 
-  // Save canvas data to localStorage
-  canvasSaveLocalStorage() {
+  // Save canvas data to localStorage or JSON
+  canvasSaveSettingsPainter() {
     try {
       const data = this.canvas.toJSON();
-      LS_Painters[this.node.name].canvas_settings = JSON.stringify(data);
-      LS_Save();
+      if (LS_Painters && LS_Painters.hasOwnProperty(this.node.name)) {
+        LS_Painters[this.node.name].canvas_settings = painters_settings_json
+          ? data
+          : JSON.stringify(data);
+        LS_Save();
+      }
     } catch (e) {
       console.error(e);
     }
   }
-  // Load canvas data to localStorage
-  canvasLoadLocalStorage(json) {
+  // Load canvas data from localStorage or JSON
+  canvasLoadSettingPainter() {
     try {
       if (
-        json.hasOwnProperty("canvas_settings") &&
-        json.canvas_settings.length > 0
+        LS_Painters &&
+        LS_Painters.hasOwnProperty(this.node.name) &&
+        LS_Painters[this.node.name].hasOwnProperty("canvas_settings")
       ) {
-        const data = JSON.parse(LS_Painters[this.node.name].canvas_settings);
+        const data = painters_settings_json
+          ? LS_Painters[this.node.name].canvas_settings
+          : JSON.parse(LS_Painters[this.node.name].canvas_settings);
+
         this.canvas.loadFromJSON(data, () => {
           this.canvas.renderAll();
           this.bgColor.value = getColorHEX(data.background).color || "";
@@ -1095,7 +1107,7 @@ class Painter {
             });
             this.canvas.renderAll();
           }
-          this.canvasSaveLocalStorage();
+          this.canvasSaveSettingsPainter();
         } else {
           alert(resp.status + " - " + resp.statusText);
         }
@@ -1263,6 +1275,7 @@ function PainterWidget(node, inputName, inputData, app) {
 
     this.size = [w, h];
   };
+
   node.onDrawBackground = function (ctx) {
     if (!this.flags.collapsed) {
       node.painter.canvas.wrapperEl.hidden = false;
@@ -1317,11 +1330,78 @@ function PainterWidget(node, inputName, inputData, app) {
 // ================= END CREATE PAINTER WIDGET ============
 
 // ================= CREATE EXTENSION ================
+async function saveData() {
+  try {
+    const rawResponse = await fetch("/alekpet/save_node_settings", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(LS_Painters),
+    });
+    if (rawResponse.status !== 200)
+      throw new Error(`Error painter save settings: ${rawResponse.statusText}`);
+  } catch (e) {
+    console.log(`Error painter save settings: ${e}`);
+  }
+}
+
+async function loadData() {
+  try {
+    const rawResponse = await api.fetchApi("/alekpet/loading_node_settings");
+    if (rawResponse.status !== 200)
+      throw new Error(`Error painter save settings: ${rawResponse.statusText}`);
+
+    const data = await rawResponse?.json();
+    if (!data) return {};
+
+    return data.settings_nodes;
+  } catch (e) {
+    console.log(`Error painter load settings: ${e}`);
+    return {};
+  }
+}
+
+function createMessage(title, decriptions, parent, func) {
+  const message = document.createElement("div");
+  message.className = "show_message_info";
+  message.style = `width: 300px;
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+display: flex;
+background: #3b2222;
+z-index: 9999;
+justify-content: center;
+flex-direction: column;
+align-items: stretch;
+text-align: center;
+border-radius: 6px;
+box-shadow: 3px 3px 6px #141414;
+border: 1px solid #f91b1b;
+color: white; 
+padding: 6px;
+opacity: .8;
+font-family: sans-serif;
+line-height: 1.5`;
+  message.innerHTML = `<div style="background: #8f210f; padding: 5px; border-radius: 6px; margin-bottom: 5px;">${title}</div><div>${decriptions}</div>`;
+  parent && parent?.nodeType && parent.nodeType === 1
+    ? parent.appendChild(message)
+    : document.body.appendChild(message);
+
+  if (func && typeof func === "function") {
+    func.apply();
+  }
+
+  return message;
+}
+
 app.registerExtension({
   name: "Comfy.PainterNode",
   async init(app) {
-    // Any initial setup to run as soon as the page loads
-    let style = document.createElement("style");
+    const style = document.createElement("style");
     style.innerText = `.panelPaintBox {
       position: absolute;
       width: 100%;
@@ -1496,16 +1576,35 @@ app.registerExtension({
           painter_ls.hasOwnProperty("objects_canvas") &&
             delete painter_ls.objects_canvas; // remove old property
           n.setSize([530, 570]);
-          n.painter.canvasLoadLocalStorage(painter_ls);
+          n.painter.canvasLoadSettingPainter();
         }
       });
     }
   },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === "PainterNode") {
-      const onNodeCreated = nodeType.prototype.onNodeCreated;
+      // Get settings node
+      if (painters_settings_json) {
+        const message = createMessage(
+          "Loading",
+          "Please wait, <span style='font-weight: bold; color: orange'>Painter node</span> settings are loading. Loading times may take a long time if large images have been added to the canvas!"
+        );
+        LS_Painters = await loadData();
+        document.body.removeChild(message);
+      } else {
+        LS_Painters =
+          localStorage.getItem("ComfyUI_Painter") &&
+          JSON.parse(localStorage.getItem("ComfyUI_Painter"));
 
-      nodeType.prototype.onNodeCreated = function () {
+        if (!LS_Painters || LS_Painters === undefined) {
+          localStorage.setItem("ComfyUI_Painter", JSON.stringify({}));
+          LS_Painters = JSON.parse(localStorage.getItem("ComfyUI_Painter"));
+        }
+      }
+
+      // Create node
+      const onNodeCreated = nodeType.prototype.onNodeCreated;
+      nodeType.prototype.onNodeCreated = async function () {
         const r = onNodeCreated
           ? onNodeCreated.apply(this, arguments)
           : undefined;
@@ -1518,19 +1617,11 @@ app.registerExtension({
 
         console.log(`Create PainterNode: ${nodeName}`);
 
-        LS_Painters =
-          localStorage.getItem("ComfyUI_Painter") &&
-          JSON.parse(localStorage.getItem("ComfyUI_Painter"));
-        if (!LS_Painters) {
-          localStorage.setItem("ComfyUI_Painter", JSON.stringify({}));
-          LS_Painters = JSON.parse(localStorage.getItem("ComfyUI_Painter"));
-        }
-
-        if (!Object.hasOwn(LS_Painters, nodeNamePNG)) {
+        if (LS_Painters && !Object.hasOwn(LS_Painters, nodeNamePNG)) {
           LS_Painters[nodeNamePNG] = {
             undo_history: [],
             redo_history: [],
-            canvas_settings: [],
+            canvas_settings: { background: "#000000" },
             settings: {},
           };
           LS_Save();
