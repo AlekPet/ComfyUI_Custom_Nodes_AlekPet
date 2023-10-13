@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.10.07
+ * Version: 2023.10.13
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -1635,6 +1635,65 @@ app.registerExtension({
         this.setSize([530, 570]);
 
         return r;
+      };
+
+      // ExtraMenuOptions
+      const getExtraMenuOptions = nodeType.prototype.getExtraMenuOptions;
+      nodeType.prototype.getExtraMenuOptions = function (_, options) {
+        getExtraMenuOptions?.apply(this, arguments);
+        const past_index = options.findIndex(
+            (m) => m?.content === "Paste (Clipspace)"
+          ),
+          past = options[past_index];
+
+        if (!!past) {
+          // Past as image
+          const past_callback = past.callback;
+          past.callback = () => {
+            past_callback.apply(this, arguments);
+            if (!this.imgs.length) return;
+
+            const img_ = new fabric.Image(this.imgs[0], {
+              left: 0,
+              top: 0,
+              angle: 0,
+              strokeWidth: 1,
+            }).scale(0.3);
+            this.painter.canvas.add(img_).renderAll();
+            this.painter.uploadPaintFile(this.painter.node.name);
+            this.painter.canvas.isDrawingMode = false;
+            this.painter.drawning = false;
+          };
+
+          // Past as background
+          options.splice(past_index + 1, 0, {
+            content: "Paste background (Clipspace)",
+            callback: () => {
+              past_callback.apply(this, arguments);
+              if (!this.imgs.length) return;
+
+              const img_ = new fabric.Image(this.imgs[0], {
+                left: 0,
+                top: 0,
+                angle: 0,
+                strokeWidth: 1,
+              });
+
+              this.painter.canvas.setBackgroundImage(
+                img_,
+                () => {
+                  this.painter.canvas.renderAll();
+                  this.painter.uploadPaintFile(this.painter.node.name);
+                },
+                {
+                  scaleX: this.painter.canvas.width / img_.width,
+                  scaleY: this.painter.canvas.height / img_.height,
+                  strokeWidth: 0,
+                }
+              );
+            },
+          });
+        }
       };
     }
   },
