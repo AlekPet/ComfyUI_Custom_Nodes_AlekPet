@@ -623,7 +623,7 @@ class Painter {
           stackPositionObjects(listButtons[index], target);
         } else {
           let buttonSel = listButtons[index];
-          this.locks[buttonSel] = !this[buttonSel];
+          this.locks[buttonSel] = !this.locks[buttonSel];
           target.classList.toggle("active");
         }
       }
