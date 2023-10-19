@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.10.13
+ * Version: 2023.10.19
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -91,6 +91,13 @@ class Painter {
       lockRotation: false,
     };
 
+    this.max_history_steps = 20;
+    this.undo_history = [];
+    this.redo_history = [];
+
+    // this.undo_history = LS_Painters[node.name].undo_history || [];
+    // this.redo_history = LS_Painters[node.name].redo_history || [];
+
     this.fonts = {
       Arial: "arial",
       "Times New Roman": "Times New Roman",
@@ -104,8 +111,6 @@ class Painter {
     this.bringFrontSelected = true;
 
     this.node = node;
-    this.undo_history = LS_Painters[node.name].undo_history || [];
-    this.redo_history = LS_Painters[node.name].redo_history || [];
     this.history_change = false;
     this.canvas = this.initCanvas(canvas);
     this.image = node.widgets.find((w) => w.name === "image");
@@ -157,76 +162,80 @@ class Painter {
   makeElements() {
     const panelPaintBox = document.createElement("div");
     panelPaintBox.innerHTML = `<div class="painter_manipulation_box" f_name="Locks" style="display:none;">
-    <div class="comfy-menu-btns">
-    <button id="lockMovementX" title="Lock move X">Lock X</button>
-    <button id="lockMovementY" title="Lock move Y">Lock Y</button>
-    <button id="lockScalingX" title="Lock scale X">Lock ScaleX</button>
-    <button id="lockScalingY" title="Lock scale Y">Lock ScaleY</button>
-    <button id="lockRotation" title="Lock rotate">Lock Rotate</button>
-    </div>
-    <div class="comfy-menu-btns">
-    <button id="zpos_BringForward" title="Moves an object or a selection up in stack of drawn objects">Bring Forward</button>
-    <button id="zpos_SendBackwards" title="Moves an object or a selection down in stack of drawn objects">Send Backwards</button>
-    <button id="zpos_BringToFront" title="Moves an object or the objects of a multiple selection to the top">Bring Front</button>
-    <button id="zpos_SendToBack" title="Moves an object or the objects of a multiple selection to the bottom">Send Back</button>
-    <button id="zpos_BringFrontSelected" title="Moves an object or the objects of a multiple selection to the top after mouse click" class="${
-      this.bringFrontSelected ? "active" : ""
-    }">Bring Up Always</button>
-    </div>
+        <div class="comfy-menu-btns">
+            <button id="lockMovementX" title="Lock move X">Lock X</button>
+            <button id="lockMovementY" title="Lock move Y">Lock Y</button>
+            <button id="lockScalingX" title="Lock scale X">Lock ScaleX</button>
+            <button id="lockScalingY" title="Lock scale Y">Lock ScaleY</button>
+            <button id="lockRotation" title="Lock rotate">Lock Rotate</button>
+        </div>
+        <div class="comfy-menu-btns">
+            <button id="zpos_BringForward" title="Moves an object or a selection up in stack of drawn objects">Bring Forward</button>
+            <button id="zpos_SendBackwards" title="Moves an object or a selection down in stack of drawn objects">Send Backwards</button>
+            <button id="zpos_BringToFront" title="Moves an object or the objects of a multiple selection to the top">Bring Front</button>
+            <button id="zpos_SendToBack" title="Moves an object or the objects of a multiple selection to the bottom">Send Back</button>
+            <button id="zpos_BringFrontSelected" title="Moves an object or the objects of a multiple selection to the top after mouse click" class="${
+              this.bringFrontSelected ? "active" : ""
+            }">Bring Up Always</button>
+        </div>
     </div>
     <div class="painter_drawning_box_property" style="display: block;">
-    <div class="property_textBox comfy-menu-btns" style="display:none;">
-    <button id="prop_fontStyle" title="Italic" style="font-style:italic;">I</button>
-    <button id="prop_fontWeight" title="Bold" style="font-weight:bold;">B</button>
-    <button id="prop_underline" title="Underline" style="text-decoration: underline;">U</button>
-    <div class="separator"></div>
-    <select class="font_family_select"></select>
-    </div>
+        <div class="property_textBox comfy-menu-btns" style="display:none;">
+            <button id="prop_fontStyle" title="Italic" style="font-style:italic;">I</button>
+            <button id="prop_fontWeight" title="Bold" style="font-weight:bold;">B</button>
+            <button id="prop_underline" title="Underline" style="text-decoration: underline;">U</button>
+            <div class="separator"></div>
+            <select class="font_family_select"></select>
+        </div>
     </div>
     <div class="painter_drawning_box">
-    <div class="painter_mode_box fieldset_box comfy-menu-btns" f_name="Mode">
-    <button id="painter_change_mode" title="Enable selection mode">Selection</button>
-    <div class="list_objects_panel" style="display:none;">
-    <div class="list_objects_align">
-    <div class="list_objects_panel__items"></div>
-    <div class="painter_shapes_box_modify"></div>
+        <div class="painter_mode_box fieldset_box comfy-menu-btns" f_name="Mode">
+            <button id="painter_change_mode" title="Enable selection mode">Selection</button>
+            <div class="list_objects_panel" style="display:none;">
+                <div class="list_objects_align">
+                    <div class="list_objects_panel__items"></div>
+                    <div class="painter_shapes_box_modify"></div>
+                </div>
+            </div>
+        </div>
+        <div class="painter_drawning_elements" style="display:block;">
+            <div class="painter_grid_style painter_shapes_box fieldset_box comfy-menu-btns" f_name="Shapes">
+                <button class="active" data-shape='Brush' title="Brush">B</button>
+                <button data-shape='Erase' title="Erase">E</button>
+                <button data-shape='Circle' title="Draw circle">◯</button>
+                <button data-shape='Rect' title="Draw rectangle">▭</button>
+                <button data-shape='Triangle' title="Draw triangle">△</button>
+                <button data-shape='Line' title="Draw line">|</button>
+                <button data-shape='Image' title="Add picture">P</button>
+                <button data-shape='Textbox' title="Add text">T</button>
+            </div>
+            <div class="painter_colors_box fieldset_box" f_name="Colors">
+                <div class="painter_grid_style painter_colors_alpha">
+                    <span>Fill</span><span>Alpha</span>
+                    <input id="fillColor" type="color" value="#FF00FF" title="Fill color">
+                    <input id="fillColorTransparent" type="number" max="1.0" min="0" step="0.05" value="0.0" title="Alpha fill value">
+                </div>
+                <div class="painter_grid_style painter_colors_alpha">
+                    <span>Stroke</span><span>Alpha</span>
+                    <input id="strokeColor" type="color" value="#FFFFFF" title="Stroke color">    
+                    <input id="strokeColorTransparent" type="number" max="1.0" min="0" step="0.05" value="1.0" title="Stroke alpha value">
+                </div>
+            </div>
+            <div class="painter_stroke_box fieldset_box" f_name="Brush width">
+                <input id="strokeWidth" type="number" min="0" max="150" value="5" step="1" title="Brush width">
+            </div>
+            <div class="painter_grid_style painter_bg_setting fieldset_box comfy-menu-btns" f_name="Background">
+                <input id="bgColor" type="color" value="#000000" data-label="BG" title="Background color">
+                <button bgImage="img_load" title="Add background image">IMG</button>
+                <button bgImage="img_reset" title="Remove background image">IMG <span style="color: var(--error-text);">✖</span></button>
+            </div>
+        </div>
     </div>
-    </div>
-    </div>
-    <div class="painter_drawning_elements" style="display:block;">
-    <div class="painter_grid_style painter_shapes_box fieldset_box comfy-menu-btns" f_name="Shapes">
-    <button class="active" data-shape='Brush' title="Brush">B</button>
-    <button data-shape='Erase' title="Erase">E</button>
-    <button data-shape='Circle' title="Draw circle">◯</button>
-    <button data-shape='Rect' title="Draw rectangle">▭</button>
-    <button data-shape='Triangle' title="Draw triangle">△</button>
-    <button data-shape='Line' title="Draw line">|</button>
-    <button data-shape='Image' title="Add picture">P</button>
-    <button data-shape='Textbox' title="Add text">T</button>
-    </div>
-    <div class="painter_colors_box fieldset_box" f_name="Colors">
-    <div class="painter_grid_style painter_colors_alpha">
-    <span>Fill</span><span>Alpha</span>
-    <input id="fillColor" type="color" value="#FF00FF" title="Fill color">
-    <input id="fillColorTransparent" type="number" max="1.0" min="0" step="0.05" value="0.0" title="Alpha fill value">
-    </div>
-    <div class="painter_grid_style painter_colors_alpha">
-    <span>Stroke</span><span>Alpha</span>
-    <input id="strokeColor" type="color" value="#FFFFFF" title="Stroke color">    
-    <input id="strokeColorTransparent" type="number" max="1.0" min="0" step="0.05" value="1.0" title="Stroke alpha value">
-    </div>
-    </div>
-    <div class="painter_stroke_box fieldset_box" f_name="Brush width">
-    <input id="strokeWidth" type="number" min="0" max="150" value="5" step="1" title="Brush width">
-    </div>
-    <div class="painter_grid_style painter_bg_setting fieldset_box comfy-menu-btns" f_name="Background">
-    <input id="bgColor" type="color" value="#000000" data-label="BG" title="Background color">
-    <button bgImage="img_load" title="Add background image">IMG</button>
-    <button bgImage="img_reset" title="Remove background image">IMG <span style="color: var(--error-text);">✖</span></button>
-    </div>
-    </div>
-    <div>
-    </div>`;
+    <div class="painter_history_panel comfy-menu-btns">
+      <button id="history_undo" title="Undo" disabled>⟲</button>
+      <button id="history_redo" title="Redo" disabled>⟳</button>
+    </div> 
+    `;
 
     // Main panelpaint box
     panelPaintBox.className = "panelPaintBox";
@@ -241,6 +250,10 @@ class Painter {
     );
     this.property_textBox =
       this.painter_drawning_box_property.querySelector(".property_textBox");
+
+    [this.undo_button, this.redo_button] = panelPaintBox.querySelectorAll(
+      ".painter_history_panel button"
+    );
 
     // Modify in change mode
     this.painter_shapes_box_modify = panelPaintBox.querySelector(
@@ -308,10 +321,10 @@ class Painter {
 
   clearCanvas() {
     this.canvas.clear();
-    this.canvas.backgroundColor = this.bgColor.value;
+    this.canvas.backgroundColor = "#000000";
     this.canvas.requestRenderAll();
-    LS_Painters[this.node.name].canvas_settings = [];
-    LS_Save();
+    this.addToHistory();
+    this.canvasSaveSettingsPainter();
   }
 
   viewListObjects(list_body) {
@@ -623,7 +636,7 @@ class Painter {
           stackPositionObjects(listButtons[index], target);
         } else {
           let buttonSel = listButtons[index];
-          this.locks[buttonSel] = !this[buttonSel];
+          this.locks[buttonSel] = !this.locks[buttonSel];
           target.classList.toggle("active");
         }
       }
@@ -766,6 +779,14 @@ class Painter {
             break;
         }
       }
+    };
+
+    // History undo, redo
+    this.undo_button.onclick = (e) => {
+      this.undo();
+    };
+    this.redo_button.onclick = (e) => {
+      this.redo();
     };
 
     // Event inputs stroke, fill colors and transparent
@@ -989,6 +1010,7 @@ class Painter {
         if (!["Brush", "Erase", "Image", "Textbox"].includes(this.type))
           this.canvas.isDrawingMode = false;
 
+        this.addToHistory();
         this.canvas.renderAll();
         this.uploadPaintFile(this.node.name);
       },
@@ -1001,10 +1023,28 @@ class Painter {
       // Object modify event
       "object:modified": () => {
         this.canvas.isDrawingMode = false;
+        this.canvas.renderAll();
         this.uploadPaintFile(this.node.name);
       },
     });
     // ----- Canvas Events -----
+  }
+
+  addToHistory() {
+    // Undo / rendo
+    const objs = this.canvas.toJSON();
+
+    if (this.undo_history.length > this.max_history_steps) {
+      this.undo_history.shift();
+      console.log(
+        `[Info ${this.node.name}]: History saving step limit reached! Limit steps = ${this.max_history_steps}.`
+      );
+    }
+    this.undo_history.push(objs);
+    this.redo_history = [];
+    if (this.undo_history.length) {
+      this.undo_button.disabled = false;
+    }
   }
 
   // Save canvas data to localStorage or JSON
@@ -1021,6 +1061,14 @@ class Painter {
       console.error(e);
     }
   }
+
+  setCanvasLoadData(data) {
+    this.canvas.loadFromJSON(data, () => {
+      this.canvas.renderAll();
+      this.bgColor.value = getColorHEX(data.background).color || "";
+    });
+  }
+
   // Load canvas data from localStorage or JSON
   canvasLoadSettingPainter() {
     try {
@@ -1032,14 +1080,39 @@ class Painter {
         const data = painters_settings_json
           ? LS_Painters[this.node.name].canvas_settings
           : JSON.parse(LS_Painters[this.node.name].canvas_settings);
-
-        this.canvas.loadFromJSON(data, () => {
-          this.canvas.renderAll();
-          this.bgColor.value = getColorHEX(data.background).color || "";
-        });
+        this.setCanvasLoadData(data);
+        this.addToHistory();
       }
     } catch (e) {
       console.error(e);
+    }
+  }
+
+  undo() {
+    if (this.undo_history.length > 0) {
+      this.undo_button.disabled = false;
+      this.redo_button.disabled = false;
+      this.redo_history.push(this.undo_history.pop());
+
+      const content = this.undo_history[this.undo_history.length - 1];
+      this.setCanvasLoadData(content);
+      this.canvas.renderAll();
+    } else {
+      this.undo_button.disabled = true;
+    }
+  }
+
+  redo() {
+    if (this.redo_history.length > 0) {
+      this.redo_button.disabled = false;
+      this.undo_button.disabled = false;
+
+      const content = this.redo_history.pop();
+      this.undo_history.push(content);
+      this.setCanvasLoadData(content);
+      this.canvas.renderAll();
+    } else {
+      this.redo_button.disabled = true;
     }
   }
 
@@ -1561,6 +1634,27 @@ app.registerExtension({
    .list_objects_align > div{
     flex: 1;
    }
+   .painter_history_panel {
+    position: absolute;
+    padding: 4px;
+    display: flex;
+    gap: 4px;
+    right: 0;
+    opacity: 0.8;
+    flex-direction: row;
+    width: fit-content;
+  }
+  .painter_history_panel > button {
+    background: transparent;
+  }
+  .painter_history_panel > button:hover:enabled {
+    opacity: 1;
+    border-color: var(--error-text);
+    color: var(--error-text) !important;
+  }
+  .painter_history_panel > button:disabled {
+    opacity: .5;
+  }
     `;
     document.head.appendChild(style);
   },
@@ -1695,6 +1789,7 @@ app.registerExtension({
           });
         }
       };
+      // end - ExtraMenuOptions
     }
   },
 });
