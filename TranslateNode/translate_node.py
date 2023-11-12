@@ -16,9 +16,9 @@ def translate(prompt, srcTrans=None, toTrans=None):
 
     translate_text_prompt = ''
     if prompt and not empty_str.match(prompt):
-        translate_text_prompt = vars(translator.translate(prompt, src=srcTrans, dest=toTrans))
+        translate_text_prompt = translator.translate(prompt, src=srcTrans, dest=toTrans)
     
-    return translate_text_prompt.get('text', '') if 'text' in translate_text_prompt else ''
+    return translate_text_prompt.text if hasattr(translate_text_prompt, 'text') else ''
 
 class TranslateCLIPTextEncodeNode:
     

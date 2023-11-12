@@ -26,6 +26,7 @@ DEBUG = False
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
 humanReadableTextReg = re.compile('(?<=[a-z])([A-Z])|(?<=[A-Z])([A-Z][a-z]+)')
+module_name_cut_version = re.compile("[>=<]")
 
 def log(*text):
     if DEBUG:
@@ -34,20 +35,26 @@ def log(*text):
 
 def check_is_installed(module_name):
     try:
-        mod = importlib.util.find_spec(module_name[:module_name.find('=')])
+        module_name_cut_index = module_name_cut_version.search(module_name).start()
+        mod = importlib.util.find_spec(module_name[:module_name_cut_index])
     except ModuleNotFoundError:
         return False
 
     return mod is not None
 
 def module_install(module_name, action='install'):
+    if not module_name and not action:
+        log(f'    [!] Action, module_name arguments is not corrects!')
+        return
+    
     command = f'"{python}" -m pip {action} {module_name}'
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=os.environ )
+    action_capitalize = action.capitalize()
 
     if result.returncode != 0:
-        log(f'    [E] Install module {module_name} is fail! Error code: {result.returncode}')
+        log(f'    [E] {action_capitalize} module {module_name} is fail! Error code: {result.returncode}')
 
-    log(f'    [*] Install module "{module_name}" successful')
+    log(f'    [*] {action_capitalize} module "{module_name}" successful')
 
 
 def checkModules(nodeElement):
@@ -57,6 +64,11 @@ def checkModules(nodeElement):
         with open(file_requir, 'r', encoding="utf-8") as r:
             for m in r.readlines():
                 m = m.strip()
+                
+                if m.startswith("#"):
+                    log(f"    [!] Found comment skipping: '{m}'")
+                    continue
+                
                 log(f"    [*] Check installed module '{m}'...")
                 check_m = check_is_installed(m)
                 if not check_m:
