@@ -758,6 +758,16 @@ class Painter {
         switch (typeEvent) {
           case "img_load":
             this.bgImageFile.func = (img) => {
+              if (confirm("Change canvas size equal image?")) {
+                this.canvas.setDimensions({
+                  width: img.width,
+                  height: img.height,
+                });
+                this.canvas.renderAll();
+                app.graph.setDirtyCanvas(true);
+                //this.node.setSize([img.width, img.height]);
+              }
+
               this.canvas.setBackgroundImage(
                 img,
                 () => {
