@@ -4,12 +4,13 @@ import { api } from "/scripts/api.js";
 const properties_widget = {};
 const findWidget = (node, name, attr = "name") => node.widgets.find((w) => w[attr] === name);
 const doesInputWithNameExist = (node, name) => (node.inputs ? node.inputs.some((input) => input.name === name) : false);
+const CONVERTED_TYPE = "converted-widget";
 
 /*  Thanks "TinyTerra" for the toggleWidget function, which hides the widget.
  *  Github: https://github.com/TinyTerra
  *  Code line: https://github.com/TinyTerra/ComfyUI_tinyterraNodes/blob/main/js/ttNdynamicWidgets.js#L9
  */
-function toggleWidget(node, widget, show = false, button = {}) {
+function toggleWidget(node, widget, show = false, button = {}, suffix = "") {
   if (!widget || doesInputWithNameExist(node, widget.name)) return;
 
   if (!properties_widget[widget.name]) {
@@ -25,7 +26,7 @@ function toggleWidget(node, widget, show = false, button = {}) {
     button.value = show ? `${textButton}_show` : `${textButton}_hide`;
   }
 
-  widget.type = show ? properties_widget[widget.name].origType : "hidden_" + widget.name;
+  widget.type = show ? properties_widget[widget.name].origType : CONVERTED_TYPE + suffix;
   widget.computeSize = show ? properties_widget[widget.name].origComputeSize : () => [0, -4];
 
   widget.linkedWidgets?.forEach((w) => toggleWidget(node, w, ":" + widget.name, show));
