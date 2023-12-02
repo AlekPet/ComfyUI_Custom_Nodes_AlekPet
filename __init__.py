@@ -1,5 +1,5 @@
 # Title: ComfyUI Install Customs Nodes and javascript files
-# Author: AlekPet 
+# Author: AlekPet
 # Version: 2023.07.17
 
 import os
@@ -17,7 +17,7 @@ python = sys.executable
 extension_folder = os.path.dirname(os.path.realpath(__file__))
 
 # ComfyUI folders web
-folder_web = os.path.join(os.path.dirname(os.path.realpath(__main__.__file__)), "web")
+folder_web = os.path.join(os.path.dirname(    os.path.realpath(__main__.__file__)), "web")
 folder_web_extensions = os.path.join(folder_web, "extensions")
 folder__web_lib = os.path.join(folder_web, 'lib')
 extension_dirs = ["AlekPet_Nodes",]
@@ -27,6 +27,7 @@ NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
 humanReadableTextReg = re.compile('(?<=[a-z])([A-Z])|(?<=[A-Z])([A-Z][a-z]+)')
 module_name_cut_version = re.compile("[>=<]")
+
 
 def log(*text):
     if DEBUG:
@@ -42,13 +43,14 @@ def check_is_installed(module_name):
 
     return mod is not None
 
+
 def module_install(module_name, action='install'):
     if not module_name and not action:
         log(f'    [!] Action, module_name arguments is not corrects!')
         return
-    
+
     command = f'"{python}" -m pip {action} {module_name}'
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=os.environ )
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=os.environ)
     action_capitalize = action.capitalize()
 
     if result.returncode != 0:
@@ -64,18 +66,18 @@ def checkModules(nodeElement):
         with open(file_requir, 'r', encoding="utf-8") as r:
             for m in r.readlines():
                 m = m.strip()
-                
+
                 if m.startswith("#"):
                     log(f"    [!] Found comment skipping: '{m}'")
                     continue
-                
+
                 log(f"    [*] Check installed module '{m}'...")
                 check_m = check_is_installed(m)
                 if not check_m:
                     module_install(m)
                 else:
-                    log(f"    [*] Module '{m}' is installed!")                  
-    
+                    log(f"    [*] Module '{m}' is installed!")
+
 
 def addFilesToFolder(folderSrc, folderDst, nodeElement):
     if os.path.exists(folderSrc):
@@ -99,17 +101,18 @@ def removeFilesOldFolder(folderSrc, folderDst, nodeElement):
     if os.path.exists(folderSrc):
         folder = os.path.split(folderDst)[-1]
         log(f"  -> Find old js files and remove in '{folder}' folder")
-        find_files = filecmp.dircmp(folderDst,folderSrc)
+        find_files = filecmp.dircmp(folderDst, folderSrc)
         if find_files.common:
             listFiles = list()
             listFiles.extend(f for f in find_files.common if f not in listFiles)
 
             log(f"    [*] Found old files in '{folder}' folder: {', '.join(listFiles)}")
-            for f in listFiles:              
+            for f in listFiles:
                 dst_f = os.path.join(folderDst, f)
                 if os.path.exists(dst_f):
                     log(f"    [*] File '{f}' is removed.")
                     os.remove(dst_f)
+
 
 def addComfyUINodesToMapping(nodeElement):
     log(f"  -> Find class execute node <{nodeElement}>, add NODE_CLASS_MAPPINGS ...")
@@ -119,51 +122,64 @@ def addComfyUINodesToMapping(nodeElement):
         # Find files extensions .py
         if os.path.isfile(os.path.join(node_folder, f)) and not f.startswith('__') and ext[1] == '.py' and ext[0] != '__init__':
             # remove extensions .py
-            module_without_py = f.replace(ext[1],'')
+            module_without_py = f.replace(ext[1], '')
             # Import module
             spec = importlib.util.spec_from_file_location(module_without_py, os.path.join(node_folder, f))
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            classes_names = list(filter(lambda p: callable(getattr(module, p)) and p.find('Node')!=-1, dir(module)))
+            classes_names = list(filter(lambda p: callable(getattr(module, p)) and p.find('Node') != -1, dir(module)))
             for class_module_name in classes_names:
-                # Check module 
+                # Check module
                 if class_module_name and class_module_name not in NODE_CLASS_MAPPINGS.keys():
                     log(f"    [*] Class node found '{class_module_name}' add to NODE_CLASS_MAPPINGS...")
                     NODE_CLASS_MAPPINGS.update({
-                        class_module_name:getattr(module, class_module_name)
-                        })
+                        class_module_name: getattr(module, class_module_name)
+                    })
                     NODE_DISPLAY_NAME_MAPPINGS.update({
                         class_module_name: humanReadableTextReg.sub(" \\1\\2", class_module_name)
-                        })
+                    })
+
 
 def checkFolderIsset():
     log(f"*  Check and make not isset dirs...")
     for d in extension_dirs:
-        dir_= os.path.join(folder_web_extensions, d)
+        dir_ = os.path.join(folder_web_extensions, d)
         if not os.path.exists(dir_):
             log(f"* Dir <{d}> is not found, create...")
             os.mkdir(dir_)
             log(f"* Dir <{d}> created!")
-   
+
+
+def printColorInfo(text, color='\033[92m'):
+    CLEAR = '\033[0m'
+    print(f"{color}{text}{CLEAR}")
+
+
 def installNodes():
     log(f"\n-------> AlekPet Node Installing [DEBUG] <-------")
-    checkFolderIsset()   
+    printColorInfo(f"### [START] Comflyui AlekPet Nodes ###", "\033[1;35m")
+    checkFolderIsset()
     web_extensions_dir = os.path.join(folder_web_extensions, extension_dirs[0])
-    
+
     for nodeElement in os.listdir(extension_folder):
         if not nodeElement.startswith('__') and nodeElement.endswith('Node') and os.path.isdir(os.path.join(extension_folder, nodeElement)):
             log(f"* Node <{nodeElement}> is found, installing...")
             js_folder = os.path.join(extension_folder, nodeElement, "js")
             lib_folder = os.path.join(extension_folder, nodeElement, "lib")
-            
+
             # Removes old files
             removeFilesOldFolder(js_folder, folder_web_extensions, nodeElement)
-            
+
             # Add missing or updates files
-            addFilesToFolder(js_folder, web_extensions_dir, nodeElement)             
+            addFilesToFolder(js_folder, web_extensions_dir, nodeElement)
             addFilesToFolder(lib_folder, folder__web_lib, nodeElement)
+
+            # Loading node info
+            printColorInfo(f"Node -> {nodeElement} [Loading]")
 
             checkModules(nodeElement)
             addComfyUINodesToMapping(nodeElement)
-            
+    printColorInfo(f"### [END] Comflyui AlekPet Nodes ###", "\033[1;35m")
+
+
 installNodes()
