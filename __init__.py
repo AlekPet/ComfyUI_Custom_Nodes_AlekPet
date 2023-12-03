@@ -1,6 +1,6 @@
 # Title: ComfyUI Install Customs Nodes and javascript files
 # Author: AlekPet
-# Version: 2023.07.17
+# Version: 2023.12.03
 
 import os
 import importlib.util
@@ -157,7 +157,7 @@ def printColorInfo(text, color='\033[92m'):
 
 def installNodes():
     log(f"\n-------> AlekPet Node Installing [DEBUG] <-------")
-    printColorInfo(f"### [START] Comflyui AlekPet Nodes ###", "\033[1;35m")
+    printColorInfo(f"### [START] ComfyUI AlekPet Nodes ###", "\033[1;35m")
     checkFolderIsset()
     web_extensions_dir = os.path.join(folder_web_extensions, extension_dirs[0])
 
@@ -179,7 +179,7 @@ def installNodes():
 
             checkModules(nodeElement)
             addComfyUINodesToMapping(nodeElement)
-    printColorInfo(f"### [END] Comflyui AlekPet Nodes ###", "\033[1;35m")
+    printColorInfo(f"### [END] ComfyUI AlekPet Nodes ###", "\033[1;35m")
 
 
 installNodes()
