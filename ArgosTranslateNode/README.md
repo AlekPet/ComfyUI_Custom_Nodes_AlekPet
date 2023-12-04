@@ -1,13 +1,16 @@
-# Argos Translate nodes for ComfyUI
+# Argos Translate **offline** translation nodes for ComfyUI,translate promt from other languages into english.
 
-Custom nodes for ComfyUI, translate promt from other languages into english
+### Note: Offline translate after load language package
+
+**Supported languages:**
+Arabic, Azerbaijani, Catalan, Chinese, Czech, Danish, Dutch, English, Esperanto, Finnish, French, German, Greek, Hebrew, Hindi, Hungarian, Indonesian, Irish, Italian, Japanese, Korean, Persian, Polish, Portuguese, Russian, Slovak, Spanish, Swedish, Turkish, Ukrainian
 
 > Includes:
 > **ArgosTranslateCLIPTextEncodeNode** - translate text, and return CONDITIONING
 >
 > **ArgosTranslateTextNode** - translte text and return text (STRING)
 
-Used module **Argos Translate**: https://github.com/argosopentech/argos-translate
+U**sed module **Argos Translate**: https://github.com/argosopentech/argos-translate
 
 ## Image:
 
