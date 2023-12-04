@@ -8,9 +8,9 @@ Arabic, Azerbaijani, Catalan, Chinese, Czech, Danish, Dutch, English, Esperanto,
 > Includes:
 > **ArgosTranslateCLIPTextEncodeNode** - translate text, and return CONDITIONING
 >
-> **ArgosTranslateTextNode** - translte text and return text (STRING)
+> **ArgosTranslateTextNode** - translate text and return text (STRING)
 
-U**sed module **Argos Translate**: https://github.com/argosopentech/argos-translate
+__Used module__ **Argos Translate**: https://github.com/argosopentech/argos-translate
 
 ## Image:
 
