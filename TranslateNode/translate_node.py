@@ -1,3 +1,4 @@
+import json
 from server import PromptServer
 from aiohttp import web
 from googletrans import Translator, LANGUAGES
@@ -8,17 +9,18 @@ translator = Translator()
 @PromptServer.instance.routes.post("/alekpet/translate_manual")
 async def translate_manual(request):
     json_data =  await request.json()
+    prompt = json_data.get("prompt", "")
+    
     if "prompt" in json_data and "srcTrans" in json_data and "toTrans" in json_data:
-        prompt = json_data.get("prompt","")
-        srcTrans = json_data.get("srcTrans", None)
-        toTrans = json_data.get("toTrans", None)
+        prompt = json_data.get("prompt")
+        srcTrans = json_data.get("srcTrans")
+        toTrans = json_data.get("toTrans")
+      
+        translate_text_prompt = translate(prompt, srcTrans, toTrans)
     
-        if prompt and prompt.strip() !="" and srcTrans is not None and toTrans is not None:
-            translate_text_prompt = translator.translate(prompt, src=srcTrans, dest=toTrans)
-    
-            return web.json_response({"translate_prompt": translate_text_prompt}) 
+        return web.json_response({"translate_prompt": translate_text_prompt}) 
        
-    return web.json_response({"translate_prompt": "No translate..."})
+    return web.json_response({"translate_prompt": prompt})
 
 
 def translate(prompt, srcTrans=None, toTrans=None):
@@ -42,7 +44,7 @@ class TranslateCLIPTextEncodeNode:
             "required": {
                 "from_translate": (['auto']+list(LANGUAGES.keys()), {"default": "auto"}),
                 "to_translate": (list(LANGUAGES.keys()), {"default": "en"} ),
-                "manual_translate": (["on", "off"], {"default": "off"} ),             
+                "manual_translate": (["off","on"], {"default": "off"} ),             
                 "text": ("STRING", {"multiline": True}),
                 "clip": ("CLIP", )
                 }

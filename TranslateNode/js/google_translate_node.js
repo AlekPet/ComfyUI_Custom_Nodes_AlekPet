@@ -7,27 +7,26 @@ const findWidget = (node, name, attr = "name") =>
 function manual_translate_prompt() {
   const node = this,
     // Widgets
-    button_manual_translate = findWidget(node, "button_manual_translate"),
+    button_manual_translate = findWidget(node, "Manual Trasnlate"),
     widget_from_translate = findWidget(node, "from_translate"),
     widget_to_translate = findWidget(node, "to_translate"),
     manual_translate = findWidget(node, "manual_translate"),
-    widget_textmultiline = findWidget(node, "text");
+    widget_textmultiline = findWidget(node, "customtext", "type");
 
   button_manual_translate.callback = async function () {
-    if (manual_translate.options.values === "off") {
+    if (manual_translate.value === "off") {
       alert("Manual translate off!");
       return;
     }
 
     try {
-      const formData = new FormData();
-      formData.append("prompt", widget_textmultiline.value);
-      formData.append("srcTrans", widget_from_translate.value);
-      formData.append("toTrans", widget_to_translate.value);
-
-      const responseData = await api.fetchApi("/alekpet/translate_manual", {
+      let responseData = await api.fetchApi("/alekpet/translate_manual", {
         method: "POST",
-        body: formData,
+        body: JSON.stringify({
+          prompt: widget_textmultiline.value,
+          srcTrans: widget_from_translate.value,
+          toTrans: widget_to_translate.value,
+        }),
       });
 
       if (responseData.status != 200) {
@@ -43,7 +42,7 @@ function manual_translate_prompt() {
         return;
       }
 
-      if (responseData.hasOwn("translate_prompt")) {
+      if (responseData.hasOwnProperty("translate_prompt")) {
         widget_textmultiline.value = responseData.translate_prompt;
       }
     } catch (e) {
@@ -75,7 +74,7 @@ app.registerExtension({
 
         node.addWidget(
           "button",
-          "button_manual_translate",
+          "Manual Trasnlate",
           "Manual Trasnlate",
           manual_translate_prompt.bind(node)
         );
