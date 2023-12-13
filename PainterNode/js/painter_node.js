@@ -813,11 +813,11 @@ class Painter {
 
     // Settings
     this.buttonSetCanvasSize.addEventListener("click", () => {
-      function checkSized(prop = "") {
+      function checkSized(prop = "", defaultVal = 512) {
         let inputSize;
         let correct = false;
         while (!correct) {
-          inputSize = +prompt(`Enter canvas ${prop}:`, 512);
+          inputSize = +prompt(`Enter canvas ${prop}:`, defaultVal);
           if (
             Number(inputSize) === inputSize &&
             inputSize % 1 === 0 &&
@@ -829,8 +829,8 @@ class Painter {
         }
       }
 
-      let width = checkSized("width"),
-        height = checkSized("height");
+      let width = checkSized("width", this.currentCanvasSize.width),
+        height = checkSized("height", this.currentCanvasSize.height);
 
       this.setCanvasSize(width, height);
       this.uploadPaintFile(this.node.name);
@@ -1774,7 +1774,6 @@ app.registerExtension({
           const painter_ls = LS_Painters[n.name];
           painter_ls.hasOwnProperty("objects_canvas") &&
             delete painter_ls.objects_canvas; // remove old property
-          //n.setSize([530, 570]);
           n.painter.canvasLoadSettingPainter();
         }
       });
@@ -1842,8 +1841,6 @@ app.registerExtension({
           }
           this.painter.uploadPaintFile(nodeNamePNG);
         }, 1);
-
-        //this.setSize([530, 570]);
 
         return r;
       };
