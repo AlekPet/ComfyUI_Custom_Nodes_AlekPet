@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.10.19
+ * Version: 2023.12.13
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -91,7 +91,7 @@ class Painter {
       lockRotation: false,
     };
 
-    this.currentCanvasSize = [512, 512];
+    this.currentCanvasSize = { width: 512, height: 512 };
 
     this.max_history_steps = 20;
     this.undo_history = [];
@@ -224,8 +224,8 @@ class Painter {
                 </div>
             </div>
             <div class="painter_stroke_box fieldset_box" f_name="Brush/Erase width">
-                <input id="strokeWidth" type="number" min="0" max="150" value="5" step="1" title="Brush width">
-                <input id="eraseWidth" type="number" min="0" max="150" value="5" step="1" title="Erase width">
+                <label for="strokeWidth"><span>Brush:</span><input id="strokeWidth" type="number" min="0" max="150" value="5" step="1" title="Brush width"></label>
+                <label for="eraseWidth"><span>Erase:</span><input id="eraseWidth" type="number" min="0" max="150" value="5" step="1" title="Erase width"></label>
             </div>
             <div class="painter_grid_style painter_bg_setting fieldset_box comfy-menu-btns" f_name="Background">
                 <input id="bgColor" type="color" value="#000000" data-label="BG" title="Background color">
@@ -545,7 +545,7 @@ class Painter {
       height: new_height,
     });
 
-    this.currentCanvasSize = [new_width, new_height];
+    this.currentCanvasSize = { width: new_width, height: new_height };
 
     this.canvas.renderAll();
     app.graph.setDirtyCanvas(true, false);
@@ -1113,11 +1113,9 @@ class Painter {
         LS_Painters[this.node.name].canvas_settings = painters_settings_json
           ? data
           : JSON.stringify(data);
-        LS_Save();
 
-        LS_Painters[this.node.name].settings.currentCanvasSize =
+        LS_Painters[this.node.name].settings["currentCanvasSize"] =
           this.currentCanvasSize;
-        console.log(LS_Painters[this.node.name]);
 
         LS_Save();
       }
@@ -1127,6 +1125,21 @@ class Painter {
   }
 
   setCanvasLoadData(data) {
+    const obj_data =
+      typeof data === "string" || data instanceof String
+        ? JSON.parse(data)
+        : data;
+
+    const canvas_settings = data.canvas_settings;
+    const settings = data.settings;
+
+    this.canvas.loadFromJSON(canvas_settings, () => {
+      this.canvas.renderAll();
+      this.bgColor.value = getColorHEX(data.background).color || "";
+    });
+  }
+
+  undoRedoLoadData(data) {
     this.canvas.loadFromJSON(data, () => {
       this.canvas.renderAll();
       this.bgColor.value = getColorHEX(data.background).color || "";
@@ -1141,9 +1154,11 @@ class Painter {
         LS_Painters.hasOwnProperty(this.node.name) &&
         LS_Painters[this.node.name].hasOwnProperty("canvas_settings")
       ) {
-        const data = painters_settings_json
-          ? LS_Painters[this.node.name].canvas_settings
-          : JSON.parse(LS_Painters[this.node.name].canvas_settings);
+        const data =
+          typeof LS_Painters[this.node.name] === "string" ||
+          LS_Painters[this.node.name] instanceof String
+            ? JSON.parse(LS_Painters[this.node.name])
+            : LS_Painters[this.node.name];
         this.setCanvasLoadData(data);
         this.addToHistory();
       }
@@ -1159,7 +1174,7 @@ class Painter {
       this.redo_history.push(this.undo_history.pop());
 
       const content = this.undo_history[this.undo_history.length - 1];
-      this.setCanvasLoadData(content);
+      this.undoRedoLoadData(content);
       this.canvas.renderAll();
     } else {
       this.undo_button.disabled = true;
@@ -1173,7 +1188,7 @@ class Painter {
 
       const content = this.redo_history.pop();
       this.undo_history.push(content);
-      this.setCanvasLoadData(content);
+      this.undoRedoLoadData(content);
       this.canvas.renderAll();
     } else {
       this.redo_button.disabled = true;
@@ -1416,7 +1431,7 @@ function PainterWidget(node, inputName, inputData, app) {
     if (node?.imgs && typeof this.imgs !== undefined) {
       aspect_ratio = this.imgs[0].naturalHeight / this.imgs[0].naturalWidth;
     }
-    let buffer = 60;
+    let buffer = 90;
 
     h = w * aspect_ratio + buffer;
 
@@ -1443,7 +1458,7 @@ function PainterWidget(node, inputName, inputData, app) {
           w *= scale / 8;
           h *= scale / 8;
 
-          let x = 5; //w / 2 - 20;
+          let x = 5;
           let y = dh - h - 5;
 
           ctx.drawImage(this.imgs[0], x, y, w, h);
@@ -1733,6 +1748,18 @@ app.registerExtension({
   .painter_history_panel > button:disabled {
     opacity: .5;
   }
+  .painter_stroke_box {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  .painter_stroke_box > label span {
+    margin-right: 9px;
+    vertical-align: middle;
+    font-size: 10px;
+    color: var(--input-text);
+  }
     `;
     document.head.appendChild(style);
   },
@@ -1801,6 +1828,18 @@ app.registerExtension({
 
         PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
         setTimeout(() => {
+          if (
+            LS_Painters.hasOwnProperty(nodeNamePNG) &&
+            LS_Painters[nodeNamePNG]?.settings?.currentCanvasSize
+          ) {
+            this.painter.currentCanvasSize =
+              LS_Painters[nodeNamePNG].settings.currentCanvasSize;
+
+            this.painter.setCanvasSize(
+              this.painter.currentCanvasSize.width,
+              this.painter.currentCanvasSize.height
+            );
+          }
           this.painter.uploadPaintFile(nodeNamePNG);
         }, 1);
 
