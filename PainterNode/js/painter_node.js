@@ -546,7 +546,7 @@ class Painter {
     });
 
     this.currentCanvasSize = { width: new_width, height: new_height };
-
+    this.node.title = `${this.node.type} - ${new_width}x${new_height}`;
     this.canvas.renderAll();
     app.graph.setDirtyCanvas(true, false);
     this.node.onResize();
@@ -1388,8 +1388,8 @@ function PainterWidget(node, inputName, inputData, app) {
   let canvasPainter = document.createElement("canvas");
   node.painter = new Painter(node, canvasPainter);
 
-  node.painter.canvas.setWidth(512);
-  node.painter.canvas.setHeight(512);
+  node.painter.canvas.setWidth(node.painter.currentCanvasSize.width);
+  node.painter.canvas.setHeight(node.painter.currentCanvasSize.height);
 
   widget.painter_wrap = node.painter.canvas.wrapperEl;
   widget.parent = node;
