@@ -91,6 +91,8 @@ class Painter {
       lockRotation: false,
     };
 
+    this.currentCanvasSize = [512, 512];
+
     this.max_history_steps = 20;
     this.undo_history = [];
     this.redo_history = [];
@@ -179,7 +181,7 @@ class Painter {
             }">Bring Up Always</button>
         </div>
     </div>
-    <div class="painter_drawning_box_property" style="display: block;">
+    <div class="painter_drawning_box_property">
         <div class="property_textBox comfy-menu-btns" style="display:none;">
             <button id="prop_fontStyle" title="Italic" style="font-style:italic;">I</button>
             <button id="prop_fontWeight" title="Bold" style="font-weight:bold;">B</button>
@@ -221,14 +223,18 @@ class Painter {
                     <input id="strokeColorTransparent" type="number" max="1.0" min="0" step="0.05" value="1.0" title="Stroke alpha value">
                 </div>
             </div>
-            <div class="painter_stroke_box fieldset_box" f_name="Brush width">
+            <div class="painter_stroke_box fieldset_box" f_name="Brush/Erase width">
                 <input id="strokeWidth" type="number" min="0" max="150" value="5" step="1" title="Brush width">
+                <input id="eraseWidth" type="number" min="0" max="150" value="5" step="1" title="Erase width">
             </div>
             <div class="painter_grid_style painter_bg_setting fieldset_box comfy-menu-btns" f_name="Background">
                 <input id="bgColor" type="color" value="#000000" data-label="BG" title="Background color">
                 <button bgImage="img_load" title="Add background image">IMG</button>
                 <button bgImage="img_reset" title="Remove background image">IMG <span style="color: var(--error-text);">✖</span></button>
             </div>
+            <div class="painter_settings_box fieldset_box comfy-menu-btns" f_name="Settimgs">      
+            <button id="painter_canvas_size" title="Set canvas size">Canvas size</button>  
+          </div>
         </div>
     </div>
     <div class="painter_history_panel comfy-menu-btns">
@@ -287,6 +293,7 @@ class Painter {
       ".painter_shapes_box"
     );
     this.strokeWidth = panelPaintBox.querySelector("#strokeWidth");
+    this.eraseWidth = panelPaintBox.querySelector("#eraseWidth");
     this.strokeColor = panelPaintBox.querySelector("#strokeColor");
     this.fillColor = panelPaintBox.querySelector("#fillColor");
 
@@ -305,6 +312,10 @@ class Painter {
 
     this.painter_bg_setting = panelPaintBox.querySelector(
       ".painter_bg_setting"
+    );
+
+    this.buttonSetCanvasSize = panelPaintBox.querySelector(
+      "#painter_canvas_size"
     );
 
     this.bgImageFile = document.createElement("input");
@@ -446,6 +457,7 @@ class Painter {
         this.strokeColor.value,
         this.strokeColorTransparent.value
       );
+      this.canvas.freeDrawingBrush.width = parseInt(this.strokeWidth.value, 10);
     }
     if (type != "Erase" || (type == "Erase" && !this.drawning)) {
       let a_obs = this.canvas.getActiveObjects();
@@ -470,8 +482,9 @@ class Painter {
       }
     } else {
       this.canvas.freeDrawingBrush = new fabric.EraserBrush(this.canvas);
+      this.canvas.freeDrawingBrush.width = parseInt(this.eraseWidth.value, 10);
     }
-    this.canvas.freeDrawingBrush.width = parseInt(this.strokeWidth.value, 10);
+
     this.canvas.renderAll();
   }
 
@@ -524,6 +537,19 @@ class Painter {
     } else {
       this.property_textBox.style.display = "none";
     }
+  }
+
+  setCanvasSize(new_width, new_height) {
+    this.canvas.setDimensions({
+      width: new_width,
+      height: new_height,
+    });
+
+    this.currentCanvasSize = [new_width, new_height];
+
+    this.canvas.renderAll();
+    app.graph.setDirtyCanvas(true, false);
+    this.node.onResize();
   }
 
   bindEvents() {
@@ -759,13 +785,7 @@ class Painter {
           case "img_load":
             this.bgImageFile.func = (img) => {
               if (confirm("Change canvas size equal image?")) {
-                this.canvas.setDimensions({
-                  width: img.width,
-                  height: img.height,
-                });
-                this.canvas.renderAll();
-                app.graph.setDirtyCanvas(true);
-                //this.node.setSize([img.width, img.height]);
+                this.setCanvasSize(img.width, img.height);
               }
 
               this.canvas.setBackgroundImage(
@@ -790,6 +810,31 @@ class Painter {
         }
       }
     };
+
+    // Settings
+    this.buttonSetCanvasSize.addEventListener("click", () => {
+      function checkSized(prop = "") {
+        let inputSize;
+        let correct = false;
+        while (!correct) {
+          inputSize = +prompt(`Enter canvas ${prop}:`, 512);
+          if (
+            Number(inputSize) === inputSize &&
+            inputSize % 1 === 0 &&
+            inputSize > 0
+          ) {
+            return inputSize;
+          }
+          alert(`[${prop}] Invalid number "${inputSize}" or <=0!`);
+        }
+      }
+
+      let width = checkSized("width"),
+        height = checkSized("height");
+
+      this.setCanvasSize(width, height);
+      this.uploadPaintFile(this.node.name);
+    });
 
     // History undo, redo
     this.undo_button.onclick = (e) => {
@@ -825,12 +870,15 @@ class Painter {
 
     this.bgColor.onchange = () => this.uploadPaintFile(this.node.name);
 
-    // Event change stroke width
+    // Event change stroke and erase width
+    this.eraseWidth.onchange = () => {
+      if (["Erase"].includes(this.type) || !this.drawning) {
+        this.changePropertyBrush(this.type);
+      }
+    };
+
     this.strokeWidth.onchange = () => {
-      if (
-        ["Brush", "Erase", "Textbox", "Image"].includes(this.type) ||
-        !this.drawning
-      ) {
+      if (["Brush", "Textbox", "Image"].includes(this.type) || !this.drawning) {
         this.changePropertyBrush(this.type);
       }
 
@@ -1066,6 +1114,12 @@ class Painter {
           ? data
           : JSON.stringify(data);
         LS_Save();
+
+        LS_Painters[this.node.name].settings.currentCanvasSize =
+          this.currentCanvasSize;
+        console.log(LS_Painters[this.node.name]);
+
+        LS_Save();
       }
     } catch (e) {
       console.error(e);
@@ -1243,6 +1297,11 @@ function PainterWidget(node, inputName, inputData, app) {
           .translateSelf(margin, margin + y),
         scale = new DOMMatrix().scaleSelf(transform.a, transform.d);
 
+      let aspect_ratio = 1;
+      if (node?.imgs && typeof node.imgs !== undefined) {
+        aspect_ratio = node.imgs[0].naturalHeight / node.imgs[0].naturalWidth;
+      }
+
       Object.assign(this.painter_wrap.style, {
         left: `${transform.a * margin * left_offset + transform.e}px`,
         top: `${transform.d + transform.f + top_offset}px`,
@@ -1256,14 +1315,14 @@ function PainterWidget(node, inputName, inputData, app) {
         transformOrigin: "0 0",
         transform: scale,
         width: w + "px",
-        height: w + "px",
+        height: w * aspect_ratio + "px",
       });
 
       Object.assign(this.painter_wrap.children[1].style, {
         transformOrigin: "0 0",
         transform: scale,
         width: w + "px",
-        height: w + "px",
+        height: w * aspect_ratio + "px",
       });
 
       Array.from(
@@ -1289,7 +1348,10 @@ function PainterWidget(node, inputName, inputData, app) {
 
           if (element.id.includes("lock")) sizesEl = { w: 75, h: 15, fs: 10 };
           if (element.id.includes("zpos")) sizesEl = { w: 80, h: 15, fs: 7 };
-          if (element.id.includes("painter_change_mode")) sizesEl.w = 75;
+          if (
+            ["painter_change_mode", "painter_canvas_size"].includes(element.id)
+          )
+            sizesEl.w = 75;
           if (element.hasAttribute("painter_object"))
             sizesEl = { w: 58, h: 16, fs: 10 };
           if (element.hasAttribute("bgImage"))
@@ -1349,12 +1411,17 @@ function PainterWidget(node, inputName, inputData, app) {
 
   node.onResize = function () {
     let [w, h] = this.size;
-    if (w <= 531) w = 530;
-    if (h <= 571) h = 570;
+    let aspect_ratio = 1;
 
-    if (w > 531) {
-      h = w + 40;
+    if (node?.imgs && typeof this.imgs !== undefined) {
+      aspect_ratio = this.imgs[0].naturalHeight / this.imgs[0].naturalWidth;
     }
+    let buffer = 60;
+
+    h = w * aspect_ratio + buffer;
+
+    if (w < 530) w = 530;
+    if (h < 650) h = 650;
 
     this.size = [w, h];
   };
@@ -1376,7 +1443,7 @@ function PainterWidget(node, inputName, inputData, app) {
           w *= scale / 8;
           h *= scale / 8;
 
-          let x = w / 2 - 20;
+          let x = 5; //w / 2 - 20;
           let y = dh - h - 5;
 
           ctx.drawImage(this.imgs[0], x, y, w, h);
@@ -1540,9 +1607,7 @@ app.registerExtension({
       vertical-align: middle;
       margin: 0 2px 0 2px;
   }
-    .painter_colors_box,
-    .painter_mode_box,
-    .painter_stroke_box {
+    .painter_drawning_box > div {
       display: flex;
       flex-direction: column;
       gap: 2px;
@@ -1603,6 +1668,7 @@ app.registerExtension({
       padding: 2px;
       margin: 15px 0 2px 0;
       position: relative;
+      text-align: center;
     }
     .fieldset_box:before {
       content: attr(f_name) ":";
@@ -1610,6 +1676,8 @@ app.registerExtension({
       position: absolute;
       top: -10px;
       color: yellow;
+      left: 0;
+      right: 0;
     }
     .list_objects_panel {
       width: 90%;
@@ -1679,7 +1747,7 @@ app.registerExtension({
           const painter_ls = LS_Painters[n.name];
           painter_ls.hasOwnProperty("objects_canvas") &&
             delete painter_ls.objects_canvas; // remove old property
-          n.setSize([530, 570]);
+          //n.setSize([530, 570]);
           n.painter.canvasLoadSettingPainter();
         }
       });
@@ -1736,7 +1804,7 @@ app.registerExtension({
           this.painter.uploadPaintFile(nodeNamePNG);
         }, 1);
 
-        this.setSize([530, 570]);
+        //this.setSize([530, 570]);
 
         return r;
       };
