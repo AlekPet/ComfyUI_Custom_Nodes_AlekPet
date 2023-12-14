@@ -44,8 +44,8 @@ class TranslateCLIPTextEncodeNode:
             "required": {
                 "from_translate": (['auto']+list(LANGUAGES.keys()), {"default": "auto"}),
                 "to_translate": (list(LANGUAGES.keys()), {"default": "en"} ),
-                "manual_translate": ("TOGGLE", {"default": False} ),             
-                "text": ("STRING", {"multiline": True}),
+                "manual_translate": ([True, False],),      
+                "text": ("STRING", {"multiline": True,"placeholder":"Input prompt"}),
                 "clip": ("CLIP", )
                 }
             }
@@ -54,11 +54,17 @@ class TranslateCLIPTextEncodeNode:
     FUNCTION = "translate_text"
     CATEGORY = "AlekPet Nodes/conditioning"
 
-    def translate_text(self, from_translate, to_translate, manual_translate, text, clip):
-        text = translate(text, from_translate, to_translate) if manual_translate == "off" else text
-        tokens = clip.tokenize(text)
+    def translate_text(self, **kwargs):        
+        from_translate = kwargs.get("from_translate")
+        to_translate = kwargs.get("to_translate")
+        manual_translate = kwargs.get("manual_translate", False)
+        text = kwargs.get("text")
+        clip = kwargs.get("clip")
+              
+        text_tranlsated = translate(text, from_translate, to_translate) if not manual_translate else text
+        tokens = clip.tokenize(text_tranlsated)
         cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
-        return ([[cond, {"pooled_output": pooled}]], text)
+        return ([[cond, {"pooled_output": pooled}]], text_tranlsated)
  
 
 class TranslateTextNode(TranslateCLIPTextEncodeNode):
@@ -75,8 +81,14 @@ class TranslateTextNode(TranslateCLIPTextEncodeNode):
 
     CATEGORY = "AlekPet Nodes/text"
 
-    def translate_text(self, from_translate, to_translate, manual_translate, text):
-        text_tranlsated = translate(text, from_translate, to_translate) if manual_translate == "off" else text
+    def translate_text(self, **kwargs):
+        from_translate = kwargs.get("from_translate")
+        to_translate = kwargs.get("to_translate")
+        manual_translate = kwargs.get("manual_translate", False)
+        text = kwargs.get("text")
+        print(type(manual_translate))
+              
+        text_tranlsated = translate(text, from_translate, to_translate) if not manual_translate else text
         return (text_tranlsated,)
     
 ### =====  Translate Nodes [googletrans module] -> end ===== ###

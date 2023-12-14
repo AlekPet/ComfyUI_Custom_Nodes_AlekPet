@@ -1,7 +1,6 @@
 # Title: ComfyUI Install Customs Nodes and javascript files
 # Author: AlekPet
 # Version: 2023.12.03
-
 import os
 import importlib.util
 import subprocess
@@ -9,7 +8,9 @@ import sys
 import filecmp
 import shutil
 import __main__
+import pkgutil
 import re
+import threading
 
 python = sys.executable
 
@@ -17,7 +18,7 @@ python = sys.executable
 extension_folder = os.path.dirname(os.path.realpath(__file__))
 
 # ComfyUI folders web
-folder_web = os.path.join(os.path.dirname(    os.path.realpath(__main__.__file__)), "web")
+folder_web = os.path.join(os.path.dirname(os.path.realpath(__main__.__file__)), "web")
 folder_web_extensions = os.path.join(folder_web, "extensions")
 folder__web_lib = os.path.join(folder_web, 'lib')
 extension_dirs = ["AlekPet_Nodes",]
@@ -28,23 +29,35 @@ NODE_DISPLAY_NAME_MAPPINGS = {}
 humanReadableTextReg = re.compile('(?<=[a-z])([A-Z])|(?<=[A-Z])([A-Z][a-z]+)')
 module_name_cut_version = re.compile("[>=<]")
 
+installed_modules = list(m[1] for m in pkgutil.iter_modules(None))
 
 def log(*text):
     if DEBUG:
         print(''.join(map(str, text)))
 
 
-def check_is_installed(module_name):
+def check_is_installed(module_name):    
     try:
-        module_name_cut_index = module_name_cut_version.search(module_name).start()
-        mod = importlib.util.find_spec(module_name[:module_name_cut_index])
+        module_name_cut_index = module_name_cut_version.search(module_name)
+        module_name_no_version = ""
+        if(module_name_cut_index):
+            module_name_cut_index = module_name_cut_index.start()
+            module_name_no_version = module_name[:module_name_cut_index]
+            modulImport = importlib.util.find_spec(module_name_no_version)
+            
+            if(modulImport is not None):
+                return True
+        
+        if(module_name_no_version.lower() in installed_modules or module_name.lower() in installed_modules):                   
+            return True
+        
+        return False 
+
     except ModuleNotFoundError:
         return False
 
-    return mod is not None
 
-
-def module_install(module_name, action='install'):
+def module_install_old(module_name, action='install'):
     if not module_name and not action:
         log(f'    [!] Action, module_name arguments is not corrects!')
         return
@@ -59,7 +72,7 @@ def module_install(module_name, action='install'):
     log(f'    [*] {action_capitalize} module "{module_name}" successful')
 
 
-def checkModules(nodeElement):
+def checkModules_old(nodeElement):
     file_requir = os.path.join(extension_folder, nodeElement, 'requirements.txt')
     if os.path.exists(file_requir):
         log("  -> File 'requirements.txt' found!")
@@ -77,6 +90,31 @@ def checkModules(nodeElement):
                     module_install(m)
                 else:
                     log(f"    [*] Module '{m}' is installed!")
+
+
+def information(datas):
+    for info in datas:
+        if DEBUG:
+            print(info, end="")
+
+
+def module_install(commands, cwd='.'):
+    result = subprocess.Popen(commands, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+    out = threading.Thread(target=information, args=(result.stdout,))
+    err = threading.Thread(target=information, args=(result.stderr,))
+    out.start()
+    err.start()
+    out.join()
+    err.join()
+
+    return result.wait()
+
+
+def checkModules(nodeElement):
+    file_requir = os.path.join(extension_folder, nodeElement, 'requirements.txt')
+    if os.path.exists(file_requir):
+        log("  -> File 'requirements.txt' found!")
+        module_install([sys.executable, '-s', '-m', 'pip', 'install', '-r', file_requir])
 
 
 def addFilesToFolder(folderSrc, folderDst, nodeElement):

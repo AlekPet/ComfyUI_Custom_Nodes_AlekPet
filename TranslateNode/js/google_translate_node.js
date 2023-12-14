@@ -1,5 +1,6 @@
 import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
+import { makeModal } from "/extensions/AlekPet_Nodes/utils.js";
 
 const findWidget = (node, name, attr = "name") =>
   node.widgets.find((w) => w[attr] === name);
@@ -14,8 +15,12 @@ function manual_translate_prompt() {
     widget_textmultiline = findWidget(node, "customtext", "type");
 
   button_manual_translate.callback = async function () {
-    if (manual_translate.value === "off") {
-      alert("Manual translate off!");
+    if (!!!manual_translate.value) {
+      makeModal(
+        "Info",
+        "Manual translate disable!\nThe translation works when you start generating images.",
+        ""
+      );
       return;
     }
 
@@ -78,6 +83,10 @@ app.registerExtension({
           "Manual Trasnlate",
           manual_translate_prompt.bind(node)
         );
+
+        node.widgets[2].type = "toggle";
+        node.widgets[2].value = false;
+        node.widgets.splice(3, 0, node.widgets.pop());
       };
     }
 
