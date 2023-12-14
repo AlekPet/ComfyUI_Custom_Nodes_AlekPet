@@ -10,7 +10,7 @@ function makeModal(title, text, type = "info") {
     left: "0",
     right: "0",
     bottom: "0",
-    zIndex: "5",
+    zIndex: "500",
     transition: "all .8s",
     cursor: "pointer",
   });
@@ -30,7 +30,7 @@ function makeModal(title, text, type = "info") {
     background: "#525252",
     maxWidth: "20rem",
     fontFamily: "sans-serif",
-    zIndex: "6",
+    zIndex: "501",
     border: "1px solid rgb(255 255 255 / 45%)",
   });
 
