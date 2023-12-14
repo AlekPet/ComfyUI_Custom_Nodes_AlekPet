@@ -44,7 +44,7 @@ class TranslateCLIPTextEncodeNode:
             "required": {
                 "from_translate": (['auto']+list(LANGUAGES.keys()), {"default": "auto"}),
                 "to_translate": (list(LANGUAGES.keys()), {"default": "en"} ),
-                "manual_translate": (["off","on"], {"default": "off"} ),             
+                "manual_translate": ("TOGGLE", {"default": False} ),             
                 "text": ("STRING", {"multiline": True}),
                 "clip": ("CLIP", )
                 }
