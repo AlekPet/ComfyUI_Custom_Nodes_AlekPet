@@ -11,6 +11,10 @@ Custom nodes for ComfyUI, translate promt from other languages into english
 >
 > **DeepTranslatorTextNode** - translte text and return text (STRING)
 
+## Changelog:
+
+> 2023.12.14 - Added button **"Manual translate"** for the translate manualy it is need when words not need translate, example **LoRa words**
+
 ## TranslateTextNode and TranslateCLIPTextEncodeNode
 
 Used module **googletrans**: https://pypi.org/project/googletrans/
