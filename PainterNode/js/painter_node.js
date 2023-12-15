@@ -92,6 +92,7 @@ class Painter {
     };
 
     this.currentCanvasSize = { width: 512, height: 512 };
+    this.maxNodeSize = 1024;
 
     this.max_history_steps = 20;
     this.undo_history = [];
@@ -1433,10 +1434,10 @@ function PainterWidget(node, inputName, inputData, app) {
     }
     let buffer = 90;
 
-    h = w * aspect_ratio + buffer;
+    if (w > this.painter.maxNodeSize) w = w - (w - this.painter.maxNodeSize);
+    if (w < 600) w = 600;
 
-    if (w < 530) w = 530;
-    if (h < 650) h = 650;
+    h = w * aspect_ratio + buffer;
 
     this.size = [w, h];
   };
