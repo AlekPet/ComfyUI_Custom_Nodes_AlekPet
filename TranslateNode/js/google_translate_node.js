@@ -2,8 +2,8 @@ import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 import { makeModal } from "/extensions/AlekPet_Nodes/utils.js";
 
-const findWidget = (node, name, attr = "name") =>
-  node.widgets.find((w) => w[attr] === name);
+const findWidget = (node, name, attr = "name", func = "find") =>
+  node.widgets[func]((w) => w[attr] === name);
 
 function manual_translate_prompt() {
   const node = this,
@@ -87,6 +87,20 @@ app.registerExtension({
         node.widgets[2].type = "toggle";
         node.widgets[2].value = false;
         node.widgets.splice(3, 0, node.widgets.pop());
+      };
+
+      // Node Configure
+      const onConfigure = nodeType.prototype.onConfigure;
+      nodeType.prototype.onConfigure = function () {
+        onConfigure?.apply(this, arguments);
+
+        if (this?.widgets_values.length) {
+          if (typeof this.widgets_values[2] === "string") {
+            const customtext = findWidget(this, "text", "name", "findIndex");
+            this.widgets[customtext].value = this.widgets_values[2];
+            this.widgets[2].value = false;
+          }
+        }
       };
     }
 
