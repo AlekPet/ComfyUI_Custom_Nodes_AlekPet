@@ -2,6 +2,8 @@ import json
 from server import PromptServer
 from aiohttp import web
 from googletrans import Translator, LANGUAGES
+import requests
+import os
 
 ### =====  Translate Nodes [googletrans module]  ===== ###
 translator = Translator()
@@ -22,6 +24,30 @@ async def translate_manual(request):
        
     return web.json_response({"translate_prompt": prompt})
 
+google_translation_key = os.environ.get("GOOGLE_TRANSLATION_API_KEY")
+class TranslationResult:
+    def __init__(self, text):
+        self.text = text
+
+def translate_by_key(text, src, dest):
+    url = f"https://translation.googleapis.com/language/translate/v2?key={google_translation_key}"
+
+    data = {
+        'q': text,
+        'target': dest
+    }
+
+    resp = requests.post(url, data=data)
+    print("resp.text:",resp.text)
+    resp_data = json.loads(resp.text)
+
+    if 'translations' in resp_data.get('data', {}):        
+        translations = resp_data['data']['translations']
+        if translations:
+            translated_text = translations[0]['translatedText']
+            return TranslationResult(translated_text)
+
+    return TranslationResult('')
 
 def translate(prompt, srcTrans=None, toTrans=None):
     if not srcTrans:
@@ -32,8 +58,11 @@ def translate(prompt, srcTrans=None, toTrans=None):
 
     translate_text_prompt = ''
     if prompt and prompt.strip() !="":
-        translate_text_prompt = translator.translate(prompt, src=srcTrans, dest=toTrans)
-    
+        if not google_translation_key:
+            translate_text_prompt = translator.translate(prompt, src=srcTrans, dest=toTrans)
+        else:
+            translate_text_prompt = translate_by_key(prompt, src=srcTrans, dest=toTrans)
+
     return translate_text_prompt.text if hasattr(translate_text_prompt, 'text') else ''
 
 class TranslateCLIPTextEncodeNode:
