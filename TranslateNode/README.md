@@ -14,6 +14,7 @@ Custom nodes for ComfyUI, translate promt from other languages into english
 ## Changelog:
 
 > 2024.01.20 - Added support used official key api for googletranslate (add to the enviroment key: **GOOGLE_TRANSLATION_API_KEY** and your key value)
+> 
 > 2023.12.14 - Added button **"Manual translate"** for the translate manualy it is need when words not need translate, example **LoRa words**
 
 ## TranslateTextNode and TranslateCLIPTextEncodeNode
