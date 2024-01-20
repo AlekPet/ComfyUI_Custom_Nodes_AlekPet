@@ -29,24 +29,24 @@ class TranslationResult:
     def __init__(self, text):
         self.text = text
 
-def translate_by_key(text, src, dest):
-    url = f"https://translation.googleapis.com/language/translate/v2?key={google_translation_key}"
+    def translate_by_key(text, src, dest):
+        url = f"https://translation.googleapis.com/language/translate/v2?key={google_translation_key}"
 
-    data = {
-        'q': text,
-        'target': dest
-    }
+        data = {
+            'q': text,
+            'target': dest
+        }
 
-    resp = requests.post(url, data=data)
-    resp_data = json.loads(resp.text)
+        resp = requests.post(url, data=data)
+        resp_data = json.loads(resp.text)
 
-    if 'translations' in resp_data.get('data', {}):        
-        translations = resp_data['data']['translations']
-        if translations:
-            translated_text = translations[0]['translatedText']
-            return TranslationResult(translated_text)
+        if 'translations' in resp_data.get('data', {}):        
+            translations = resp_data['data']['translations']
+            if translations:
+                translated_text = translations[0]['translatedText']
+                return TranslationResult(translated_text)
 
-    return TranslationResult('')
+        return TranslationResult('')
 
 def translate(prompt, srcTrans=None, toTrans=None):
     if not srcTrans:
