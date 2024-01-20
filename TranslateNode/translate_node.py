@@ -1,9 +1,9 @@
+import os
+import requests
 import json
 from server import PromptServer
 from aiohttp import web
 from googletrans import Translator, LANGUAGES
-import requests
-import os
 
 ### =====  Translate Nodes [googletrans module]  ===== ###
 translator = Translator()
@@ -38,7 +38,6 @@ def translate_by_key(text, src, dest):
     }
 
     resp = requests.post(url, data=data)
-    print("resp.text:",resp.text)
     resp_data = json.loads(resp.text)
 
     if 'translations' in resp_data.get('data', {}):        
@@ -115,7 +114,6 @@ class TranslateTextNode(TranslateCLIPTextEncodeNode):
         to_translate = kwargs.get("to_translate")
         manual_translate = kwargs.get("manual_translate", False)
         text = kwargs.get("text")
-        print(type(manual_translate))
               
         text_tranlsated = translate(text, from_translate, to_translate) if not manual_translate else text
         return (text_tranlsated,)
