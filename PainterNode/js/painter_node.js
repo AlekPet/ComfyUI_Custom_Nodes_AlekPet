@@ -215,7 +215,7 @@ class Painter {
             }">Bring Up Always</button>
         </div>
     </div>
-    <div class="painter_drawning_box_property"></div>
+    <div class="painter_drawning_box_property" style='display:block;'></div>
     <div class="painter_drawning_box">
         <div class="painter_mode_box fieldset_box comfy-menu-btns" f_name="Mode">
             <button id="painter_change_mode" title="Enable selection mode">Selection</button>
@@ -338,6 +338,7 @@ class Painter {
 
     this.painter_bg_setting.appendChild(this.bgImageFile);
     this.changePropertyBrush();
+    this.createBrushesToolbar();
     this.bindEvents();
   }
 
@@ -423,6 +424,7 @@ class Painter {
       target.textContent = "Drawing";
       target.title = "Enable drawing mode";
       this.viewListObjects(this.list_objects_panel__items);
+
       showHide({
         elements: [
           this.manipulation_box,
@@ -470,8 +472,9 @@ class Painter {
       if (type === "Brush")
         this.canvas.freeDrawingBrush = new fabric.PencilBrush(this.canvas);
 
-      if (type === "BrushSymmetry")
+      if (type === "BrushSymmetry") {
         this.canvas.freeDrawingBrush = new fabric.SymmetryBrush(this.canvas);
+      }
 
       this.canvas.freeDrawingBrush.color = toRGBA(
         this.strokeColor.value,
@@ -605,11 +608,11 @@ class Painter {
   }
 
   createBrushesToolbar() {
+    // First panel
     const property_brushesBox = makeElement("div", {
       class: ["property_brushesBox", "comfy-menu-btns"],
     });
 
-    //<button class="active" data-shape='Brush' title="Brush">B</button>
     const buttonBrush = makeElement("button", {
       dataset: [{ shape: "Brush" }, { prop: "prop_brushDefault" }],
       title: "Brush",
@@ -622,8 +625,55 @@ class Painter {
       textContent: "S",
     });
 
-    property_brushesBox.append(buttonBrush, buttonBrushSymmetry);
+    const separator = makeElement("div", { class: ["separator"] });
+
+    // Second panel setting brushes
+    this.property_brushesSecondBox = makeElement("div", {
+      class: ["property_brushesSecondBox"],
+    });
+
+    property_brushesBox.append(
+      buttonBrush,
+      buttonBrushSymmetry,
+      separator,
+      this.property_brushesSecondBox
+    );
+
     this.painter_drawning_box_property.append(property_brushesBox);
+  }
+
+  async createToolbarOptions(type) {
+    this.property_brushesSecondBox.innerHTML = "";
+    if (type === "BrushSymmetry") {
+      // Wait
+      function waitOptions() {
+        return new Promise((res) => {
+          function waitTime() {
+            setTimeout(() => {
+              const options = this.canvas.freeDrawingBrush?._options;
+              if (!options) waitTime();
+              else res(options);
+            }, 0);
+          }
+          waitTime.call(this);
+        });
+      }
+
+      const options = await waitOptions.call(this);
+      Object.keys(options).forEach((symoption, indx) => {
+        const current = options[symoption];
+        const buttonOpt = makeElement("button", {
+          textContent: current.type,
+          dataset: { prop: `prop_symmetry_${indx}` },
+        });
+        if (current.enable) {
+          buttonOpt.classList.add("active");
+        }
+        buttonOpt.optindex = indx;
+        this.property_brushesSecondBox.append(buttonOpt);
+      });
+    }
+    app.graph.setDirtyCanvas(true, false);
   }
   // end - Toolbars
 
@@ -811,6 +861,7 @@ class Painter {
           "prop_brushDefault",
           // Symmetry
           "prop_BrushSymmetry",
+          "prop_symmetry_",
         ],
         index = listButtonsStyles.indexOf(target.dataset.prop);
       if (index != -1) {
@@ -862,6 +913,11 @@ class Painter {
               this.canvas.isDrawingMode = true;
               this.drawning = true;
               this.type = "Brush";
+
+              if (this.property_brushesSecondBox) {
+                this.property_brushesSecondBox.innerHTML = "";
+              }
+
               this.changePropertyBrush(this.type);
               this.setActiveElement(target, this.painter_shapes_box);
               console.log("Brush active");
@@ -872,11 +928,29 @@ class Painter {
               this.canvas.isDrawingMode = true;
               this.drawning = true;
               this.type = "BrushSymmetry";
+
+              if (this.property_brushesSecondBox) {
+                this.createToolbarOptions(this.type);
+              }
+
               this.changePropertyBrush(this.type);
               this.setActiveElement(target, this.painter_shapes_box);
-              console.log("Symmetry active");
             }
           }
+        }
+      }
+
+      // Second toolbar options
+      if (
+        target.parentElement?.classList.contains("property_brushesSecondBox")
+      ) {
+        const options = this.canvas.freeDrawingBrush?._options;
+        if (options) {
+          const optionsKeys = Object.keys(options);
+          const optionKeyChange = optionsKeys[target.optindex];
+
+          options[optionKeyChange].enable = !options[optionKeyChange].enable;
+          target.classList.toggle("active");
         }
       }
     };
@@ -1762,7 +1836,7 @@ app.registerExtension({
       background-color: var(--border-color);
       display: inline-block;
       vertical-align: middle;
-      margin: 0 2px 0 2px;
+      margin: 0 4px 0 4px;
   }
     .painter_drawning_box > div {
       display: flex;
@@ -1902,6 +1976,14 @@ app.registerExtension({
     font-size: 10px;
     color: var(--input-text);
   }
+  .property_brushesBox, .property_brushesSecondBox {
+    display: flex;
+    gap: 5px;
+  }
+  .property_brushesSecondBox > button {
+    min-width: 40px;
+    font-size: 0.5rem;
+}
     `;
     document.head.appendChild(style);
   },

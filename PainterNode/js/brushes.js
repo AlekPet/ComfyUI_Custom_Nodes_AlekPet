@@ -10,37 +10,37 @@ fabric.SymmetryBrush = fabric.util.createClass(fabric.BaseBrush, {
   initialize: function (canvas) {
     this.canvas = canvas;
     this.ctx = canvas.contextTop;
-    this._points = {
+    this._options = {
       // Normal
       default: { points: [], enable: true, type: "x=x,y=y" }, // x=x,y=y
-      width_heigth: { points: [], enable: true, type: "x=w-x,y=h-y" }, // x=w-x,y=h-y
+      width_heigth: { points: [], enable: false, type: "x=w-x,y=h-y" }, // x=w-x,y=h-y
       width_x: { points: [], enable: true, type: "x=w-x,y=y" }, // x=w-x,y=y
-      heigth_y: { points: [], enable: true, type: "x=x,y=h-y" }, // x=x,y=h-y
+      heigth_y: { points: [], enable: false, type: "x=x,y=h-y" }, // x=x,y=h-y
       // Reverse
-      rev_default: { points: [], enable: true, type: "x=y,y=x" }, // x=y,y=x
-      rev_width_heigth: { points: [], enable: true, type: "x=h-y,y=w-x" }, // x=h-y,y=w-x
-      rev_width_x: { points: [], enable: true, type: "x=h-y,y=x" }, // x=h-y,y=x
-      rev_heigth_y: { points: [], enable: true, type: "x=y,y=w-x" }, // x=y,y=w-x
+      rev_default: { points: [], enable: false, type: "x=y,y=x" }, // x=y,y=x
+      rev_width_heigth: { points: [], enable: false, type: "x=h-y,y=w-x" }, // x=h-y,y=w-x
+      rev_width_x: { points: [], enable: false, type: "x=h-y,y=x" }, // x=h-y,y=x
+      rev_heigth_y: { points: [], enable: false, type: "x=y,y=w-x" }, // x=y,y=w-x
     };
   },
 
   _updatePoints: function (options) {
     // Normal
-    this._points["default"].points.push(
+    this._options["default"].points.push(
       new fabric.Point(options.pointer.x, options.pointer.y)
     );
 
-    this._points["width_heigth"].points.push(
+    this._options["width_heigth"].points.push(
       new fabric.Point(
         this.canvas.width - options.pointer.x,
         this.canvas.height - options.pointer.y
       )
     );
 
-    this._points["width_x"].points.push(
+    this._options["width_x"].points.push(
       new fabric.Point(this.canvas.width - options.pointer.x, options.pointer.y)
     );
-    this._points["heigth_y"].points.push(
+    this._options["heigth_y"].points.push(
       new fabric.Point(
         options.pointer.x,
         this.canvas.height - options.pointer.y
@@ -48,25 +48,25 @@ fabric.SymmetryBrush = fabric.util.createClass(fabric.BaseBrush, {
     );
 
     // Reverse
-    this._points["rev_default"].points.push(
+    this._options["rev_default"].points.push(
       new fabric.Point(options.pointer.y, options.pointer.x)
     );
 
-    this._points["rev_width_heigth"].points.push(
+    this._options["rev_width_heigth"].points.push(
       new fabric.Point(
         this.canvas.height - options.pointer.y,
         this.canvas.width - options.pointer.x
       )
     );
 
-    this._points["rev_width_x"].points.push(
+    this._options["rev_width_x"].points.push(
       new fabric.Point(
         this.canvas.height - options.pointer.y,
         options.pointer.x
       )
     );
 
-    this._points["rev_heigth_y"].points.push(
+    this._options["rev_heigth_y"].points.push(
       new fabric.Point(options.pointer.y, this.canvas.width - options.pointer.x)
     );
   },
@@ -124,9 +124,9 @@ fabric.SymmetryBrush = fabric.util.createClass(fabric.BaseBrush, {
 
     if (options.e.buttons !== 1) return;
 
-    if (this._points["default"].points.length > 1) {
-      for (let p_key in this._points) {
-        const pointVal = this._points[p_key];
+    if (this._options["default"].points.length > 1) {
+      for (let p_key in this._options) {
+        const pointVal = this._options[p_key];
         if (pointVal.enable && pointVal.points.length > 0) {
           this._drawSegment(
             pointVal.points[pointVal.points.length - 2],
@@ -144,15 +144,15 @@ fabric.SymmetryBrush = fabric.util.createClass(fabric.BaseBrush, {
     if (!this.canvas._isMainEvent(options.e)) {
       return true;
     }
-    for (let p_key in this._points) {
+    for (let p_key in this._options) {
       //if (p_key === "default") continue;
-      const pointVal = this._points[p_key];
+      const pointVal = this._options[p_key];
       if (pointVal.enable && pointVal.points.length > 0) {
         const path = this.convertPointsToSVGPath(pointVal.points);
         const offsetPath = this.createPath(path);
         this.canvas.add(offsetPath);
       }
-      this._points[p_key].points = [];
+      this._options[p_key].points = [];
     }
     return false;
   },
