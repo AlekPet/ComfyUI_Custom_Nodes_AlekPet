@@ -76,6 +76,8 @@ fabric.SymmetryBrush = fabric.util.createClass(fabric.BaseBrush, {
     return fabric.util.getSmoothPathFromPoints(points, correction);
   },
 
+  _render() {},
+
   _drawSegment: function (mP, toP) {
     const ctx = this.ctx;
     ctx.save();
