@@ -8,6 +8,7 @@
 import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 import { fabric } from "../../lib/fabric.js";
+import SymmetryBrush from "./brushes.js";
 
 // ================= FUNCTIONS ================
 const painters_settings_json = false; // save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
@@ -62,6 +63,31 @@ function showHide({ elements = [], hide = null }) {
         !el.style.display || el.style.display == "none" ? "block" : "none";
     }
   });
+}
+
+function makeElement(tag, attrs = {}) {
+  if (!tag) tag = "div";
+  const element = document.createElement(tag);
+  Object.keys(attrs).forEach((key) => {
+    const currValue = attrs[key];
+    if (key === "class") {
+      if (Array.isArray(currValue)) {
+        element.classList.add(...currValue);
+      } else if (currValue instanceof String && typeof currValue === "string") {
+        element.className = currValue;
+      }
+    } else if (key === "dataset") {
+      try {
+        const [prop, propval] = Object.entries(attrs[key])[0];
+        element.dataset[prop] = propval;
+      } catch (err) {
+        console.log(err);
+      }
+    } else {
+      element[key] = currValue;
+    }
+  });
+  return element;
 }
 
 window.LS_Painters = {};
@@ -182,15 +208,7 @@ class Painter {
             }">Bring Up Always</button>
         </div>
     </div>
-    <div class="painter_drawning_box_property">
-        <div class="property_textBox comfy-menu-btns" style="display:none;">
-            <button id="prop_fontStyle" title="Italic" style="font-style:italic;">I</button>
-            <button id="prop_fontWeight" title="Bold" style="font-weight:bold;">B</button>
-            <button id="prop_underline" title="Underline" style="text-decoration: underline;">U</button>
-            <div class="separator"></div>
-            <select class="font_family_select"></select>
-        </div>
-    </div>
+    <div class="painter_drawning_box_property"></div>
     <div class="painter_drawning_box">
         <div class="painter_mode_box fieldset_box comfy-menu-btns" f_name="Mode">
             <button id="painter_change_mode" title="Enable selection mode">Selection</button>
@@ -255,8 +273,6 @@ class Painter {
     this.painter_drawning_box_property = panelPaintBox.querySelector(
       ".painter_drawning_box_property"
     );
-    this.property_textBox =
-      this.painter_drawning_box_property.querySelector(".property_textBox");
 
     [this.undo_button, this.redo_button] = panelPaintBox.querySelectorAll(
       ".painter_history_panel button"
@@ -276,19 +292,6 @@ class Painter {
       this.painter_bg_setting,
     ] = this.painter_drawning_elements.children;
 
-    // Make select font
-    this.font_family_select = this.property_textBox.querySelector(
-      ".font_family_select"
-    );
-
-    for (let f in this.fonts) {
-      let option = document.createElement("option");
-      if (f === "Arial") option.setAttribute("selected", true);
-      option.value = this.fonts[f];
-      option.textContent = f;
-      this.font_family_select.appendChild(option);
-    }
-    //
     this.change_mode = panelPaintBox.querySelector("#painter_change_mode");
     this.painter_shapes_box = panelPaintBox.querySelector(
       ".painter_shapes_box"
@@ -532,12 +535,97 @@ class Painter {
     return shape;
   }
 
-  selectPropertyToolbar(type) {
-    if (["Textbox"].includes(this.type)) {
-      this.property_textBox.style.display = "block";
-    } else {
-      this.property_textBox.style.display = "none";
+  // Toolbars
+  createFontToolbar() {
+    const property_textbox = makeElement("div", {
+      class: ["property_textBox", "comfy-menu-btns"],
+    });
+    const buttonItalic = makeElement("button", {
+      dataset: { prop: "prop_fontStyle" },
+      title: "Italic",
+      style: "font-style:italic;",
+      textContent: "I",
+    });
+    const buttonBold = makeElement("button", {
+      dataset: { prop: "prop_fontWeight" },
+      title: "Bold",
+      style: "font-weight:bold;",
+      textContent: "B",
+    });
+    const buttonUnderline = makeElement("button", {
+      dataset: { prop: "prop_underline" },
+      title: "Underline",
+      style: "text-decoration: underline;",
+      textContent: "U",
+    });
+    const separator = makeElement("div", { class: ["separator"] });
+    const selectFontFamily = makeElement("select", {
+      class: ["font_family_select"],
+    });
+
+    for (let f in this.fonts) {
+      const option = makeElement("option");
+      if (f === "Arial") option.setAttribute("selected", true);
+      option.value = this.fonts[f];
+      option.textContent = f;
+      selectFontFamily.appendChild(option);
     }
+
+    // Select front event
+    selectFontFamily.onchange = (e) => {
+      if (this.getActiveStyle("fontFamily") != selectFontFamily.value)
+        this.setActiveStyle("fontFamily", selectFontFamily.value);
+    };
+
+    property_textbox.append(
+      buttonItalic,
+      buttonBold,
+      buttonUnderline,
+      separator,
+      selectFontFamily
+    );
+    this.painter_drawning_box_property.append(property_textbox);
+  }
+
+  createBrushesToolbar() {
+    const property_brushesBox = makeElement("div", {
+      class: ["property_brushesBox", "comfy-menu-btns"],
+    });
+
+    //<button class="active" data-shape='Brush' title="Brush">B</button>
+    const buttonBrush = makeElement("button", {
+      title: "Brush",
+      textContent: "B",
+      dataset: { prop: "prop_brushDefault" },
+    });
+
+    buttonBrush.addEventListener("click", () => {
+      this.changePropertyBrush(currentTarget);
+      this.canvas.isDrawingMode = true;
+      this.drawning = true;
+    });
+
+    this.painter_drawning_box_property.append(property_brushesBox);
+  }
+  // end - Toolbars
+
+  selectPropertyToolbar(type) {
+    this.painter_drawning_box_property.innerHTML = "";
+    if (["Textbox", "Brush"].includes(this.type)) {
+      this.painter_drawning_box_property.style.display = "block";
+
+      switch (this.type) {
+        case "Textbox":
+          this.createFontToolbar();
+          break;
+        case "Brush":
+          this.createBrushesToolbar();
+          break;
+      }
+    } else {
+      this.painter_drawning_box_property.style.display = "";
+    }
+    app.graph.setDirtyCanvas(true, false);
   }
 
   setCanvasSize(new_width, new_height) {
@@ -609,8 +697,8 @@ class Painter {
             this.drawning = true;
             break;
         }
-        this.setActiveElement(target, this.painter_shapes_box);
         this.selectPropertyToolbar(this.type);
+        this.setActiveElement(target, this.painter_shapes_box);
       }
     };
 
@@ -703,7 +791,7 @@ class Painter {
           "prop_fontWeight",
           "prop_underline",
         ],
-        index = listButtonsStyles.indexOf(target.id);
+        index = listButtonsStyles.indexOf(target.dataset.prop);
       if (index != -1) {
         if (listButtonsStyles[index].includes("prop_")) {
           let buttonSelStyle = listButtonsStyles[index].replace("prop_", ""),
@@ -738,6 +826,7 @@ class Painter {
                   target.classList.add("active");
                 }
 
+                this.fillColorTransparent.value = "1.0";
                 this.setActiveStyle("fill", toRGBA(this.fillColor.value));
 
                 break;
@@ -746,13 +835,6 @@ class Painter {
         }
       }
     };
-
-    // Select front event
-    this.font_family_select.onchange = (e) => {
-      if (this.getActiveStyle("fontFamily") != this.font_family_select.value)
-        this.setActiveStyle("fontFamily", this.font_family_select.value);
-    };
-
     // Event input bgcolor
     this.reset_set_bg = () => {
       this.canvas.setBackgroundImage(null);
@@ -894,9 +976,11 @@ class Painter {
 
       // Selected tools
       const setProps = (style, check) => {
-        this.painter_drawning_box_property
-          .querySelector(`#prop_${style}`)
-          .classList[check ? "remove" : "add"]("active");
+        const propEl = this.painter_drawning_box_property.querySelector(
+          `#prop_${style}`
+        );
+
+        if (propEl) propEl.classList[check ? "remove" : "add"]("active");
       };
 
       targets.forEach((target) => {
