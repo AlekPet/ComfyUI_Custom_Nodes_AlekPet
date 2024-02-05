@@ -158,4 +158,212 @@ fabric.SymmetryBrush = fabric.util.createClass(fabric.BaseBrush, {
   },
 });
 
+const svgSymmetryButtons = [
+  `<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35">
+  <defs>
+    <style>
+      .cls-1, .cls-2 {
+        fill: none;
+        stroke: #fff;
+      }
+
+      .cls-1 {
+        stroke-width: 2px;
+      }
+
+      .cls-2 {
+        stroke-width: 1px;
+        fill-rule: evenodd;
+      }
+    </style>
+  </defs>
+  <circle class="cls-1" cx="6" cy="6" r="5"/>
+  <path class="cls-2" d="M17,0h1V35H17V0Z"/>
+</svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35">
+  <defs>
+    <style>
+      .cls-1, .cls-3 {
+        fill: none;
+        stroke: #fff;
+      }
+
+      .cls-1 {
+        stroke-width: 2px;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-3 {
+        stroke-width: 1px;
+        fill-rule: evenodd;
+      }
+    </style>
+  </defs>
+  <circle class="cls-1" cx="6" cy="6" r="5"/>
+  <circle class="cls-2" cx="29" cy="29" r="5"/>
+  <path class="cls-3" d="M52,0h1V35H52V0Z" transform="translate(-35)"/>
+</svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35">
+  <defs>
+    <style>
+      .cls-1, .cls-3 {
+        fill: none;
+        stroke: #fff;
+      }
+
+      .cls-1 {
+        stroke-width: 2px;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-3 {
+        stroke-width: 1px;
+        fill-rule: evenodd;
+      }
+    </style>
+  </defs>
+  <circle class="cls-1" cx="6" cy="6" r="5"/>
+  <circle class="cls-2" cx="29" cy="6" r="5"/>
+  <path class="cls-3" d="M87,0h1V35H87V0Z" transform="translate(-70)"/>
+</svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35">
+  <defs>
+    <style>
+      .cls-1, .cls-3 {
+        fill: none;
+        stroke: #fff;
+      }
+
+      .cls-1 {
+        stroke-width: 2px;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-3 {
+        stroke-width: 1px;
+        fill-rule: evenodd;
+      }
+    </style>
+  </defs>
+  <circle class="cls-1" cx="6" cy="6" r="5"/>
+  <circle class="cls-2" cx="6" cy="29" r="5"/>
+  <path class="cls-3" d="M122,0h1V35h-1V0Z" transform="translate(-105)"/>
+</svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35">
+  <defs>
+    <style>
+      .cls-1, .cls-3 {
+        fill: none;
+        stroke: #fff;
+      }
+
+      .cls-1 {
+        stroke-width: 2px;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-3 {
+        stroke-width: 1px;
+        fill-rule: evenodd;
+      }
+    </style>
+  </defs>
+  <circle class="cls-1" cx="6" cy="19" r="5"/>
+  <circle class="cls-2" cx="6" cy="6" r="5"/>
+  <path class="cls-3" d="M157,0h1V35h-1V0Z" transform="translate(-140)"/>
+</svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35">
+  <defs>
+    <style>
+      .cls-1, .cls-3 {
+        fill: none;
+        stroke: #fff;
+      }
+
+      .cls-1 {
+        stroke-width: 2px;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-3 {
+        stroke-width: 1px;
+        fill-rule: evenodd;
+      }
+    </style>
+  </defs>
+  <circle class="cls-1" cx="28" cy="29" r="5"/>
+  <circle class="cls-2" cx="5" cy="6" r="5"/>
+  <path class="cls-3" d="M192,0h1V35h-1V0Z" transform="translate(-176)"/>
+</svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35">
+  <defs>
+    <style>
+      .cls-1, .cls-3 {
+        fill: none;
+        stroke: #fff;
+      }
+
+      .cls-1 {
+        stroke-width: 2px;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-3 {
+        stroke-width: 1px;
+        fill-rule: evenodd;
+      }
+    </style>
+  </defs>
+  <circle class="cls-1" cx="28" cy="6" r="5"></circle>
+  <circle class="cls-2" cx="28" cy="19" r="5"></circle>
+  <path class="cls-3" d="M227,0h1V35h-1V0Z" transform="translate(-211)"></path>
+</svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35">
+  <defs>
+    <style>
+      .cls-1, .cls-3 {
+        fill: none;
+        stroke: #fff;
+      }
+
+      .cls-1 {
+        stroke-width: 2px;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-3 {
+        stroke-width: 1px;
+        fill-rule: evenodd;
+      }
+    </style>
+  </defs>
+  <circle class="cls-1" cx="6" cy="29" r="5"/>
+  <circle class="cls-2" cx="6" cy="6" r="5"/>
+  <path class="cls-3" d="M262,0h1V35h-1V0Z" transform="translate(-245)"/>
+</svg>`,
+];
+
 export default fabric.SymmetryBrush;
+
+export { svgSymmetryButtons };

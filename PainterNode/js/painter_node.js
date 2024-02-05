@@ -1,14 +1,14 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2023.12.13
+ * Version: 2024.02.05
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
 import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 import { fabric } from "../../lib/fabric.js";
-import SymmetryBrush from "./brushes.js";
+import SymmetryBrush, { svgSymmetryButtons } from "./brushes.js";
 
 // ================= FUNCTIONS ================
 const painters_settings_json = false; // save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
@@ -663,12 +663,13 @@ class Painter {
       Object.keys(options).forEach((symoption, indx) => {
         const current = options[symoption];
         const buttonOpt = makeElement("button", {
-          textContent: current.type,
+          innerHTML: svgSymmetryButtons[indx],
           dataset: { prop: `prop_symmetry_${indx}` },
+          title: current.type,
         });
-        if (current.enable) {
-          buttonOpt.classList.add("active");
-        }
+
+        if (current.enable) buttonOpt.classList.add("active");
+
         buttonOpt.optindex = indx;
         this.property_brushesSecondBox.append(buttonOpt);
       });
@@ -853,17 +854,23 @@ class Painter {
     };
 
     this.painter_drawning_box_property.onclick = (e) => {
-      let target = e.target,
-        listButtonsStyles = [
-          "prop_fontStyle",
-          "prop_fontWeight",
-          "prop_underline",
-          "prop_brushDefault",
-          // Symmetry
-          "prop_BrushSymmetry",
-          "prop_symmetry_",
-        ],
-        index = listButtonsStyles.indexOf(target.dataset.prop);
+      const listButtonsStyles = [
+        "prop_fontStyle",
+        "prop_fontWeight",
+        "prop_underline",
+        "prop_brushDefault",
+        // Symmetry
+        "prop_BrushSymmetry",
+        "prop_symmetry_",
+      ];
+
+      let { target, currentTarget } = e;
+      while (target.tagName !== "BUTTON") {
+        target = target.parentElement;
+        if (target === currentTarget) return;
+      }
+
+      const index = listButtonsStyles.indexOf(target.dataset.prop);
       if (index != -1) {
         if (listButtonsStyles[index].includes("prop_")) {
           const buttonSelStyle = listButtonsStyles[index].replace("prop_", ""),
@@ -920,7 +927,6 @@ class Painter {
 
               this.changePropertyBrush(this.type);
               this.setActiveElement(target, this.painter_shapes_box);
-              console.log("Brush active");
             }
 
             // Symmetry
@@ -1981,9 +1987,19 @@ app.registerExtension({
     gap: 5px;
   }
   .property_brushesSecondBox > button {
-    min-width: 40px;
+    min-width: 30px;
     font-size: 0.5rem;
-}
+  }
+  .property_brushesSecondBox svg {
+    width: 100%;
+    height: 100%;
+  }
+  .active svg > .cls-2 {
+    fill: var(--error-text);
+  }
+  .active svg > * {
+    stroke: var(--error-text);
+  }
     `;
     document.head.appendChild(style);
   },
