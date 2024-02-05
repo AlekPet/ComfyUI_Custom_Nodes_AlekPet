@@ -469,11 +469,14 @@ class Painter {
   // Chancge properties brush and shapes, when change color and strokeWidth
   changePropertyBrush(type = "Brush") {
     if (type === "Brush" || type === "BrushSymmetry") {
-      if (type === "Brush")
+      if (type === "Brush") {
         this.canvas.freeDrawingBrush = new fabric.PencilBrush(this.canvas);
+      }
 
       if (type === "BrushSymmetry") {
         this.canvas.freeDrawingBrush = new fabric.SymmetryBrush(this.canvas);
+        if (this.symmetryBrushOptionsCopy)
+          this.canvas.freeDrawingBrush._options = this.symmetryBrushOptionsCopy;
       }
 
       this.canvas.freeDrawingBrush.color = toRGBA(
@@ -956,6 +959,7 @@ class Painter {
           const optionKeyChange = optionsKeys[target.optindex];
 
           options[optionKeyChange].enable = !options[optionKeyChange].enable;
+          this.symmetryBrushOptionsCopy = this.canvas.freeDrawingBrush._options;
           target.classList.toggle("active");
         }
       }

@@ -1,6 +1,11 @@
 # PainterNode in ComflyUI for ControlNet
 
 > PainterNode allows you to draw in the node window, for later use in the ControlNet or in any other node.
+
+## Changelog:
+
+> 2024.02.05 - Add Symmetry Brush and cheche structures toolbar options ([examle Symmetry Brush](#symmetry-brush))
+
 > Features:
 
 - Ability to draw shapes (circle, square, triangle, line), and use pencil and erase
@@ -13,3 +18,7 @@
 # Example
 
 ![Screenshot PainterNode connecting to ControlNet](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/PainterNode/painter_node_example.jpg)
+
+# Symmetry Brush
+
+![Screenshot PainterNode Symmetry Brush](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/PainterNode/symmetryBrush.jpg)
