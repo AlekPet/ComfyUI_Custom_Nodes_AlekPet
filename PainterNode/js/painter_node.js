@@ -1705,9 +1705,9 @@ function PainterWidget(node, inputName, inputData, app) {
     // if it goes off screen quickly, the input may not be removed
     // this shifts it off screen so it can be moved back if the node is visible.
     for (let n in app.graph._nodes) {
-      n = graph._nodes[n];
-      for (let w in n.widgets) {
-        let wid = n.widgets[w];
+      const currnode = app.graph._nodes[n];
+      for (let w in currnode.widgets) {
+        let wid = currnode.widgets[w];
         if (Object.hasOwn(wid, "painter_widget")) {
           wid.painter_wrap.style.left = -8000 + "px";
           wid.painter_wrap.style.position = "absolute";
