@@ -344,7 +344,7 @@ class Painter {
 
   clearCanvas() {
     this.canvas.clear();
-    this.canvas.backgroundColor = "#000000";
+    this.canvas.backgroundColor = this.bgColor.value || "#000000";
     this.canvas.requestRenderAll();
     this.addToHistory();
     this.canvasSaveSettingsPainter();
