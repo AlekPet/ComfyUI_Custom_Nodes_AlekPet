@@ -2,7 +2,7 @@
  * Title: Set Poses in ComflyUI from ControlNet
  * Author: AlekPet
  * Description: I rewrote the main.js file as a class, from fkunn1326's openpose-editor (https://github.com/fkunn1326/openpose-editor/blob/master/javascript/main.js)
- * Version: 2023.08.04
+ * Version: 2024.02.15
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -390,6 +390,11 @@ class OpenPose {
       }
     };
 
+    //Temporarily hide background image
+    let tmp_BackgroundImg = this.canvas.backgroundImage;
+    this.canvas.backgroundImage = null;
+    this.canvas.renderAll();
+
     this.canvas.lowerCanvasEl.toBlob(function (blob) {
       let formData = new FormData();
       formData.append("image", blob, fileName);
@@ -399,6 +404,18 @@ class OpenPose {
     }, "image/png");
     // - end
 
+    //Set the background back
+    if (tmp_BackgroundImg) {
+      this.canvas.setBackgroundImage(
+        tmp_BackgroundImg,
+        this.canvas.renderAll.bind(this.canvas),
+        {
+          scaleX: this.canvas.width / tmp_BackgroundImg.width,
+          scaleY: this.canvas.height / tmp_BackgroundImg.height,
+        }
+      );
+    }
+
     const callb = this.node.callback,
       self = this;
     this.image.callback = function () {
@@ -407,6 +424,28 @@ class OpenPose {
         return callb.apply(this, arguments);
       }
     };
+  }
+
+  onLoadBackground(e) {
+    try {
+      const file = this.backgroundInput.files[0];
+      const url = URL.createObjectURL(file);
+      fabric.Image.fromURL(url, (img) => {
+        img.set({
+          originX: "left",
+          originY: "top",
+          opacity: 0.5,
+        });
+        this.canvas.setBackgroundImage(
+          img,
+          this.canvas.renderAll.bind(this.canvas),
+          {
+            scaleX: this.canvas.width / img.width,
+            scaleY: this.canvas.height / img.height,
+          }
+        );
+      });
+    } catch (err) {}
   }
 
   getJSON() {
@@ -502,17 +541,58 @@ function createOpenPose(node, inputName, inputData, app) {
 
   // Create elements undo, redo, clear history
   let panelButtons = document.createElement("div"),
+    refButton = document.createElement("button"),
     undoButton = document.createElement("button"),
     redoButton = document.createElement("button"),
     historyClearButton = document.createElement("button");
 
   panelButtons.className = "panelButtons comfy-menu-btns";
+  refButton.textContent = "Ref";
   undoButton.textContent = "⟲";
   redoButton.textContent = "⟳";
   historyClearButton.textContent = "✖";
+  refButton.title = "Reference Image (Right click remove)";
   undoButton.title = "Undo";
   redoButton.title = "Redo";
   historyClearButton.title = "Clear History";
+  historyClearButton.className = "clear_history";
+
+  refButton.addEventListener("click", () => {
+    node.openPose.backgroundInput.value = "";
+    node.openPose.backgroundInput.click();
+  });
+
+  refButton.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+
+    let menu = document.querySelector(".context_menu");
+    if (menu) {
+      menu.remove();
+    }
+    menu = document.createElement("div");
+    menu.className = "context_menu";
+
+    const menu_button = document.createElement("div");
+    menu_button.textContent = "Remove background";
+    menu_button.className = "btn_context remBG";
+    menu.append(menu_button);
+
+    panelButtons.append(menu);
+    app.graph.setDirtyCanvas(true, false);
+
+    menu.addEventListener("click", (event) => {
+      let { target } = event;
+
+      if (!target.classList.contains("btn_context")) return;
+
+      if (target.classList.contains("remBG")) {
+        node.openPose.canvas.backgroundImage = null;
+        node.openPose.canvas.renderAll();
+      }
+    });
+
+    menu.addEventListener("mouseleave", () => menu && menu.remove());
+  });
 
   undoButton.addEventListener("click", () => node.openPose.undo());
   redoButton.addEventListener("click", () => node.openPose.redo());
@@ -527,10 +607,21 @@ function createOpenPose(node, inputName, inputData, app) {
     }
   });
 
-  panelButtons.appendChild(undoButton);
-  panelButtons.appendChild(redoButton);
-  panelButtons.appendChild(historyClearButton);
-  node.openPose.canvas.wrapperEl.appendChild(panelButtons);
+  // Background image
+  node.openPose.backgroundInput = document.createElement("input");
+  node.openPose.backgroundInput.type = "file";
+  node.openPose.backgroundInput.accept = "image/jpeg,image/png,image/webp";
+  node.openPose.backgroundInput.style.display = "none";
+  node.openPose.backgroundInput.addEventListener(
+    "change",
+    node.openPose.onLoadBackground.bind(node.openPose)
+  );
+
+  panelButtons.append(refButton, undoButton, redoButton, historyClearButton);
+  node.openPose.canvas.wrapperEl.append(
+    panelButtons,
+    node.openPose.backgroundInput
+  );
 
   document.body.appendChild(widget.openpose);
 
@@ -569,9 +660,9 @@ function createOpenPose(node, inputName, inputData, app) {
     // if it goes off screen quickly, the input may not be removed
     // this shifts it off screen so it can be moved back if the node is visible.
     for (let n in app.graph._nodes) {
-      n = graph._nodes[n];
-      for (let w in n.widgets) {
-        let wid = n.widgets[w];
+      const currNode = app.graph._nodes[n];
+      for (let w in currNode.widgets) {
+        let wid = currNode.widgets[w];
         if (Object.hasOwn(wid, "openpose")) {
           wid.openpose.style.left = -8000 + "px";
           wid.openpose.style.position = "absolute";
@@ -593,7 +684,7 @@ app.registerExtension({
   async init(app) {
     // Any initial setup to run as soon as the page loads
     let style = document.createElement("style");
-    style.innerText = `.panelButtons{
+    style.innerText = `.panelButtons {
       position: absolute;
       padding: 4px;
       display: flex;
@@ -601,11 +692,33 @@ app.registerExtension({
       flex-direction: column;
       width: fit-content;
     }
-    .panelButtons button:last-child{
+    .panelButtons .clear_history {
       border-color: var(--error-text);
       color: var(--error-text) !important;
     }
-    
+    .context_menu {
+      position: absolute;
+      min-width: 100px;
+      padding: 5px;
+      background-color: var(--bg-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 1px solid var(--border-color);
+      gap: 2px;
+  }
+  .btn_context {
+    border: 1px solid;
+    padding: 5px;
+    border-color: var(--border-color);
+    transition: .8s border-color, .8s background-color;
+    cursor: pointer;
+    user-select: none;
+  }
+  .btn_context:hover {
+    color: var(--error-text);
+    border-color: var(--error-text);
+  }
     `;
     document.head.appendChild(style);
   },
