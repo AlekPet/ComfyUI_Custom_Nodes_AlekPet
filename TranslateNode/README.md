@@ -13,7 +13,7 @@ Custom nodes for ComfyUI, translate promt from other languages into english
 
 ## Changelog:
 
-> 2024.02.17 - Change name nodes js and python file for correct, and fix not saved selected languages in deep_translator node.
+> 2024.02.17 - Change name nodes js and python file for correct, and fix not load selected languages in deep_translator node, when load workflow templates.
 >
 > 2024.01.20 - Added support used official key api for googletranslate (add to the enviroment key: **GOOGLE_TRANSLATION_API_KEY** and your key value)
 >
