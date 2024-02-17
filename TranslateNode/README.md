@@ -13,8 +13,10 @@ Custom nodes for ComfyUI, translate promt from other languages into english
 
 ## Changelog:
 
+> 2024.02.17 - Change name nodes js and python file for correct, and fix not saved selected languages in deep_translator node.
+>
 > 2024.01.20 - Added support used official key api for googletranslate (add to the enviroment key: **GOOGLE_TRANSLATION_API_KEY** and your key value)
-> 
+>
 > 2023.12.14 - Added button **"Manual translate"** for the translate manualy it is need when words not need translate, example **LoRa words**
 
 ## TranslateTextNode and TranslateCLIPTextEncodeNode
@@ -25,7 +27,7 @@ Used module **googletrans**: https://pypi.org/project/googletrans/
 
 ## Image:
 
-![TranslateCLIPTextEncodeNode](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/TranslateNode/image_Translate_Node.jpg)
+![TranslateCLIPTextEncodeNode](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/TranslateNode/image_Google_Translate_Node.jpg)
 
 ## DeepTranslatorTextNode and DeepTranslatorCLIPTextEncodeNode
 

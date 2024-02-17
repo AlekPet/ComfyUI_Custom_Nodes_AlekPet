@@ -196,8 +196,12 @@ def printColorInfo(text, color='\033[92m'):
 def installNodes():
     log(f"\n-------> AlekPet Node Installing [DEBUG] <-------")
     printColorInfo(f"### [START] ComfyUI AlekPet Nodes ###", "\033[1;35m")
-    checkFolderIsset()
     web_extensions_dir = os.path.join(folder_web_extensions, extension_dirs[0])
+    
+    if os.path.exists(web_extensions_dir):
+        shutil.rmtree(web_extensions_dir)
+        
+    checkFolderIsset()
 
     for nodeElement in os.listdir(extension_folder):
         if not nodeElement.startswith('__') and nodeElement.endswith('Node') and os.path.isdir(os.path.join(extension_folder, nodeElement)):
