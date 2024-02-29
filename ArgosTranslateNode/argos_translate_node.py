@@ -76,7 +76,7 @@ class ArgosTranslateCLIPTextEncodeNode:
             "required": {
                 "from_translate": (LANGUAGES, {"default": "ru"}),
                 "to_translate": (self.langs_support, {"default": "en"}),
-                "text": ("STRING", {"multiline": True}),
+                "text": ("STRING", {"multiline": True, "placeholder": "Input text"}),
                 "clip": ("CLIP", )
             }
         }
