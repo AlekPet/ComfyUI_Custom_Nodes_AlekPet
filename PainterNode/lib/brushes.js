@@ -11,7 +11,12 @@ import { charcoal } from "./manager_mypaint.js";
 fabric.SymmetryBrushAndBrushMyPaint = fabric.util.createClass(
   fabric.BaseBrush,
   {
-    initialize: function (canvas, libmypaint = false, brushSetting = charcoal) {
+    initialize: function (
+      canvas,
+      libmypaint = false,
+      mousepressure = null,
+      brushSetting = charcoal
+    ) {
       this.canvas = canvas;
       this.ctx = canvas.contextTop;
 
@@ -35,7 +40,7 @@ fabric.SymmetryBrushAndBrushMyPaint = fabric.util.createClass(
         this._options.width_x.enable = false;
         this.surface = new MypaintSurface(this.canvas);
         this.brush = new MypaintBrush(this.brushSetting, this.surface);
-        this.mousepressure = 45; // document.getElementById("mousepressure");
+        this.mousepressure = mousepressure;
       }
     },
 
@@ -157,11 +162,9 @@ fabric.SymmetryBrushAndBrushMyPaint = fabric.util.createClass(
 
       if (options.e.buttons !== 1) return;
 
-      let pressure = 0.5;
+      let pressure;
       if (this.libmypaint) {
         let { pressure: pressurePointer, pointerType } = options.e;
-
-        let pressure;
 
         // Pen
         if (pointerType === "pen") {
@@ -169,13 +172,13 @@ fabric.SymmetryBrushAndBrushMyPaint = fabric.util.createClass(
           if (!pressure) pressure = pressurePointer;
 
           if ((!pressure && !pressurePointer) || pressure === 0)
-            pressure = this.mousepressure / 100;
+            pressure = this.mousepressure.value / 100;
         }
 
         // Mouse
         if (pointerType === "mouse" || pointerType === "touch") {
           if (pressure === undefined || pressure === 0) {
-            pressure = this.mousepressure / 100;
+            pressure = this.mousepressure.value / 100;
           }
         }
       }

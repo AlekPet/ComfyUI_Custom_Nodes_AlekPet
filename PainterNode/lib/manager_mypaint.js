@@ -61,17 +61,45 @@ class MyPaintManager {
     this.basePath = "extensions/AlekPet_Nodes/assets/painternode";
     this.brushName = brushName;
     this.currentSettingBrush = null;
-    this.getBrushData();
+    this.createElements();
+  }
+
+  createElements() {
+    // Select brush
+    this.labelSetBrush = makeElement("label", {
+      textContent: "Brush: ",
+      style:
+        "display: flex;  align-items: center; font-size: 10px; margin-left: 3px",
+      title: "Select Brush",
+    });
+    this.selectBrushElem = makeElement("select", {
+      class: ["selectBrushMyPaint"],
+    });
+    this.labelSetBrush.append(this.selectBrushElem);
+    this.selectBrushElem.addEventListener("change", this.setBrush.bind(this));
+
+    // Mouse Pressure
+    this.labelMousePressure = makeElement("label", {
+      textContent: "Pressure: ",
+      style:
+        "display: flex;  align-items: center; font-size: 10px; margin-left: 3px",
+      title: "Mouse pressure",
+    });
+    this.mousepressure = makeElement("input", {
+      class: ["mypaint_mousepressure"],
+      type: "range",
+      min: 1,
+      max: 100,
+      value: 50,
+    });
+    this.mousepressure.customSize = { w: 60, h: 25, fs: 10 };
+    this.labelMousePressure.append(this.mousepressure);
   }
 
   async getBrushData() {
     const brushesData = await getDataJSON(
       `${this.basePath}/json/brushes_data.json`
     );
-
-    this.selectBrushElem = makeElement("select", {
-      class: ["selectBrushMyPaint"],
-    });
 
     let currentDir = null;
     Object.keys(brushesData).forEach((dir) => {
@@ -102,8 +130,10 @@ class MyPaintManager {
       });
     });
 
-    this.selectBrushElem.addEventListener("change", this.setBrush.bind(this));
-    this.painterNode.property_brushesSecondBox.append(this.selectBrushElem);
+    this.painterNode.property_brushesSecondBox.append(
+      this.labelSetBrush,
+      this.labelMousePressure
+    );
   }
 
   async setBrush() {

@@ -53,13 +53,13 @@ function getColorHEX(c) {
   return { color: `#${color}`, alpha: parseFloat(alpha) };
 }
 
-function showHide({ elements = [], hide = null }) {
+function showHide({ elements = [], hide = null, displayProp = "block" }) {
   Array.from(elements).forEach((el) => {
     if (hide !== null) {
-      el.style.display = !hide ? "block" : "none";
+      el.style.display = !hide ? displayProp : "none";
     } else {
       el.style.display =
-        !el.style.display || el.style.display == "none" ? "block" : "none";
+        !el.style.display || el.style.display == "none" ? displayProp : "none";
     }
   });
 }

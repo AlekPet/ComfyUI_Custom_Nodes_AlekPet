@@ -374,13 +374,14 @@ class Painter {
       this.viewListObjects(this.list_objects_panel__items);
 
       showHide({
-        elements: [
-          this.manipulation_box,
-          nextElement,
-          panelListObjects,
-          this.painter_drawning_box_property,
-        ],
+        elements: [this.manipulation_box, nextElement, panelListObjects],
       });
+
+      showHide({
+        elements: [this.painter_drawning_box_property],
+        displayProp: "flex",
+      });
+
       this.clearLocks();
       this.painter_shapes_box_modify.appendChild(this.painter_colors_box);
       this.painter_shapes_box_modify.appendChild(this.painter_stroke_box);
@@ -388,13 +389,14 @@ class Painter {
       target.textContent = "Selection";
       target.title = "Enable selection mode";
       showHide({
-        elements: [
-          this.manipulation_box,
-          nextElement,
-          panelListObjects,
-          this.painter_drawning_box_property,
-        ],
+        elements: [this.manipulation_box, nextElement, panelListObjects],
       });
+
+      showHide({
+        elements: [this.painter_drawning_box_property],
+        displayProp: "flex",
+      });
+
       this.painter_shapes_box.insertAdjacentElement(
         "afterend",
         this.painter_colors_box
@@ -422,9 +424,11 @@ class Painter {
       }
 
       if (type === "BrushMyPaint") {
+        this.MyAppBrushManager = new MyPaintManager(this);
         this.canvas.freeDrawingBrush = new fabric.SymmetryBrushAndBrushMyPaint(
           this.canvas,
-          true
+          true,
+          this.MyAppBrushManager.mousepressure
         );
         if (this.symmetryBrushOptionsCopy)
           this.canvas.freeDrawingBrush._options = this.symmetryBrushOptionsCopy;
@@ -438,8 +442,7 @@ class Painter {
 
       if (type === "BrushSymmetry") {
         this.canvas.freeDrawingBrush = new fabric.SymmetryBrushAndBrushMyPaint(
-          this.canvas,
-          false
+          this.canvas
         );
         if (this.symmetryBrushOptionsCopy)
           this.canvas.freeDrawingBrush._options = this.symmetryBrushOptionsCopy;
@@ -583,14 +586,11 @@ class Painter {
     });
 
     const BrushMyPaint = makeElement("button", {
-      dataset: [
-        { shape: "BrushMyPaint" },
-        { prop: "prop_BrushMyPaint" },
-        { size: { w: 25, h: 25, fs: 10 } },
-      ],
+      dataset: [{ shape: "BrushMyPaint" }, { prop: "prop_BrushMyPaint" }],
       title: "MyPaint Brush",
       textContent: "MyPaint",
     });
+    BrushMyPaint.customSize = { w: 50, h: 25, fs: 10 };
 
     const buttonBrushSymmetry = makeElement("button", {
       dataset: [{ shape: "BrushSymmetry" }, { prop: "prop_BrushSymmetry" }],
@@ -650,7 +650,7 @@ class Painter {
 
     // MyPaint
     if (type === "BrushMyPaint") {
-      this.MyAppBrushManager = new MyPaintManager(this);
+      this.MyAppBrushManager.getBrushData();
     }
 
     app.graph.setDirtyCanvas(true, false);
@@ -1589,8 +1589,8 @@ function PainterWidget(node, inputName, inputData, app) {
         } else {
           let sizesEl = { w: 25, h: 25, fs: 10 };
 
-          if (element.dataset.size) {
-            sizesEl = element.dataset.size;
+          if (element?.customSize) {
+            sizesEl = element.customSize;
           }
 
           if (element.id.includes("lock")) sizesEl = { w: 75, h: 15, fs: 10 };
@@ -1841,6 +1841,7 @@ app.registerExtension({
     .painter_drawning_box_property {
       position: absolute;
       top: -60px;
+      width: 100%;
     }
     .painter_drawning_box_property select {
       color: var(--input-text);
@@ -1998,6 +1999,8 @@ app.registerExtension({
   .property_brushesBox, .property_brushesSecondBox {
     display: flex;
     gap: 5px;
+    flex-wrap: wrap;
+    flex: 1 0;
   }
   .property_brushesSecondBox > button {
     min-width: 30px;
