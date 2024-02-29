@@ -7,7 +7,7 @@
  */
 
 import { app } from "../../scripts/app.js";
-import { fabric } from "../../lib/fabric.js";
+import { fabric } from "./lib/posenode/fabric.js";
 
 fabric.Object.prototype.transparentCorners = false;
 fabric.Object.prototype.cornerColor = "#108ce6";
@@ -349,9 +349,25 @@ class OpenPose {
   }
 
   resetCanvas() {
+    const backgroundImg = this.canvas.backgroundImage;
     this.canvas.clear();
     this.canvas.backgroundColor = "#000";
     this.addPose();
+
+    this.setBackground(backgroundImg);
+  }
+
+  setBackground(backgroundImg) {
+    if (backgroundImg) {
+      this.canvas.setBackgroundImage(
+        backgroundImg,
+        this.canvas.renderAll.bind(this.canvas),
+        {
+          scaleX: this.canvas.width / backgroundImg.width,
+          scaleY: this.canvas.height / backgroundImg.height,
+        }
+      );
+    }
   }
 
   updateHistoryData() {
@@ -405,16 +421,7 @@ class OpenPose {
     // - end
 
     //Set the background back
-    if (tmp_BackgroundImg) {
-      this.canvas.setBackgroundImage(
-        tmp_BackgroundImg,
-        this.canvas.renderAll.bind(this.canvas),
-        {
-          scaleX: this.canvas.width / tmp_BackgroundImg.width,
-          scaleY: this.canvas.height / tmp_BackgroundImg.height,
-        }
-      );
-    }
+    this.setBackground(tmp_BackgroundImg);
 
     const callb = this.node.callback,
       self = this;

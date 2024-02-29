@@ -1,4 +1,3 @@
 #git+https://github.com/StarkBotsIndustries/googletrans.git
 #If googletrans-py cannot be installed, use the GitHub installation method mentioned above.
 googletrans-py
-deep-translator

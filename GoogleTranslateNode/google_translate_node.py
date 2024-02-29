@@ -5,9 +5,13 @@ from server import PromptServer
 from aiohttp import web
 from googletrans import Translator, LANGUAGES
 
-### =====  Translate Nodes [googletrans module]  ===== ###
+### =====  GoogleTranslate Nodes [googletrans module]  ===== ###
 translator = Translator()
 
+google_translation_key = os.environ.get("GOOGLE_TRANSLATION_API_KEY")
+
+
+# Manual tranlsate prompts
 @PromptServer.instance.routes.post("/alekpet/translate_manual")
 async def translate_manual(request):
     json_data =  await request.json()
@@ -24,9 +28,9 @@ async def translate_manual(request):
        
     return web.json_response({"translate_prompt": prompt})
 
-google_translation_key = os.environ.get("GOOGLE_TRANSLATION_API_KEY")
+# Translate used Google API_KEY
 class TranslationResult:
-    def __init__(self, text):
+    def __init__(self, text=''):
         self.text = text
 
     def translate_by_key(text, src, dest):
@@ -48,6 +52,7 @@ class TranslationResult:
 
         return TranslationResult('')
 
+
 def translate(prompt, srcTrans=None, toTrans=None):
     if not srcTrans:
         srcTrans = 'auto'
@@ -59,12 +64,12 @@ def translate(prompt, srcTrans=None, toTrans=None):
     if prompt and prompt.strip() !="":
         if not google_translation_key:
             translate_text_prompt = translator.translate(prompt, src=srcTrans, dest=toTrans)
-        else:
-            translate_text_prompt = translate_by_key(prompt, src=srcTrans, dest=toTrans)
+        else:            
+            translate_text_prompt = TranslationResult.translate_by_key(prompt, src=srcTrans, dest=toTrans)
 
     return translate_text_prompt.text if hasattr(translate_text_prompt, 'text') else ''
 
-class TranslateCLIPTextEncodeNode:
+class GoogleTranslateCLIPTextEncodeNode:
     
     @classmethod
     def INPUT_TYPES(self):
@@ -95,7 +100,7 @@ class TranslateCLIPTextEncodeNode:
         return ([[cond, {"pooled_output": pooled}]], text_tranlsated)
  
 
-class TranslateTextNode(TranslateCLIPTextEncodeNode):
+class GoogleTranslateTextNode(GoogleTranslateCLIPTextEncodeNode):
 
     @classmethod
     def INPUT_TYPES(self):
@@ -118,4 +123,4 @@ class TranslateTextNode(TranslateCLIPTextEncodeNode):
         text_tranlsated = translate(text, from_translate, to_translate) if not manual_translate else text
         return (text_tranlsated,)
     
-### =====  Translate Nodes [googletrans module] -> end ===== ###
+### =====  GoogleTranslate Nodes [googletrans module] -> end ===== ###

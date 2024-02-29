@@ -36,62 +36,6 @@ def log(*text):
         print(''.join(map(str, text)))
 
 
-def check_is_installed(module_name):    
-    try:
-        module_name_cut_index = module_name_cut_version.search(module_name)
-        module_name_no_version = ""
-        if(module_name_cut_index):
-            module_name_cut_index = module_name_cut_index.start()
-            module_name_no_version = module_name[:module_name_cut_index]
-            modulImport = importlib.util.find_spec(module_name_no_version)
-            
-            if(modulImport is not None):
-                return True
-        
-        if(module_name_no_version.lower() in installed_modules or module_name.lower() in installed_modules):                   
-            return True
-        
-        return False 
-
-    except ModuleNotFoundError:
-        return False
-
-
-def module_install_old(module_name, action='install'):
-    if not module_name and not action:
-        log(f'    [!] Action, module_name arguments is not corrects!')
-        return
-
-    command = f'"{python}" -m pip {action} {module_name}'
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=os.environ)
-    action_capitalize = action.capitalize()
-
-    if result.returncode != 0:
-        log(f'    [E] {action_capitalize} module {module_name} is fail! Error code: {result.returncode}')
-
-    log(f'    [*] {action_capitalize} module "{module_name}" successful')
-
-
-def checkModules_old(nodeElement):
-    file_requir = os.path.join(extension_folder, nodeElement, 'requirements.txt')
-    if os.path.exists(file_requir):
-        log("  -> File 'requirements.txt' found!")
-        with open(file_requir, 'r', encoding="utf-8") as r:
-            for m in r.readlines():
-                m = m.strip()
-
-                if m.startswith("#"):
-                    log(f"    [!] Found comment skipping: '{m}'")
-                    continue
-
-                log(f"    [*] Check installed module '{m}'...")
-                check_m = check_is_installed(m)
-                if not check_m:
-                    module_install(m)
-                else:
-                    log(f"    [*] Module '{m}' is installed!")
-
-
 def information(datas):
     for info in datas:
         if DEBUG:
@@ -115,41 +59,6 @@ def checkModules(nodeElement):
     if os.path.exists(file_requir):
         log("  -> File 'requirements.txt' found!")
         module_install([sys.executable, '-s', '-m', 'pip', 'install', '-r', file_requir])
-
-
-def addFilesToFolder(folderSrc, folderDst, nodeElement):
-    if os.path.exists(folderSrc):
-        folder = os.path.split(folderSrc)[-1]
-        log(f"  -> Find files javascipt in '{folder}' folder...")
-        find_files = filecmp.dircmp(folderSrc, folderDst)
-        if find_files.left_only or find_files.diff_files:
-            listFiles = list(find_files.left_only)
-            listFiles.extend(f for f in find_files.diff_files if f not in listFiles)
-
-            log(f"    [*] Found files in '{folder}': {', '.join(listFiles)}")
-            for f in listFiles:
-                src_f = os.path.join(folderSrc, f)
-                dst_f = os.path.join(folderDst, f)
-                if os.path.exists(dst_f):
-                    os.remove(dst_f)
-                shutil.copy(src_f, dst_f)
-
-
-def removeFilesOldFolder(folderSrc, folderDst, nodeElement):
-    if os.path.exists(folderSrc):
-        folder = os.path.split(folderDst)[-1]
-        log(f"  -> Find old js files and remove in '{folder}' folder")
-        find_files = filecmp.dircmp(folderDst, folderSrc)
-        if find_files.common:
-            listFiles = list()
-            listFiles.extend(f for f in find_files.common if f not in listFiles)
-
-            log(f"    [*] Found old files in '{folder}' folder: {', '.join(listFiles)}")
-            for f in listFiles:
-                dst_f = os.path.join(folderDst, f)
-                if os.path.exists(dst_f):
-                    log(f"    [*] File '{f}' is removed.")
-                    os.remove(dst_f)
 
 
 def addComfyUINodesToMapping(nodeElement):
@@ -198,29 +107,37 @@ def installNodes():
     printColorInfo(f"### [START] ComfyUI AlekPet Nodes ###", "\033[1;35m")
     web_extensions_dir = os.path.join(folder_web_extensions, extension_dirs[0])
     
+    # Remove files in lib directory 
+    libfiles = ['fabric.js']
+    for file in libfiles:
+        filePath = os.path.join(folder__web_lib, file)
+        if os.path.exists(filePath):
+            os.remove(filePath)
+    
     if os.path.exists(web_extensions_dir):
         shutil.rmtree(web_extensions_dir)
         
     checkFolderIsset()
+    
+    extensions_dirs_copy = ['js','assets', 'lib']
 
     for nodeElement in os.listdir(extension_folder):
         if not nodeElement.startswith('__') and nodeElement.endswith('Node') and os.path.isdir(os.path.join(extension_folder, nodeElement)):
             log(f"* Node <{nodeElement}> is found, installing...")
-            js_folder = os.path.join(extension_folder, nodeElement, "js")
-            lib_folder = os.path.join(extension_folder, nodeElement, "lib")
 
-            # Removes old files
-            removeFilesOldFolder(js_folder, folder_web_extensions, nodeElement)
-
-            # Add missing or updates files
-            addFilesToFolder(js_folder, web_extensions_dir, nodeElement)
-            addFilesToFolder(lib_folder, folder__web_lib, nodeElement)
-
+            # Add missing or updates files           
+            for dir_name in extensions_dirs_copy:
+                folder_curr = os.path.join(extension_folder, nodeElement, dir_name)
+                if os.path.exists(folder_curr):
+                    folder_curr_dist = os.path.join(web_extensions_dir, dir_name, nodeElement.lower() if dir_name != 'js' else web_extensions_dir)                 
+                    shutil.copytree(folder_curr, folder_curr_dist, dirs_exist_ok=True)
+            
             # Loading node info
             printColorInfo(f"Node -> {nodeElement} [Loading]")
 
             checkModules(nodeElement)
             addComfyUINodesToMapping(nodeElement)
+            
     printColorInfo(f"### [END] ComfyUI AlekPet Nodes ###", "\033[1;35m")
 
 

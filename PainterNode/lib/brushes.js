@@ -4,7 +4,7 @@
  * Github: https://github.com/AlekPet
  * Github extensions ComfyUI: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
-import { fabric } from "../../lib/fabric.js";
+import { fabric } from "./fabric.js";
 
 fabric.SymmetryBrush = fabric.util.createClass(fabric.BaseBrush, {
   initialize: function (canvas) {

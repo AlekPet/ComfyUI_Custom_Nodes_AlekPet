@@ -62,8 +62,8 @@ app.registerExtension({
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     // --- GoogleTranslateNode
     if (
-      nodeData.name == "TranslateTextNode" ||
-      nodeData.name == "TranslateCLIPTextEncodeNode"
+      nodeData.name == "GoogleTranslateTextNode" ||
+      nodeData.name == "GoogleTranslateCLIPTextEncodeNode"
     ) {
       // Node Created
       const onNodeCreated = nodeType.prototype.onNodeCreated;
