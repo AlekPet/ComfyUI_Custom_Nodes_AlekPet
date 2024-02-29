@@ -1,3 +1,5 @@
+import { fabric } from "./fabric.js";
+
 // RGB, HSV, and HSL color conversion algorithms in JavaScript https://gist.github.com/mjackson/5311256
 function rgbToHsv(r, g, b) {
   r /= 255;
@@ -94,7 +96,6 @@ function makeElement(tag, attrs = {}) {
   return element;
 }
 
-// MyPaint
 async function getDataJSON(url) {
   try {
     const response = await fetch(url);

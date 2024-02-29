@@ -30,7 +30,7 @@ fabric.SymmetryBrushAndBrushMyPaint = fabric.util.createClass(
 
       this.libmypaint = libmypaint;
 
-      if (this.libmypaint) {
+      if (this.libmypaint && brushSetting) {
         this.brushSetting = brushSetting;
         this._options.width_x.enable = false;
         this.surface = new MypaintSurface(this.canvas);

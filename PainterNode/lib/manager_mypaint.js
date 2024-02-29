@@ -1,3 +1,5 @@
+import { makeElement, rgbToHsv, getDataJSON } from "./utils.js";
+
 const charcoal = {
   opaque: {
     base_value: 0.4,
@@ -49,84 +51,6 @@ const charcoal = {
   direction_filter: { base_value: 2.0 },
   version: { base_value: 2.0 },
 };
-
-// RGB, HSV, and HSL color conversion algorithms in JavaScript https://gist.github.com/mjackson/5311256
-function rgbToHsv(r, g, b) {
-  r /= 255;
-  g /= 255;
-  b /= 255;
-
-  let max = Math.max(r, g, b),
-    min = Math.min(r, g, b),
-    h,
-    s,
-    v = max,
-    d = max - min;
-  s = max == 0 ? 0 : d / max;
-
-  if (max == min) {
-    h = 0; // achromatic
-  } else {
-    switch (max) {
-      case r:
-        h = (g - b) / d + (g < b ? 6 : 0);
-        break;
-      case g:
-        h = (b - r) / d + 2;
-        break;
-      case b:
-        h = (r - g) / d + 4;
-        break;
-    }
-
-    h /= 6;
-  }
-
-  return [h, s, v];
-}
-
-function makeElement(tag, attrs = {}) {
-  if (!tag) tag = "div";
-  const element = document.createElement(tag);
-  Object.keys(attrs).forEach((key) => {
-    const currValue = attrs[key];
-    if (key === "class") {
-      if (Array.isArray(currValue)) {
-        element.classList.add(...currValue);
-      } else if (currValue instanceof String && typeof currValue === "string") {
-        element.className = currValue;
-      }
-    } else if (key === "dataset") {
-      try {
-        if (Array.isArray(currValue)) {
-          currValue.forEach((datasetArr) => {
-            const [prop, propval] = Object.entries(datasetArr)[0];
-            element.dataset[prop] = propval;
-          });
-        } else {
-          const [prop, propval] = Object.entries(currValue)[0];
-          element.dataset[prop] = propval;
-        }
-      } catch (err) {
-        console.log(err);
-      }
-    } else {
-      element[key] = currValue;
-    }
-  });
-  return element;
-}
-
-// MyPaint
-async function getDataJSON(url) {
-  try {
-    const response = await fetch(url);
-    const jsonData = await response.json();
-    return jsonData;
-  } catch (err) {
-    return new Error(err);
-  }
-}
 
 class MyPaintManager {
   constructor(painterNode, brushName = "charcoal") {
@@ -205,4 +129,4 @@ class MyPaintManager {
   }
 }
 
-export { makeElement, charcoal, rgbToHsv, MyPaintManager, getDataJSON };
+export { charcoal, MyPaintManager };

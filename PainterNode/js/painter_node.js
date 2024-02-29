@@ -10,10 +10,12 @@ import { api } from "/scripts/api.js";
 import { fabric } from "./lib/painternode/fabric.js";
 import { svgSymmetryButtons } from "./lib/painternode/brushes.js";
 import {
+  toRGBA,
+  getColorHEX,
+  showHide,
   makeElement,
-  MyPaintManager,
-} from "./lib/painternode/manager_mypaint.js";
-import { toRGBA, getColorHEX, showHide } from "./lib/painternode/utils.js";
+} from "./lib/painternode/utils.js";
+import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
 const painters_settings_json = false; // save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
@@ -412,8 +414,8 @@ class Painter {
     element_active.classList.add("active");
   }
 
-  // Chancge properties brush and shapes, when change color and strokeWidth
-  changePropertyBrush(type = "Brush") {
+  // Change properties brush and shapes, when change color and strokeWidth
+  async changePropertyBrush(type = "Brush") {
     if (["Brush", "BrushSymmetry", "BrushMyPaint"].includes(type)) {
       if (type === "Brush") {
         this.canvas.freeDrawingBrush = new fabric.PencilBrush(this.canvas);
