@@ -188,6 +188,7 @@ class Painter {
       backgroundColor: "transparent",
       width: 512,
       height: 512,
+      enablePointerEvents: true,
     });
 
     this.canvas.backgroundColor = "#000000";
@@ -468,13 +469,25 @@ class Painter {
 
   // Chancge properties brush and shapes, when change color and strokeWidth
   changePropertyBrush(type = "Brush") {
-    if (type === "Brush" || type === "BrushSymmetry") {
+    if (["Brush", "BrushSymmetry", "BrushMyPaint"].includes(type)) {
       if (type === "Brush") {
         this.canvas.freeDrawingBrush = new fabric.PencilBrush(this.canvas);
       }
 
+      if (type === "BrushMyPaint") {
+        this.canvas.freeDrawingBrush = new fabric.SymmetryBrushAndBrushMyPaint(
+          this.canvas,
+          true
+        );
+        if (this.symmetryBrushOptionsCopy)
+          this.canvas.freeDrawingBrush._options = this.symmetryBrushOptionsCopy;
+      }
+
       if (type === "BrushSymmetry") {
-        this.canvas.freeDrawingBrush = new fabric.SymmetryBrush(this.canvas);
+        this.canvas.freeDrawingBrush = new fabric.SymmetryBrushAndBrushMyPaint(
+          this.canvas,
+          false
+        );
         if (this.symmetryBrushOptionsCopy)
           this.canvas.freeDrawingBrush._options = this.symmetryBrushOptionsCopy;
       }
@@ -616,10 +629,14 @@ class Painter {
       class: ["property_brushesBox", "comfy-menu-btns"],
     });
 
-    const buttonBrush = makeElement("button", {
-      dataset: [{ shape: "Brush" }, { prop: "prop_brushDefault" }],
-      title: "Brush",
-      textContent: "B",
+    const BrushMyPaint = makeElement("button", {
+      dataset: [
+        { shape: "BrushMyPaint" },
+        { prop: "prop_BrushMyPaint" },
+        { size: { w: 25, h: 25, fs: 10 } },
+      ],
+      title: "MyPaint Brush",
+      textContent: "MyPaint",
     });
 
     const buttonBrushSymmetry = makeElement("button", {
@@ -636,7 +653,7 @@ class Painter {
     });
 
     property_brushesBox.append(
-      buttonBrush,
+      BrushMyPaint,
       buttonBrushSymmetry,
       separator,
       this.property_brushesSecondBox
@@ -647,7 +664,7 @@ class Painter {
 
   async createToolbarOptions(type) {
     this.property_brushesSecondBox.innerHTML = "";
-    if (type === "BrushSymmetry") {
+    if (type === "BrushSymmetry" || type === "BrushMyPaint") {
       // Wait
       function waitOptions() {
         return new Promise((res) => {
@@ -863,6 +880,7 @@ class Painter {
         "prop_underline",
         "prop_brushDefault",
         // Symmetry
+        "prop_BrushMyPaint",
         "prop_BrushSymmetry",
         "prop_symmetry_",
       ];
@@ -919,24 +937,15 @@ class Painter {
             Array.from(target.parentElement.children).forEach((b) =>
               b.classList.remove("active")
             );
-            if (buttonSelStyle === "brushDefault") {
+
+            // Symmetry & MyPaint
+            if (
+              buttonSelStyle === "BrushSymmetry" ||
+              buttonSelStyle === "BrushMyPaint"
+            ) {
               this.canvas.isDrawingMode = true;
               this.drawning = true;
-              this.type = "Brush";
-
-              if (this.property_brushesSecondBox) {
-                this.property_brushesSecondBox.innerHTML = "";
-              }
-
-              this.changePropertyBrush(this.type);
-              this.setActiveElement(target, this.painter_shapes_box);
-            }
-
-            // Symmetry
-            if (buttonSelStyle === "BrushSymmetry") {
-              this.canvas.isDrawingMode = true;
-              this.drawning = true;
-              this.type = "BrushSymmetry";
+              this.type = buttonSelStyle;
 
               if (this.property_brushesSecondBox) {
                 this.createToolbarOptions(this.type);
@@ -1063,9 +1072,14 @@ class Painter {
       this.fillColorTransparent.oninput =
         () => {
           if (
-            ["Brush", "Textbox", "BrushSymmetry", "Image", "Erase"].includes(
-              this.type
-            ) ||
+            [
+              "Brush",
+              "Textbox",
+              "BrushMyPaint",
+              "BrushSymmetry",
+              "Image",
+              "Erase",
+            ].includes(this.type) ||
             !this.drawning
           ) {
             this.changePropertyBrush(this.type);
@@ -1093,7 +1107,9 @@ class Painter {
 
     this.strokeWidth.onchange = () => {
       if (
-        ["Brush", "BrushSymmetry", "Textbox", "Image"].includes(this.type) ||
+        ["Brush", "BrushMyPaint", "BrushSymmetry", "Textbox", "Image"].includes(
+          this.type
+        ) ||
         !this.drawning
       ) {
         this.changePropertyBrush(this.type);
@@ -1135,7 +1151,9 @@ class Painter {
 
         if (
           !this.drawning &&
-          !["Erase", "Brush", "BrushSymmetry"].includes(target.type)
+          !["Erase", "Brush", "BrushMyPaint", "BrushSymmetry"].includes(
+            target.type
+          )
         ) {
           this.strokeWidth.value = parseInt(
             this.getActiveStyle("strokeWidth", target),
@@ -1175,7 +1193,12 @@ class Painter {
         this.canvas.isDrawingMode = this.drawning;
         if (!this.canvas.isDrawingMode) return;
 
-        if (["Brush", "Erase", "BrushSymmetry"].includes(this.type)) return;
+        if (
+          ["Brush", "Erase", "BrushMyPaint", "BrushSymmetry"].includes(
+            this.type
+          )
+        )
+          return;
 
         if (this.type != "Textbox") {
           let { x: left, y: top } = this.canvas.getPointer(o.e),
@@ -1231,7 +1254,12 @@ class Painter {
           return;
         }
 
-        if (["Brush", "Erase", "BrushSymmetry"].includes(this.type)) return;
+        if (
+          ["Brush", "Erase", "BrushMyPaint", "BrushSymmetry"].includes(
+            this.type
+          )
+        )
+          return;
 
         let pointer = this.canvas.getPointer(o.e),
           activeObj = this.canvas.getActiveObject();
@@ -1288,9 +1316,14 @@ class Painter {
         this.canvas.getActiveObjects()?.forEach((a) => a.setCoords());
 
         if (
-          !["Brush", "Erase", "BrushSymmetry", "Image", "Textbox"].includes(
-            this.type
-          )
+          ![
+            "Brush",
+            "Erase",
+            "BrushMyPaint",
+            "BrushSymmetry",
+            "Image",
+            "Textbox",
+          ].includes(this.type)
         )
           this.canvas.isDrawingMode = false;
 
@@ -1587,6 +1620,10 @@ function PainterWidget(node, inputName, inputData, app) {
         } else {
           let sizesEl = { w: 25, h: 25, fs: 10 };
 
+          if (element.dataset.size) {
+            sizesEl = element.dataset.size;
+          }
+
           if (element.id.includes("lock")) sizesEl = { w: 75, h: 15, fs: 10 };
           if (element.id.includes("zpos")) sizesEl = { w: 80, h: 15, fs: 7 };
           if (
@@ -1792,6 +1829,9 @@ line-height: 1.5`;
 app.registerExtension({
   name: "Comfy.PainterNode",
   async init(app) {
+    const limybrush = document.createElement("script");
+    limybrush.src = "extensions/AlekPet_Nodes/lib/painternode/mybrush.js";
+
     const style = document.createElement("style");
     style.innerText = `.panelPaintBox {
       position: absolute;
@@ -2005,7 +2045,7 @@ app.registerExtension({
     stroke: var(--error-text);
   }
     `;
-    document.head.appendChild(style);
+    document.head.append(limybrush, style);
   },
   async setup(app) {
     let PainerNode = app.graph._nodes.filter((wi) => wi.type == "PainterNode");
