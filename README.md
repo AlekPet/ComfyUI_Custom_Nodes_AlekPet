@@ -4,17 +4,17 @@ Custom nodes that extend the capabilities of [ComfyUI](https://github.com/comfya
 
 # List Nodes:
 
-| Name                               |                                                     Description                                                      |     ComfyUI category      |
-| :--------------------------------- | :------------------------------------------------------------------------------------------------------------------: | :-----------------------: |
-| _PoseNode_                         |                                             The node set pose ControlNet                                             |    AlekPet Node/image     |
-| _PainterNode_                      |                            The node set sketch, scrumble image ControlNet and other nodes                            |    AlekPet Node/image     |
-| _TranslateTextNode_                |       The node translate promt uses module **googletrans** from other languages into english and return string       | AlekPet Node/conditioning |
-| _TranslateCLIPTextEncodeNode_      |   The node translate promt uses module **googletrans** from other languages into english, and return conditioning    |     AlekPet Node/text     |
-| _DeepTranslatorTextNode_           |     The node translate promt uses module **Deep Translator** from other languages into english and return string     |     AlekPet Node/text     |
-| _DeepTranslatorCLIPTextEncodeNode_ | The node translate promt uses module **Deep Translator** from other languages into english, and return conditioning  | AlekPet Node/conditioning |
-| _ArgosTranslateTextNode_           |    The node translate promt uses module **Argos Translator** from other languages into english and return string     |     AlekPet Node/text     |
-| _ArgosTranslateCLIPTextEncodeNode_ | The node translate promt uses module **Argos Translator** from other languages into english, and return conditioning | AlekPet Node/conditioning |
-| _PreviewTextNode_                  |                                           The node displays the input text                                           |    AlekPet Node/extras    |
+| Name                                |                                                     Description                                                      |     ComfyUI category      |
+| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------: | :-----------------------: |
+| _PoseNode_                          |                                             The node set pose ControlNet                                             |    AlekPet Node/image     |
+| _PainterNode_                       |                            The node set sketch, scrumble image ControlNet and other nodes                            |    AlekPet Node/image     |
+| _GoogleTranslateTextNode_           |       The node translate promt uses module **googletrans** from other languages into english and return string       | AlekPet Node/conditioning |
+| _GoogleTranslateCLIPTextEncodeNode_ |   The node translate promt uses module **googletrans** from other languages into english, and return conditioning    |     AlekPet Node/text     |
+| _DeepTranslatorTextNode_            |     The node translate promt uses module **Deep Translator** from other languages into english and return string     |     AlekPet Node/text     |
+| _DeepTranslatorCLIPTextEncodeNode_  | The node translate promt uses module **Deep Translator** from other languages into english, and return conditioning  | AlekPet Node/conditioning |
+| _ArgosTranslateTextNode_            |    The node translate promt uses module **Argos Translator** from other languages into english and return string     |     AlekPet Node/text     |
+| _ArgosTranslateCLIPTextEncodeNode_  | The node translate promt uses module **Argos Translator** from other languages into english, and return conditioning | AlekPet Node/conditioning |
+| _PreviewTextNode_                   |                                           The node displays the input text                                           |    AlekPet Node/extras    |
 
 # Installing
 
