@@ -9,6 +9,11 @@ import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 import { fabric } from "./lib/painternode/fabric.js";
 import { svgSymmetryButtons } from "./lib/painternode/brushes.js";
+import {
+  makeElement,
+  MyPaintManager,
+} from "./lib/painternode/manager_mypaint.js";
+import { toRGBA, getColorHEX, showHide } from "./lib/painternode/utils.js";
 
 // ================= FUNCTIONS ================
 const painters_settings_json = false; // save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
@@ -35,66 +40,6 @@ function removeObject(eventData, transform) {
   canvas.remove(target);
   canvas.requestRenderAll();
   this.viewListObjects(this.list_objects_panel__items);
-}
-
-function toRGBA(hex, alpha = 1.0) {
-  let array_hex = hex.match(/[^#]./g);
-  if (array_hex) {
-    return `rgba(${array_hex
-      .map((h) => parseInt(h, 16))
-      .join(", ")}, ${alpha})`;
-  }
-  return hex;
-}
-
-function getColorHEX(c) {
-  let colorStyle = new fabric.Color(c),
-    color = colorStyle.toHex(),
-    alpha = colorStyle.getAlpha();
-  return { color: `#${color}`, alpha: parseFloat(alpha) };
-}
-
-function showHide({ elements = [], hide = null }) {
-  Array.from(elements).forEach((el) => {
-    if (hide !== null) {
-      el.style.display = !hide ? "block" : "none";
-    } else {
-      el.style.display =
-        !el.style.display || el.style.display == "none" ? "block" : "none";
-    }
-  });
-}
-
-function makeElement(tag, attrs = {}) {
-  if (!tag) tag = "div";
-  const element = document.createElement(tag);
-  Object.keys(attrs).forEach((key) => {
-    const currValue = attrs[key];
-    if (key === "class") {
-      if (Array.isArray(currValue)) {
-        element.classList.add(...currValue);
-      } else if (currValue instanceof String && typeof currValue === "string") {
-        element.className = currValue;
-      }
-    } else if (key === "dataset") {
-      try {
-        if (Array.isArray(currValue)) {
-          currValue.forEach((datasetArr) => {
-            const [prop, propval] = Object.entries(datasetArr)[0];
-            element.dataset[prop] = propval;
-          });
-        } else {
-          const [prop, propval] = Object.entries(currValue)[0];
-          element.dataset[prop] = propval;
-        }
-      } catch (err) {
-        console.log(err);
-      }
-    } else {
-      element[key] = currValue;
-    }
-  });
-  return element;
 }
 
 window.LS_Painters = {};
@@ -481,6 +426,12 @@ class Painter {
         );
         if (this.symmetryBrushOptionsCopy)
           this.canvas.freeDrawingBrush._options = this.symmetryBrushOptionsCopy;
+
+        const bs = this.canvas.freeDrawingBrush.brushSetting;
+        bs.color_h.base_value = 0.9;
+        bs.color_s.base_value = 1.0;
+        bs.color_v.base_value = 0.9;
+        this.canvas.freeDrawingBrush.brush.readmyb_json(bs);
       }
 
       if (type === "BrushSymmetry") {
@@ -694,6 +645,12 @@ class Painter {
         this.property_brushesSecondBox.append(buttonOpt);
       });
     }
+
+    // MyPaint
+    if (type === "BrushMyPaint") {
+      this.MyAppBrushManager = new MyPaintManager(this);
+    }
+
     app.graph.setDirtyCanvas(true, false);
   }
   // end - Toolbars
@@ -1527,13 +1484,23 @@ class Painter {
       }
     };
 
-    this.canvas.lowerCanvasEl.toBlob(function (blob) {
-      let formData = new FormData();
-      formData.append("image", blob, fileName);
-      formData.append("overwrite", "true");
-      //formData.append("type", "temp");
-      uploadFile(formData);
-    }, "image/png");
+    if (this.type === "BrushMyPaint") {
+      this.canvas.contextTop.canvas.toBlob(function (blob) {
+        let formData = new FormData();
+        formData.append("image", blob, fileName);
+        formData.append("overwrite", "true");
+        //formData.append("type", "temp");
+        uploadFile(formData);
+      }, "image/png");
+    } else {
+      this.canvas.lowerCanvasEl.toBlob(function (blob) {
+        let formData = new FormData();
+        formData.append("image", blob, fileName);
+        formData.append("overwrite", "true");
+        //formData.append("type", "temp");
+        uploadFile(formData);
+      }, "image/png");
+    }
     // - end
 
     const callb = this.node.callback,
@@ -1558,7 +1525,7 @@ function PainterWidget(node, inputName, inputData, app) {
     draw: function (ctx, _, widgetWidth, y, widgetHeight) {
       const margin = 10,
         left_offset = 8,
-        top_offset = 30,
+        top_offset = 50,
         visible = app.canvas.ds.scale > 0.6 && this.type === "painter_widget",
         w = widgetWidth - margin * 2 - 80,
         clientRectBound = ctx.canvas.getBoundingClientRect(),
@@ -1863,7 +1830,7 @@ app.registerExtension({
     }
     .painter_drawning_box {
       position: absolute;
-      top: -40px;
+      top: -64px;
       width: 88px;
     }
     .painter_drawning_box button {
@@ -1871,7 +1838,7 @@ app.registerExtension({
     }
     .painter_drawning_box_property {
       position: absolute;
-      top: -36px;
+      top: -60px;
     }
     .painter_drawning_box_property select {
       color: var(--input-text);

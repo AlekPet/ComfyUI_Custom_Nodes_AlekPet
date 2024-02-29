@@ -5,99 +5,13 @@
  * Github extensions ComfyUI: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 import { fabric } from "./fabric.js";
-
-// RGB, HSV, and HSL color conversion algorithms in JavaScript https://gist.github.com/mjackson/5311256
-function rgbToHsv(r, g, b) {
-  r /= 255;
-  g /= 255;
-  b /= 255;
-
-  let max = Math.max(r, g, b),
-    min = Math.min(r, g, b),
-    h,
-    s,
-    v = max,
-    d = max - min;
-  s = max == 0 ? 0 : d / max;
-
-  if (max == min) {
-    h = 0; // achromatic
-  } else {
-    switch (max) {
-      case r:
-        h = (g - b) / d + (g < b ? 6 : 0);
-        break;
-      case g:
-        h = (b - r) / d + 2;
-        break;
-      case b:
-        h = (r - g) / d + 4;
-        break;
-    }
-
-    h /= 6;
-  }
-
-  return [h, s, v];
-}
-
-const charcoal = {
-  opaque: {
-    base_value: 0.4,
-    pointsList: { pressure: [0.0, 0.0, 1.0, 0.4] },
-  },
-  opaque_multiply: {
-    base_value: 0.0,
-    pointsList: { pressure: [0.0, 0.0, 1.0, 1.0] },
-  },
-  opaque_linearize: { base_value: 0.0 },
-  radius_logarithmic: { base_value: 0.7 },
-  hardness: { base_value: 0.2 },
-  dabs_per_basic_radius: { base_value: 0.0 },
-  dabs_per_actual_radius: { base_value: 5.0 },
-  dabs_per_second: { base_value: 0.0 },
-  radius_by_random: { base_value: 0.0 },
-  speed1_slowness: { base_value: 0.04 },
-  speed2_slowness: { base_value: 0.8 },
-  speed1_gamma: { base_value: 4.0 },
-  speed2_gamma: { base_value: 4.0 },
-  offset_by_random: {
-    base_value: 1.6,
-    pointsList: { pressure: [0.0, 0.0, 1.0, -1.4] },
-  },
-  offset_by_speed: { base_value: 0.0 },
-  offset_by_speed_slowness: { base_value: 1.0 },
-  slow_tracking: { base_value: 2.0 },
-  slow_tracking_per_dab: { base_value: 0.0 },
-  tracking_noise: { base_value: 0.0 },
-  color_h: { base_value: 0.0 },
-  color_s: { base_value: 0.0 },
-  color_v: { base_value: 0.0 },
-  change_color_h: { base_value: 0.0 },
-  change_color_l: { base_value: 0.0 },
-  change_color_hsl_s: { base_value: 0.0 },
-  change_color_v: { base_value: 0.0 },
-  change_color_hsv_s: { base_value: 0.0 },
-  smudge: { base_value: 0.0 },
-  smudge_length: { base_value: 0.5 },
-  smudge_radius_log: { base_value: 0.0 },
-  eraser: { base_value: 0.0 },
-  stroke_threshold: { base_value: 0.0 },
-  stroke_duration_logarithmic: { base_value: 4.0 },
-  stroke_holdtime: { base_value: 0.0 },
-  custom_input: { base_value: 0.0 },
-  custom_input_slowness: { base_value: 0.0 },
-  elliptical_dab_ratio: { base_value: 1.0 },
-  elliptical_dab_angle: { base_value: 90.0 },
-  direction_filter: { base_value: 2.0 },
-  version: { base_value: 2.0 },
-};
+import { charcoal } from "./manager_mypaint.js";
 
 // Brush symmetry
 fabric.SymmetryBrushAndBrushMyPaint = fabric.util.createClass(
   fabric.BaseBrush,
   {
-    initialize: function (canvas, libmypaint = false) {
+    initialize: function (canvas, libmypaint = false, brushSetting = charcoal) {
       this.canvas = canvas;
       this.ctx = canvas.contextTop;
 
@@ -117,9 +31,10 @@ fabric.SymmetryBrushAndBrushMyPaint = fabric.util.createClass(
       this.libmypaint = libmypaint;
 
       if (this.libmypaint) {
+        this.brushSetting = brushSetting;
         this._options.width_x.enable = false;
         this.surface = new MypaintSurface(this.canvas);
-        this.brush = new MypaintBrush(charcoal, this.surface);
+        this.brush = new MypaintBrush(this.brushSetting, this.surface);
         this.mousepressure = 45; // document.getElementById("mousepressure");
       }
     },
