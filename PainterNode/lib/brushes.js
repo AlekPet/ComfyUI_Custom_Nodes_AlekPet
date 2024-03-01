@@ -5,17 +5,16 @@
  * Github extensions ComfyUI: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 import { fabric } from "./fabric.js";
-import { charcoal } from "./manager_mypaint.js";
 
-// Brush symmetry
-fabric.SymmetryBrushAndBrushMyPaint = fabric.util.createClass(
+// Brush symmetry and MyPaintBrush
+fabric.SymmetryBrushAndMyBrushPaint = fabric.util.createClass(
   fabric.BaseBrush,
   {
     initialize: function (
       canvas,
       libmypaint = false,
       mousepressure = null,
-      brushSetting = charcoal
+      brushSetting = null
     ) {
       this.canvas = canvas;
       this.ctx = canvas.contextTop;
@@ -197,7 +196,6 @@ fabric.SymmetryBrushAndBrushMyPaint = fabric.util.createClass(
                 pointVal.points[pointVal.points.length - 2].y;
 
               this.brush.stroke_to(
-                this.surface,
                 pointVal.points[pointVal.points.length - 1].x,
                 pointVal.points[pointVal.points.length - 1].y,
                 pressure,
@@ -227,7 +225,7 @@ fabric.SymmetryBrushAndBrushMyPaint = fabric.util.createClass(
       for (let p_key in this._options) {
         //if (p_key === "default") continue;
         const pointVal = this._options[p_key];
-        if (pointVal.enable && pointVal.points.length > 0) {
+        if (pointVal.enable && pointVal.points.length > 1) {
           const path = this.convertPointsToSVGPath(pointVal.points);
           const offsetPath = this.createPath(path);
           this.canvas.add(offsetPath);
@@ -445,6 +443,6 @@ const svgSymmetryButtons = [
 </svg>`,
 ];
 
-export default fabric.SymmetryBrushAndBrushMyPaint;
+export default fabric.SymmetryBrushAndMyBrushPaint;
 
 export { svgSymmetryButtons };

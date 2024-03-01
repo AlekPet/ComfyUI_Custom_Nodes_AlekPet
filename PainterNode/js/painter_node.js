@@ -424,12 +424,16 @@ class Painter {
       }
 
       if (type === "BrushMyPaint") {
-        this.MyAppBrushManager = new MyPaintManager(this);
-        this.canvas.freeDrawingBrush = new fabric.SymmetryBrushAndBrushMyPaint(
+        this.MyBrushPaintManager = new MyPaintManager(this);
+        await this.MyBrushPaintManager.createElements();
+
+        this.canvas.freeDrawingBrush = new fabric.SymmetryBrushAndMyBrushPaint(
           this.canvas,
           true,
-          this.MyAppBrushManager.mousepressure
+          this.MyBrushPaintManager.mousepressure,
+          this.MyBrushPaintManager.currentBrushSettings
         );
+
         if (this.symmetryBrushOptionsCopy)
           this.canvas.freeDrawingBrush._options = this.symmetryBrushOptionsCopy;
 
@@ -441,7 +445,7 @@ class Painter {
       }
 
       if (type === "BrushSymmetry") {
-        this.canvas.freeDrawingBrush = new fabric.SymmetryBrushAndBrushMyPaint(
+        this.canvas.freeDrawingBrush = new fabric.SymmetryBrushAndMyBrushPaint(
           this.canvas
         );
         if (this.symmetryBrushOptionsCopy)
@@ -618,21 +622,7 @@ class Painter {
   async createToolbarOptions(type) {
     this.property_brushesSecondBox.innerHTML = "";
     if (type === "BrushSymmetry" || type === "BrushMyPaint") {
-      // Wait
-      function waitOptions() {
-        return new Promise((res) => {
-          function waitTime() {
-            setTimeout(() => {
-              const options = this.canvas.freeDrawingBrush?._options;
-              if (!options) waitTime();
-              else res(options);
-            }, 0);
-          }
-          waitTime.call(this);
-        });
-      }
-
-      const options = await waitOptions.call(this);
+      const options = this.canvas.freeDrawingBrush?._options;
       Object.keys(options).forEach((symoption, indx) => {
         const current = options[symoption];
         const buttonOpt = makeElement("button", {
@@ -646,11 +636,11 @@ class Painter {
         buttonOpt.optindex = indx;
         this.property_brushesSecondBox.append(buttonOpt);
       });
-    }
 
-    // MyPaint
-    if (type === "BrushMyPaint") {
-      this.MyAppBrushManager.getBrushData();
+      // MyPaintBrush
+      if (type === "BrushMyPaint") {
+        this.MyBrushPaintManager.appendElements(this.property_brushesSecondBox);
+      }
     }
 
     app.graph.setDirtyCanvas(true, false);
@@ -832,7 +822,7 @@ class Painter {
       this.canvas.requestRenderAll();
     };
 
-    this.painter_drawning_box_property.onclick = (e) => {
+    this.painter_drawning_box_property.onclick = async (e) => {
       const listButtonsStyles = [
         "prop_fontStyle",
         "prop_fontWeight",
@@ -906,12 +896,11 @@ class Painter {
               this.drawning = true;
               this.type = buttonSelStyle;
 
-              if (this.property_brushesSecondBox) {
-                this.createToolbarOptions(this.type);
-              }
-
-              this.changePropertyBrush(this.type);
+              await this.changePropertyBrush(this.type);
               this.setActiveElement(target, this.painter_shapes_box);
+
+              if (this.property_brushesSecondBox)
+                this.createToolbarOptions(this.type);
             }
           }
         }

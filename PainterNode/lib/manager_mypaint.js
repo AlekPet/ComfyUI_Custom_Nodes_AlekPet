@@ -1,57 +1,5 @@
 import { makeElement, rgbToHsv, getDataJSON } from "./utils.js";
 
-const charcoal = {
-  opaque: {
-    base_value: 0.4,
-    pointsList: { pressure: [0.0, 0.0, 1.0, 0.4] },
-  },
-  opaque_multiply: {
-    base_value: 0.0,
-    pointsList: { pressure: [0.0, 0.0, 1.0, 1.0] },
-  },
-  opaque_linearize: { base_value: 0.0 },
-  radius_logarithmic: { base_value: 0.7 },
-  hardness: { base_value: 0.2 },
-  dabs_per_basic_radius: { base_value: 0.0 },
-  dabs_per_actual_radius: { base_value: 5.0 },
-  dabs_per_second: { base_value: 0.0 },
-  radius_by_random: { base_value: 0.0 },
-  speed1_slowness: { base_value: 0.04 },
-  speed2_slowness: { base_value: 0.8 },
-  speed1_gamma: { base_value: 4.0 },
-  speed2_gamma: { base_value: 4.0 },
-  offset_by_random: {
-    base_value: 1.6,
-    pointsList: { pressure: [0.0, 0.0, 1.0, -1.4] },
-  },
-  offset_by_speed: { base_value: 0.0 },
-  offset_by_speed_slowness: { base_value: 1.0 },
-  slow_tracking: { base_value: 2.0 },
-  slow_tracking_per_dab: { base_value: 0.0 },
-  tracking_noise: { base_value: 0.0 },
-  color_h: { base_value: 0.0 },
-  color_s: { base_value: 0.0 },
-  color_v: { base_value: 0.0 },
-  change_color_h: { base_value: 0.0 },
-  change_color_l: { base_value: 0.0 },
-  change_color_hsl_s: { base_value: 0.0 },
-  change_color_v: { base_value: 0.0 },
-  change_color_hsv_s: { base_value: 0.0 },
-  smudge: { base_value: 0.0 },
-  smudge_length: { base_value: 0.5 },
-  smudge_radius_log: { base_value: 0.0 },
-  eraser: { base_value: 0.0 },
-  stroke_threshold: { base_value: 0.0 },
-  stroke_duration_logarithmic: { base_value: 4.0 },
-  stroke_holdtime: { base_value: 0.0 },
-  custom_input: { base_value: 0.0 },
-  custom_input_slowness: { base_value: 0.0 },
-  elliptical_dab_ratio: { base_value: 1.0 },
-  elliptical_dab_angle: { base_value: 90.0 },
-  direction_filter: { base_value: 2.0 },
-  version: { base_value: 2.0 },
-};
-
 class MyPaintManager {
   constructor(painterNode, brushName = "charcoal") {
     if (!painterNode) return new Error("Link to PainterNode not exist!");
@@ -60,11 +8,10 @@ class MyPaintManager {
 
     this.basePath = "extensions/AlekPet_Nodes/assets/painternode";
     this.brushName = brushName;
-    this.currentSettingBrush = null;
-    this.createElements();
+    this.currentBrushSettings = null;
   }
 
-  createElements() {
+  async createElements() {
     // Select brush
     this.labelSetBrush = makeElement("label", {
       textContent: "Brush: ",
@@ -94,9 +41,7 @@ class MyPaintManager {
     });
     this.mousepressure.customSize = { w: 60, h: 25, fs: 10 };
     this.labelMousePressure.append(this.mousepressure);
-  }
 
-  async getBrushData() {
     const brushesData = await getDataJSON(
       `${this.basePath}/json/brushes_data.json`
     );
@@ -130,10 +75,19 @@ class MyPaintManager {
       });
     });
 
-    this.painterNode.property_brushesSecondBox.append(
-      this.labelSetBrush,
-      this.labelMousePressure
+    await this.loadBrushSetting("brushes/", "charcoal");
+  }
+
+  appendElements(parent) {
+    parent.append(this.labelSetBrush, this.labelMousePressure);
+  }
+
+  async loadBrushSetting(pathToBrush, brushName) {
+    const pathToJsonBrush = `${this.basePath}/${pathToBrush}${brushName}`;
+    this.currentBrushSettings = await getDataJSON(
+      `${pathToJsonBrush}.myb.json`
     );
+    this.currentBrushImg = `${pathToJsonBrush}.png`;
   }
 
   async setBrush() {
@@ -147,16 +101,16 @@ class MyPaintManager {
 
     this.brushName = brushName;
     const pathToJsonBrush = `${this.basePath}/${pathToBrush}${this.brushName}`;
-    this.currentSettingBrush = await getDataJSON(`${pathToJsonBrush}.myb.json`);
+    this.currentBrushSettings = await getDataJSON(
+      `${pathToJsonBrush}.myb.json`
+    );
     this.currentBrushImg = `${pathToJsonBrush}.png`;
 
     this.painterNode.canvas.freeDrawingBrush.brush = new MypaintBrush(
-      this.currentSettingBrush,
+      this.currentBrushSettings,
       this.painterNode.canvas.freeDrawingBrush.surface
     );
-
-    this.brush_img = `${pathToJsonBrush}.png`;
   }
 }
 
-export { charcoal, MyPaintManager };
+export { MyPaintManager };
