@@ -1061,7 +1061,7 @@
       }
 
       if (this.settings_value[BRUSH.OFFSET_BY_RANDOM]) {
-        const amp = this.settings_value[BRUSH.OFFSET_BY_RANDOM];
+        let amp = this.settings_value[BRUSH.OFFSET_BY_RANDOM];
         if (amp < 0.0) amp = 0.0;
         x += rand_gauss() * amp * base_radius;
         y += rand_gauss() * amp * base_radius;

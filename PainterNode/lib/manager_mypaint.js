@@ -90,6 +90,18 @@ class MyPaintManager {
     this.currentBrushImg = `${pathToJsonBrush}.png`;
   }
 
+  setColor(colorvalue) {
+    const source = new fabric.Color(colorvalue);
+    const [r, g, b] = source._source;
+    const [h, s, v] = rgbToHsv(r, g, b);
+    const bs = { ...this.currentBrushSettings };
+    bs.color_h.base_value = h;
+    bs.color_s.base_value = s;
+    bs.color_v.base_value = v;
+
+    this.painterNode.canvas.freeDrawingBrush.brush.readmyb_json(bs);
+  }
+
   async setBrush() {
     const {
       value: brushName,

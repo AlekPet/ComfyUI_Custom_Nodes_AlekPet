@@ -6,236 +6,265 @@
  */
 import { fabric } from "./fabric.js";
 
-// Brush symmetry and MyPaintBrush
-fabric.SymmetryBrushAndMyBrushPaint = fabric.util.createClass(
-  fabric.BaseBrush,
-  {
-    initialize: function (
-      canvas,
-      libmypaint = false,
-      mousepressure = null,
-      brushSetting = null
-    ) {
-      this.canvas = canvas;
-      this.ctx = canvas.contextTop;
-
-      this._options = {
-        // Normal
-        default: { points: [], enable: true, type: "x=x,y=y" }, // x=x,y=y
-        width_heigth: { points: [], enable: false, type: "x=w-x,y=h-y" }, // x=w-x,y=h-y
-        width_x: { points: [], enable: true, type: "x=w-x,y=y" }, // x=w-x,y=y
-        heigth_y: { points: [], enable: false, type: "x=x,y=h-y" }, // x=x,y=h-y
-        // Reverse
-        rev_default: { points: [], enable: false, type: "x=y,y=x" }, // x=y,y=x
-        rev_width_heigth: { points: [], enable: false, type: "x=h-y,y=w-x" }, // x=h-y,y=w-x
-        rev_width_x: { points: [], enable: false, type: "x=h-y,y=x" }, // x=h-y,y=x
-        rev_heigth_y: { points: [], enable: false, type: "x=y,y=w-x" }, // x=y,y=w-x
-      };
-
-      this.libmypaint = libmypaint;
-
-      if (this.libmypaint && brushSetting) {
-        this.brushSetting = brushSetting;
-        this._options.width_x.enable = false;
-        this.surface = new MypaintSurface(this.canvas);
-        this.brush = new MypaintBrush(this.brushSetting, this.surface);
-        this.mousepressure = mousepressure;
-      }
-    },
-
-    _updatePoints: function (options) {
+// Brush symmetry fabricjs
+fabric.SymmetryBrush = fabric.util.createClass(fabric.BaseBrush, {
+  initialize: function (canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.contextTop;
+    this._options = {
       // Normal
-      this._options["default"].points.push(
-        new fabric.Point(options.pointer.x, options.pointer.y)
-      );
-
-      this._options["width_heigth"].points.push(
-        new fabric.Point(
-          this.canvas.width - options.pointer.x,
-          this.canvas.height - options.pointer.y
-        )
-      );
-
-      this._options["width_x"].points.push(
-        new fabric.Point(
-          this.canvas.width - options.pointer.x,
-          options.pointer.y
-        )
-      );
-      this._options["heigth_y"].points.push(
-        new fabric.Point(
-          options.pointer.x,
-          this.canvas.height - options.pointer.y
-        )
-      );
-
+      default: { points: [], enable: true, type: "x=x,y=y" }, // x=x,y=y
+      width_heigth: { points: [], enable: false, type: "x=w-x,y=h-y" }, // x=w-x,y=h-y
+      width_x: { points: [], enable: true, type: "x=w-x,y=y" }, // x=w-x,y=y
+      heigth_y: { points: [], enable: false, type: "x=x,y=h-y" }, // x=x,y=h-y
       // Reverse
-      this._options["rev_default"].points.push(
-        new fabric.Point(options.pointer.y, options.pointer.x)
-      );
+      rev_default: { points: [], enable: false, type: "x=y,y=x" }, // x=y,y=x
+      rev_width_heigth: { points: [], enable: false, type: "x=h-y,y=w-x" }, // x=h-y,y=w-x
+      rev_width_x: { points: [], enable: false, type: "x=h-y,y=x" }, // x=h-y,y=x
+      rev_heigth_y: { points: [], enable: false, type: "x=y,y=w-x" }, // x=y,y=w-x
+    };
+  },
 
-      this._options["rev_width_heigth"].points.push(
-        new fabric.Point(
-          this.canvas.height - options.pointer.y,
-          this.canvas.width - options.pointer.x
-        )
-      );
+  _updatePoints: function (options) {
+    // Normal
+    this._options["default"].points.push(
+      new fabric.Point(options.pointer.x, options.pointer.y)
+    );
 
-      this._options["rev_width_x"].points.push(
-        new fabric.Point(
-          this.canvas.height - options.pointer.y,
-          options.pointer.x
-        )
-      );
+    this._options["width_heigth"].points.push(
+      new fabric.Point(
+        this.canvas.width - options.pointer.x,
+        this.canvas.height - options.pointer.y
+      )
+    );
 
-      this._options["rev_heigth_y"].points.push(
-        new fabric.Point(
-          options.pointer.y,
-          this.canvas.width - options.pointer.x
-        )
-      );
-    },
+    this._options["width_x"].points.push(
+      new fabric.Point(this.canvas.width - options.pointer.x, options.pointer.y)
+    );
+    this._options["heigth_y"].points.push(
+      new fabric.Point(
+        options.pointer.x,
+        this.canvas.height - options.pointer.y
+      )
+    );
 
-    convertPointsToSVGPath: function (points) {
-      var correction = this.width / 1000;
-      return fabric.util.getSmoothPathFromPoints(points, correction);
-    },
+    // Reverse
+    this._options["rev_default"].points.push(
+      new fabric.Point(options.pointer.y, options.pointer.x)
+    );
 
-    _render() {},
+    this._options["rev_width_heigth"].points.push(
+      new fabric.Point(
+        this.canvas.height - options.pointer.y,
+        this.canvas.width - options.pointer.x
+      )
+    );
 
-    _drawSegment: function (mP, toP) {
-      const ctx = this.ctx;
-      ctx.save();
-      ctx.beginPath();
-      ctx.strokeStyle = this.color;
-      ctx.lineCap = this.strokeLineCap;
-      ctx.lineJoin = this.strokeLineJoin;
-      ctx.lineWidth = this.width;
-      ctx.moveTo(mP.x, mP.y);
-      ctx.lineTo(toP.x, toP.y);
-      ctx.stroke();
-      ctx.restore();
-    },
+    this._options["rev_width_x"].points.push(
+      new fabric.Point(
+        this.canvas.height - options.pointer.y,
+        options.pointer.x
+      )
+    );
 
-    createPath: function (pathData, shadow = false) {
-      let styleSetting = {
-        fill: null,
-        stroke: this.color,
-        strokeWidth: this.width,
-        strokeLineCap: this.strokeLineCap,
-        strokeMiterLimit: this.strokeMiterLimit,
-        strokeLineJoin: this.strokeLineJoin,
-        strokeDashArray: this.strokeDashArray,
-      };
+    this._options["rev_heigth_y"].points.push(
+      new fabric.Point(options.pointer.y, this.canvas.width - options.pointer.x)
+    );
+  },
 
-      if (this.libmypaint)
-        styleSetting = {
-          fill: null,
-        };
+  convertPointsToSVGPath: function (points) {
+    var correction = this.width / 1000;
+    return fabric.util.getSmoothPathFromPoints(points, correction);
+  },
 
-      var path = new fabric.Path(pathData, styleSetting);
-      if (this.shadow) {
-        this.shadow.affectStroke = true;
-        path.shadow = new fabric.Shadow(this.shadow);
-      }
+  _render() {},
 
-      return path;
-    },
+  _drawSegment: function (mP, toP) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.strokeStyle = this.color;
+    ctx.lineCap = this.strokeLineCap;
+    ctx.lineJoin = this.strokeLineJoin;
+    ctx.lineWidth = this.width;
+    ctx.moveTo(mP.x, mP.y);
+    ctx.lineTo(toP.x, toP.y);
+    ctx.stroke();
+    ctx.restore();
+  },
 
-    onMouseDown: function (pointer, options) {
-      if (!this.canvas._isMainEvent(options.e)) {
-        return;
-      }
-      this._updatePoints(options);
+  createPath: function (pathData, shadow = false) {
+    var path = new fabric.Path(pathData, {
+      fill: null,
+      stroke: this.color,
+      strokeWidth: this.width,
+      strokeLineCap: this.strokeLineCap,
+      strokeMiterLimit: this.strokeMiterLimit,
+      strokeLineJoin: this.strokeLineJoin,
+      strokeDashArray: this.strokeDashArray,
+    });
+    if (this.shadow) {
+      this.shadow.affectStroke = true;
+      path.shadow = new fabric.Shadow(this.shadow);
+    }
 
-      if (this.libmypaint) {
-        this.t1 = new Date().getTime();
-        this.brush.new_stroke(pointer.x, pointer.y);
-      }
-    },
+    return path;
+  },
 
-    onMouseMove: function (pointer, options) {
-      if (!this.canvas._isMainEvent(options.e)) {
-        return;
-      }
+  onMouseDown: function (pointer, options) {
+    if (!this.canvas._isMainEvent(options.e)) {
+      return;
+    }
+    this._updatePoints(options);
+  },
 
-      if (options.e.buttons !== 1) return;
+  onMouseMove: function (pointer, options) {
+    if (!this.canvas._isMainEvent(options.e)) {
+      return;
+    }
 
-      let pressure;
-      if (this.libmypaint) {
-        let { pressure: pressurePointer, pointerType } = options.e;
+    if (options.e.buttons !== 1) return;
 
-        // Pen
-        if (pointerType === "pen") {
-          // Pointer pressure
-          if (!pressure) pressure = pressurePointer;
-
-          if ((!pressure && !pressurePointer) || pressure === 0)
-            pressure = this.mousepressure.value / 100;
-        }
-
-        // Mouse
-        if (pointerType === "mouse" || pointerType === "touch") {
-          if (pressure === undefined || pressure === 0) {
-            pressure = this.mousepressure.value / 100;
-          }
-        }
-      }
-
-      if (this._options["default"].points.length > 1) {
-        for (let p_key in this._options) {
-          const pointVal = this._options[p_key];
-          if (pointVal.enable && pointVal.points.length > 0) {
-            // libmypaint
-            if (this.libmypaint) {
-              const time = (new Date().getTime() - this.t1) / 1000;
-
-              this.brush.states[0] =
-                pointVal.points[pointVal.points.length - 2].x;
-              this.brush.states[1] =
-                pointVal.points[pointVal.points.length - 2].y;
-
-              this.brush.stroke_to(
-                pointVal.points[pointVal.points.length - 1].x,
-                pointVal.points[pointVal.points.length - 1].y,
-                pressure,
-                90,
-                0,
-                time
-              );
-            } else {
-              // default fabricjs draw
-              this._drawSegment(
-                pointVal.points[pointVal.points.length - 2],
-                pointVal.points[pointVal.points.length - 1]
-              );
-            }
-          }
-        }
-      }
-
-      this._updatePoints(options);
-      this.canvas.renderAll();
-    },
-
-    onMouseUp: function (options) {
-      if (!this.canvas._isMainEvent(options.e)) {
-        return true;
-      }
+    if (this._options["default"].points.length > 1) {
       for (let p_key in this._options) {
-        //if (p_key === "default") continue;
+        const pointVal = this._options[p_key];
+        if (pointVal.enable && pointVal.points.length > 0) {
+          this._drawSegment(
+            pointVal.points[pointVal.points.length - 2],
+            pointVal.points[pointVal.points.length - 1]
+          );
+        }
+      }
+    }
+
+    this._updatePoints(options);
+    this.canvas.renderAll();
+  },
+
+  onMouseUp: function (options) {
+    if (!this.canvas._isMainEvent(options.e)) {
+      return true;
+    }
+    for (let p_key in this._options) {
+      const pointVal = this._options[p_key];
+      if (pointVal.enable && pointVal.points.length > 1) {
+        const path = this.convertPointsToSVGPath(pointVal.points);
+        const offsetPath = this.createPath(path);
+        this.canvas.add(offsetPath);
+      }
+      this._options[p_key].points = [];
+    }
+    return false;
+  },
+});
+
+// MyPaintBrush symmetry
+fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
+  initialize: function (
+    canvas,
+    // libmypaint = false,
+    mousepressure = null,
+    brushSetting = null
+  ) {
+    this.callSuper("initialize", canvas);
+
+    if (brushSetting) {
+      this.brushSetting = brushSetting;
+      this._options.width_x.enable = false;
+      this.surface = new MypaintSurface(this.canvas);
+      this.brush = new MypaintBrush(this.brushSetting, this.surface);
+      this.mousepressure = mousepressure;
+    }
+  },
+
+  onMouseDown: function (pointer, options) {
+    if (!this.canvas._isMainEvent(options.e)) {
+      return;
+    }
+    this._updatePoints(options);
+
+    this.t1 = new Date().getTime();
+    this.brush.new_stroke(pointer.x, pointer.y);
+  },
+
+  onMouseMove: function (pointer, options) {
+    if (!this.canvas._isMainEvent(options.e)) {
+      return;
+    }
+
+    if (options.e.buttons !== 1) return;
+
+    let pressure;
+
+    let { pressure: pressurePointer, pointerType } = options.e;
+
+    // Pen
+    if (pointerType === "pen") {
+      // Pointer pressure
+      if (!pressure) pressure = pressurePointer;
+
+      if ((!pressure && !pressurePointer) || pressure === 0)
+        pressure = this.mousepressure.value / 100;
+    }
+
+    // Mouse
+    if (pointerType === "mouse" || pointerType === "touch") {
+      if (pressure === undefined || pressure === 0) {
+        pressure = this.mousepressure.value / 100;
+      }
+    }
+
+    if (this._options["default"].points.length > 1) {
+      for (let p_key in this._options) {
         const pointVal = this._options[p_key];
         if (pointVal.enable && pointVal.points.length > 1) {
-          const path = this.convertPointsToSVGPath(pointVal.points);
-          const offsetPath = this.createPath(path);
-          this.canvas.add(offsetPath);
+          const time = (new Date().getTime() - this.t1) / 1000;
+
+          this.brush.states[0] = pointVal.points[pointVal.points.length - 2].x;
+          this.brush.states[1] = pointVal.points[pointVal.points.length - 2].y;
+
+          this.brush.stroke_to(
+            pointVal.points[pointVal.points.length - 1].x,
+            pointVal.points[pointVal.points.length - 1].y,
+            pressure,
+            90,
+            0,
+            time
+          );
         }
-        this._options[p_key].points = [];
       }
-      return false;
-    },
-  }
-);
+    }
+
+    this._updatePoints(options);
+    this.canvas.renderAll();
+  },
+
+  onMouseUp: function (options) {
+    if (!this.canvas._isMainEvent(options.e)) {
+      return true;
+    }
+
+    const canvasToImage = this.canvas.upperCanvasEl.toDataURL();
+    fabric.Image.fromURL(canvasToImage, (myImg) => {
+      const imageCanv = myImg.set({
+        left: 0,
+        top: 0,
+        width: myImg.width,
+        height: myImg.height,
+        mypaintlib: true,
+      });
+      this.canvas.clearContext(this.canvas.contextTop);
+      this.canvas.add(imageCanv);
+      this.canvas.requestRenderAll();
+    });
+
+    Object.keys(this._options).forEach(
+      (p_key) => (this._options[p_key].points = [])
+    );
+
+    return false;
+  },
+});
 
 const svgSymmetryButtons = [
   `<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 35 35">
@@ -442,7 +471,5 @@ const svgSymmetryButtons = [
   <path class="cls-3" d="M262,0h1V35h-1V0Z" transform="translate(-245)"/>
 </svg>`,
 ];
-
-export default fabric.SymmetryBrushAndMyBrushPaint;
 
 export { svgSymmetryButtons };

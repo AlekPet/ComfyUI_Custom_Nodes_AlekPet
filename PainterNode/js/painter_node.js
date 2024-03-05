@@ -417,39 +417,20 @@ class Painter {
   }
 
   // Change properties brush and shapes, when change color and strokeWidth
-  async changePropertyBrush(type = "Brush") {
+  changePropertyBrush(type = "Brush") {
     if (["Brush", "BrushSymmetry", "BrushMyPaint"].includes(type)) {
       if (type === "Brush") {
-        this.canvas.freeDrawingBrush = new fabric.PencilBrush(this.canvas);
       }
 
       if (type === "BrushMyPaint") {
-        this.MyBrushPaintManager = new MyPaintManager(this);
-        await this.MyBrushPaintManager.createElements();
-
-        this.canvas.freeDrawingBrush = new fabric.SymmetryBrushAndMyBrushPaint(
-          this.canvas,
-          true,
-          this.MyBrushPaintManager.mousepressure,
-          this.MyBrushPaintManager.currentBrushSettings
-        );
-
-        if (this.symmetryBrushOptionsCopy)
-          this.canvas.freeDrawingBrush._options = this.symmetryBrushOptionsCopy;
-
-        const bs = this.canvas.freeDrawingBrush.brushSetting;
-        bs.color_h.base_value = 0.9;
-        bs.color_s.base_value = 1.0;
-        bs.color_v.base_value = 0.9;
-        this.canvas.freeDrawingBrush.brush.readmyb_json(bs);
+        //  const bs = this.canvas.freeDrawingBrush.brushSetting;
+        // bs.color_h.base_value = 0.9;
+        // bs.color_s.base_value = 1.0;
+        // bs.color_v.base_value = 0.9;
+        // this.canvas.freeDrawingBrush.brush.readmyb_json(bs);
       }
 
       if (type === "BrushSymmetry") {
-        this.canvas.freeDrawingBrush = new fabric.SymmetryBrushAndMyBrushPaint(
-          this.canvas
-        );
-        if (this.symmetryBrushOptionsCopy)
-          this.canvas.freeDrawingBrush._options = this.symmetryBrushOptionsCopy;
       }
 
       this.canvas.freeDrawingBrush.color = toRGBA(
@@ -481,7 +462,6 @@ class Painter {
         });
       }
     } else {
-      this.canvas.freeDrawingBrush = new fabric.EraserBrush(this.canvas);
       this.canvas.freeDrawingBrush.width = parseInt(this.eraseWidth.value, 10);
     }
 
@@ -689,7 +669,13 @@ class Painter {
 
         switch (currentTarget) {
           case "Erase":
+            this.canvas.freeDrawingBrush = new fabric.EraserBrush(this.canvas);
+            this.changePropertyBrush(currentTarget);
+            this.canvas.isDrawingMode = true;
+            this.drawning = true;
+            break;
           case "Brush":
+            this.canvas.freeDrawingBrush = new fabric.PencilBrush(this.canvas);
             this.changePropertyBrush(currentTarget);
             this.canvas.isDrawingMode = true;
             this.drawning = true;
@@ -887,16 +873,42 @@ class Painter {
               b.classList.remove("active")
             );
 
+            this.canvas.isDrawingMode = true;
+            this.drawning = true;
+            this.type = buttonSelStyle;
+
             // Symmetry & MyPaint
             if (
               buttonSelStyle === "BrushSymmetry" ||
               buttonSelStyle === "BrushMyPaint"
             ) {
-              this.canvas.isDrawingMode = true;
-              this.drawning = true;
-              this.type = buttonSelStyle;
+              // BrushMyPaint
+              if (this.type === "BrushMyPaint") {
+                this.MyBrushPaintManager = new MyPaintManager(this);
+                await this.MyBrushPaintManager.createElements();
 
-              await this.changePropertyBrush(this.type);
+                this.canvas.freeDrawingBrush = new fabric.MyBrushPaintSymmetry(
+                  this.canvas,
+                  this.MyBrushPaintManager.mousepressure,
+                  this.MyBrushPaintManager.currentBrushSettings
+                );
+
+                this.MyBrushPaintManager.setColor(this.strokeColor.value);
+              }
+
+              // BrushSymmetry fabricjs
+              if (this.type === "BrushSymmetry") {
+                this.canvas.freeDrawingBrush = new fabric.SymmetryBrush(
+                  this.canvas
+                );
+              }
+
+              if (this.symmetryBrushOptionsCopy)
+                this.canvas.freeDrawingBrush._options =
+                  this.symmetryBrushOptionsCopy;
+
+              // Set options
+              this.changePropertyBrush(this.type);
               this.setActiveElement(target, this.painter_shapes_box);
 
               if (this.property_brushesSecondBox)
@@ -1082,6 +1094,9 @@ class Painter {
       };
 
       targets.forEach((target) => {
+        // MyPaintLib not valid change color and stroke (only borders) in selection mode it type texture
+        if (target?.mypaintlib) return;
+
         if (target.type == "textbox") {
           setProps(
             "fontWeight",
@@ -1275,9 +1290,20 @@ class Painter {
         )
           this.canvas.isDrawingMode = false;
 
-        this.addToHistory();
-        this.canvas.renderAll();
-        this.uploadPaintFile(this.node.name);
+        // Skip BrushMyPaint mouseup is empty objects array, loading canvas as image, upload when object add to canvas
+        if (!["BrushMyPaint"].includes(this.type)) {
+          this.addToHistory();
+          this.canvas.renderAll();
+          this.uploadPaintFile(this.node.name);
+        }
+      },
+
+      "object:added": (o) => {
+        if (["BrushMyPaint"].includes(this.type)) {
+          this.addToHistory();
+          this.canvas.renderAll();
+          this.uploadPaintFile(this.node.name);
+        }
       },
 
       // Object moving event
@@ -1475,23 +1501,14 @@ class Painter {
       }
     };
 
-    if (this.type === "BrushMyPaint") {
-      this.canvas.contextTop.canvas.toBlob(function (blob) {
-        let formData = new FormData();
-        formData.append("image", blob, fileName);
-        formData.append("overwrite", "true");
-        //formData.append("type", "temp");
-        uploadFile(formData);
-      }, "image/png");
-    } else {
-      this.canvas.lowerCanvasEl.toBlob(function (blob) {
-        let formData = new FormData();
-        formData.append("image", blob, fileName);
-        formData.append("overwrite", "true");
-        //formData.append("type", "temp");
-        uploadFile(formData);
-      }, "image/png");
-    }
+    this.canvas.lowerCanvasEl.toBlob(function (blob) {
+      let formData = new FormData();
+      formData.append("image", blob, fileName);
+      formData.append("overwrite", "true");
+      //formData.append("type", "temp");
+      uploadFile(formData);
+    }, "image/png");
+
     // - end
 
     const callb = this.node.callback,
