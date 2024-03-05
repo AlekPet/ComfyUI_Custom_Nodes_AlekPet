@@ -160,21 +160,18 @@ fabric.SymmetryBrush = fabric.util.createClass(fabric.BaseBrush, {
 
 // MyPaintBrush symmetry
 fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
-  initialize: function (
-    canvas,
-    // libmypaint = false,
-    mousepressure = null,
-    brushSetting = null
-  ) {
+  initialize: function (canvas, mousepressure = null, brushSettings = null) {
     this.callSuper("initialize", canvas);
 
-    if (brushSetting) {
-      this.brushSetting = brushSetting;
-      this._options.width_x.enable = false;
-      this.surface = new MypaintSurface(this.canvas);
-      this.brush = new MypaintBrush(this.brushSetting, this.surface);
-      this.mousepressure = mousepressure;
+    if (!brushSettings) {
+      throw new Error("Not valid brush settings!");
     }
+
+    this.brushSettings = brushSettings;
+    this._options.width_x.enable = false;
+    this.surface = new MypaintSurface(this.canvas);
+    this.brush = new MypaintBrush(this.brushSettings, this.surface);
+    this.mousepressure = mousepressure;
   },
 
   onMouseDown: function (pointer, options) {
@@ -214,12 +211,14 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
       }
     }
 
+    this.mousepressure.nextElementSibling.textContent = pressure;
+
+    const time = (new Date().getTime() - this.t1) / 1000;
+
     if (this._options["default"].points.length > 1) {
       for (let p_key in this._options) {
         const pointVal = this._options[p_key];
         if (pointVal.enable && pointVal.points.length > 1) {
-          const time = (new Date().getTime() - this.t1) / 1000;
-
           this.brush.states[0] = pointVal.points[pointVal.points.length - 2].x;
           this.brush.states[1] = pointVal.points[pointVal.points.length - 2].y;
 
@@ -253,7 +252,7 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
         height: myImg.height,
         mypaintlib: true,
       });
-      this.canvas.clearContext(this.canvas.contextTop);
+      this.canvas.clearContext(this.ctx);
       this.canvas.add(imageCanv);
       this.canvas.requestRenderAll();
     });

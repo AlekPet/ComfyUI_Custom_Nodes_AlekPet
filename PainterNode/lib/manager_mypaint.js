@@ -20,10 +20,11 @@ class MyPaintManager {
       title: "Select Brush",
     });
     this.selectBrushElem = makeElement("select", {
-      class: ["selectBrushMyPaint"],
+      class: ["mypaint_selectbrushmypaint"],
     });
-    this.labelSetBrush.append(this.selectBrushElem);
+
     this.selectBrushElem.addEventListener("change", this.setBrush.bind(this));
+    this.labelSetBrush.append(this.selectBrushElem);
 
     // Mouse Pressure
     this.labelMousePressure = makeElement("label", {
@@ -32,6 +33,7 @@ class MyPaintManager {
         "display: flex;  align-items: center; font-size: 10px; margin-left: 3px",
       title: "Mouse pressure",
     });
+
     this.mousepressure = makeElement("input", {
       class: ["mypaint_mousepressure"],
       type: "range",
@@ -40,8 +42,52 @@ class MyPaintManager {
       value: 50,
     });
     this.mousepressure.customSize = { w: 60, h: 25, fs: 10 };
-    this.labelMousePressure.append(this.mousepressure);
 
+    this.labelMousePressure.append(
+      this.mousepressure,
+      makeElement("span", { textContent: this.mousepressure.value / 100 })
+    );
+
+    // Load size for settings brush
+    this.labelCheckboxDefSize = makeElement("label", {
+      textContent: "Default Size: ",
+      style:
+        "display: flex;  align-items: center; font-size: 10px; margin-left: 3px",
+      title: "Apply size from brush settings",
+    });
+
+    this.CheckboxDefSize = makeElement("input", {
+      type: "checkbox",
+      class: ["mypaint_checkboxDefSize"],
+      checked:
+        window.LS_Painters[this.painterNode.node.name].settings
+          ?.mypaint_settings?.preset_brush_size ?? true,
+    });
+
+    this.CheckboxDefSize.customSize = { w: 15, h: 15, fs: 10 };
+
+    this.CheckboxDefSize.addEventListener("change", () => {
+      const lsPainter = window.LS_Painters[this.painterNode.node.name].settings;
+      if (!lsPainter.hasOwnProperty("mypaint_settings"))
+        window.LS_Painters[
+          this.painterNode.node.name
+        ].settings.mypaint_settings = {};
+
+      window.LS_Painters[
+        this.painterNode.node.name
+      ].settings.mypaint_settings.preset_brush_size =
+        this.CheckboxDefSize.checked;
+
+      // Save to localStorage
+      localStorage.setItem(
+        "ComfyUI_Painter",
+        JSON.stringify(window.LS_Painters)
+      );
+    });
+
+    this.labelCheckboxDefSize.append(this.CheckboxDefSize);
+
+    // Select brush items
     const brushesData = await getDataJSON(
       `${this.basePath}/json/brushes_data.json`
     );
@@ -79,7 +125,16 @@ class MyPaintManager {
   }
 
   appendElements(parent) {
-    parent.append(this.labelSetBrush, this.labelMousePressure);
+    const separator = makeElement("div", { class: ["separator"] });
+
+    parent.append(
+      this.labelSetBrush,
+      separator,
+      this.labelMousePressure,
+      separator.cloneNode(true),
+      this.labelCheckboxDefSize
+    );
+    this.setPropertyBrush();
   }
 
   async loadBrushSetting(pathToBrush, brushName) {
@@ -90,11 +145,11 @@ class MyPaintManager {
     this.currentBrushImg = `${pathToJsonBrush}.png`;
   }
 
-  setColor(colorvalue) {
+  setColorBrush(colorvalue) {
     const source = new fabric.Color(colorvalue);
     const [r, g, b] = source._source;
     const [h, s, v] = rgbToHsv(r, g, b);
-    const bs = { ...this.currentBrushSettings };
+    const bs = this.currentBrushSettings;
     bs.color_h.base_value = h;
     bs.color_s.base_value = s;
     bs.color_v.base_value = v;
@@ -102,26 +157,47 @@ class MyPaintManager {
     this.painterNode.canvas.freeDrawingBrush.brush.readmyb_json(bs);
   }
 
+  setSizeBrush(sizevalue) {
+    this.currentBrushSettings.radius_logarithmic.base_value =
+      parseFloat(sizevalue);
+    this.painterNode.canvas.freeDrawingBrush.brush.readmyb_json(
+      this.currentBrushSettings
+    );
+  }
+
+  setPropertyBrush() {
+    // Set brush property: color, width
+    this.painterNode.strokeWidth.max = 7;
+    this.painterNode.strokeWidth.min = 0.2;
+    this.painterNode.strokeWidth.step = 0.01;
+
+    if (this.CheckboxDefSize.checked)
+      this.painterNode.strokeWidth.value =
+        this.currentBrushSettings.radius_logarithmic.base_value;
+
+    this.painterNode.changePropertyBrush(this.painterNode.type);
+  }
+
   async setBrush() {
     const {
       value: brushName,
       dataset: { path: pathToBrush },
     } = this.selectBrushElem.options[this.selectBrushElem.selectedIndex];
-    if (brushName === "separator" || !pathToBrush) {
-      return new Error("No exist path in dataset or brush name incorrect!");
+
+    if (brushName === "separator") return;
+
+    if (!pathToBrush) {
+      return new Error("No exist path in dataset!");
     }
 
     this.brushName = brushName;
-    const pathToJsonBrush = `${this.basePath}/${pathToBrush}${this.brushName}`;
-    this.currentBrushSettings = await getDataJSON(
-      `${pathToJsonBrush}.myb.json`
-    );
-    this.currentBrushImg = `${pathToJsonBrush}.png`;
+    await this.loadBrushSetting(pathToBrush, brushName);
 
     this.painterNode.canvas.freeDrawingBrush.brush = new MypaintBrush(
       this.currentBrushSettings,
       this.painterNode.canvas.freeDrawingBrush.surface
     );
+    this.setPropertyBrush();
   }
 }
 

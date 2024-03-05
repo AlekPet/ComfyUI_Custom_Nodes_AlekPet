@@ -419,18 +419,18 @@ class Painter {
   // Change properties brush and shapes, when change color and strokeWidth
   changePropertyBrush(type = "Brush") {
     if (["Brush", "BrushSymmetry", "BrushMyPaint"].includes(type)) {
-      if (type === "Brush") {
+      if (type === "Brush" || type === "BrushSymmetry") {
+        this.strokeWidth.max = 150;
+        this.strokeWidth.min = 0;
+        this.strokeWidth.step = 1;
       }
 
       if (type === "BrushMyPaint") {
-        //  const bs = this.canvas.freeDrawingBrush.brushSetting;
-        // bs.color_h.base_value = 0.9;
-        // bs.color_s.base_value = 1.0;
-        // bs.color_v.base_value = 0.9;
-        // this.canvas.freeDrawingBrush.brush.readmyb_json(bs);
-      }
+        this.MyBrushPaintManager.setColorBrush(this.strokeColor.value);
 
-      if (type === "BrushSymmetry") {
+        // Size brush
+        this.MyBrushPaintManager.setSizeBrush(this.strokeWidth.value);
+        return;
       }
 
       this.canvas.freeDrawingBrush.color = toRGBA(
@@ -823,7 +823,7 @@ class Painter {
       let { target, currentTarget } = e;
       while (target.tagName !== "BUTTON") {
         target = target.parentElement;
-        if (target === currentTarget) return;
+        if (!target || target === currentTarget) return;
       }
 
       const index = listButtonsStyles.indexOf(target.dataset.prop);
@@ -892,27 +892,25 @@ class Painter {
                   this.MyBrushPaintManager.mousepressure,
                   this.MyBrushPaintManager.currentBrushSettings
                 );
-
-                this.MyBrushPaintManager.setColor(this.strokeColor.value);
-              }
+              } // end BrushMyPaint
 
               // BrushSymmetry fabricjs
               if (this.type === "BrushSymmetry") {
                 this.canvas.freeDrawingBrush = new fabric.SymmetryBrush(
                   this.canvas
                 );
-              }
+              } // end BrushSymmetry fabricjs
 
               if (this.symmetryBrushOptionsCopy)
                 this.canvas.freeDrawingBrush._options =
                   this.symmetryBrushOptionsCopy;
 
-              // Set options
-              this.changePropertyBrush(this.type);
-              this.setActiveElement(target, this.painter_shapes_box);
-
               if (this.property_brushesSecondBox)
                 this.createToolbarOptions(this.type);
+
+              // Set options brush
+              this.changePropertyBrush(this.type);
+              this.setActiveElement(target, this.painter_shapes_box);
             }
           }
         }
