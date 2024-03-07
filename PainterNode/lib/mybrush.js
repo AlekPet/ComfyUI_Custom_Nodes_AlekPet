@@ -41,10 +41,21 @@
 	3) furthur optimization on iPad.
 	4) watercolor.myb is not identical with the original version yet.
 
+  ----------------------
+
+  brushlib - The MyPaint Brush Library - Javascript Version - Code rewrite to ES6 version
+  Author: Aleksey Petrov alexepetrof@gmail.com
+  Demo: https://alekpet.github.io/brushlib.js/
+  Githgub source: https://github.com/AlekPet/brushlib.js
+  Date: 2024/02/16
+  Licence: same as original version of brushlib in C++
+
+  Rewritten for use with Fabric.js (http://fabricjs.com/), added canvas check in the constructor MypaintSurface.
+  In my node PainterNode for ComfyUI: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/tree/master/PainterNode
 */
 
 (function (window, undefined) {
-  var document = window.document,
+  const document = window.document,
     navigator = window.navigator,
     location = window.location;
 
@@ -362,17 +373,6 @@
     }
   }
 
-  function hsl_value(n1, n2, hue) {
-    let val;
-    if (hue > 6.0) hue -= 6.0;
-    else if (hue < 0.0) hue += 6.0;
-    if (hue < 1.0) val = n1 + (n2 - n1) * hue;
-    else if (hue < 3.0) val = n2;
-    else if (hue < 4.0) val = n1 + (n2 - n1) * (4.0 - hue);
-    else val = n1;
-    return val;
-  }
-
   class ColorHSL {
     constructor(h, s, l) {
       this.h = h;
@@ -381,6 +381,17 @@
       this.r = 0;
       this.g = 0;
       this.b = 0;
+    }
+
+    hsl_value(n1, n2, hue) {
+      let val;
+      if (hue > 6.0) hue -= 6.0;
+      else if (hue < 0.0) hue += 6.0;
+      if (hue < 1.0) val = n1 + (n2 - n1) * hue;
+      else if (hue < 3.0) val = n2;
+      else if (hue < 4.0) val = n1 + (n2 - n1) * (4.0 - hue);
+      else val = n1;
+      return val;
     }
 
     hsl_to_rgb_float() {
@@ -403,9 +414,9 @@
         }
 
         m1 = 2.0 * l - m2;
-        r = hsl_value(m1, m2, h * 6.0 + 2.0);
-        g = hsl_value(m1, m2, h * 6.0);
-        b = hsl_value(m1, m2, h * 6.0 - 2.0);
+        r = this.hsl_value(m1, m2, h * 6.0 + 2.0);
+        g = this.hsl_value(m1, m2, h * 6.0);
+        b = this.hsl_value(m1, m2, h * 6.0 - 2.0);
       }
       this.r = r;
       this.g = g;
@@ -772,7 +783,7 @@
       this.states[STATE.DECLINATION] += step_declination;
       this.states[STATE.ASCENSION] += step_ascension;
 
-      var base_radius = Math.exp(
+      const base_radius = Math.exp(
         this.settings[BRUSH.RADIUS_LOGARITHMIC].base_value
       );
 
@@ -1095,9 +1106,9 @@
       );
 
       let { h: color_h, s: color_s, v: color_v } = colorhsv;
-      //var color_h = this.settings[BRUSH.COLOR_HUE].base_value;
-      //var color_s = this.settings[BRUSH.COLOR_SATURATION].base_value;
-      //var color_v = this.settings[BRUSH.COLOR_VALUE].base_value;
+      // let color_h = this.settings[BRUSH.COLOR_HUE].base_value;
+      // let color_s = this.settings[BRUSH.COLOR_SATURATION].base_value;
+      // let color_v = this.settings[BRUSH.COLOR_VALUE].base_value;
 
       let eraser_target_alpha = 1.0;
       if (this.settings_value[BRUSH.SMUDGE] > 0.0) {
@@ -1437,7 +1448,7 @@
             */
 
         //printf("Brush reset.\n");
-        for (var i = 0; i < STATE.COUNT; i++) {
+        for (let i = 0; i < STATE.COUNT; i++) {
           this.states[i] = 0;
         }
 
@@ -1471,7 +1482,7 @@
         // there are dabs pending
         {
           // linear interpolation (nonlinear variant was too slow, see SVN log)
-          var frac; // fraction of the remaining distance to move
+          let frac; // fraction of the remaining distance to move
           if (dist_moved > 0) {
             // "move" the brush exactly to the first dab (moving less than one dab)
             frac = (1.0 - dist_moved) / dist_todo;
@@ -1499,7 +1510,8 @@
           step_ascension,
           step_dtime
         );
-        var painted_now = this.prepare_and_draw_dab();
+
+        let painted_now = this.prepare_and_draw_dab();
         if (painted_now) {
           painted = YES;
         } else if (painted === UNKNOWN) {
@@ -1598,4 +1610,7 @@
 
   window.MypaintBrush = MypaintBrush;
   window.MypaintSurface = MypaintSurface;
+  window.ColorHSL = ColorHSL;
+  window.ColorHSV = ColorHSV;
+  window.ColorRGB = ColorRGB;
 })(window);
