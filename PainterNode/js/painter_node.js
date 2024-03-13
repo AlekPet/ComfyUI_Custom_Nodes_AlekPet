@@ -921,7 +921,7 @@ class Painter {
         target.parentElement?.classList.contains("property_brushesSecondBox")
       ) {
         const options = this.canvas.freeDrawingBrush?._options;
-        if (options) {
+        if (options && target.dataset.prop?.includes("prop_symmetry_")) {
           const optionsKeys = Object.keys(options);
           const optionKeyChange = optionsKeys[target.optindex];
 
@@ -1948,13 +1948,13 @@ app.registerExtension({
     .list_objects_panel__items button {
       width: 80% !important;
     }
-    .list_objects_panel__items::-webkit-scrollbar {
+    .list_objects_panel__items::-webkit-scrollbar, .kistey__body::-webkit-scrollbar {
       width: 8px;
     }
-    .list_objects_panel__items::-webkit-scrollbar-track {
+    .list_objects_panel__items::-webkit-scrollbar-track, .kistey__body::-webkit-scrollbar-track {
       background-color: var(--descrip-text);
     }
-    .list_objects_panel__items::-webkit-scrollbar-thumb {
+    .list_objects_panel__items::-webkit-scrollbar-thumb, .kistey__body::-webkit-scrollbar-thumb {
       background-color: var(--fg-color);
     }
     .list_objects_align {
@@ -2020,7 +2020,144 @@ app.registerExtension({
   .active svg > * {
     stroke: var(--error-text);
   }
-    `;
+  /* -- Styles Kistey */  
+  .wrepper__kistey {
+    position: absolute;
+    top: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 300px;
+    opacity: 0.9;
+  }
+  
+  .box__kistey {
+    display: flex;
+    flex-direction: column;
+    background: #0e0e0e;
+    padding: 10px;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    border-radius: 6px;
+    color: white;
+    border: 2px solid limegreen;
+    font-family: monospace;
+    box-shadow: 4px 4px 8px limegreen;
+  }
+  .kistey__title {
+    display: flex;
+    gap: 5px;
+    justify-content: space-evenly;
+    width: 100%;
+    align-items: center;
+  }
+  
+  .kistey__body {
+    display: grid;
+    grid-auto-rows: auto;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+    background: #2d2d2d;
+    padding: 5px;
+    max-height: 230px;
+    overflow-y: auto;
+    min-width: 250px;  
+  }
+  .kistey__img {
+    width: 50px;
+  }
+  
+  .kistey__img img {
+    max-width: 100%;
+  }
+  
+  .kistey__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: 0.6s all;
+    cursor: pointer;
+    user-select: none;
+  }
+  
+  .kistey__item:hover,
+  .kistey__arrow:hover {
+    transform: scale(1.05);
+  }
+  
+  .selected {
+    outline: 3px solid #4003fd;
+  }
+  
+  .kistey__name {
+    background: #2a272b;
+    width: 100%;
+    font-size: 0.5rem;
+  }
+  
+  .kistey__arrow {
+    transition: 0.6s transform;
+    cursor: pointer;
+    user-select: none;
+    color: silver;
+  }
+  
+  .kistey__arrow:hover {
+    color: white;
+    transform: scale(1.25);
+  }
+  
+  .kistey_dir__name {
+    font-weight: bold;
+    text-transform: capitalize;
+    min-width: 150px;
+    user-select: none;
+    cursor: pointer;
+  }
+  
+  .kistey_dir__name_wrapper {
+    display: flex;
+    max-width: 50%;
+    flex: 1 0 0;
+    overflow: hidden;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  
+  .kistey_directory_slider {
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    position: relative;
+  }
+  
+  .kistey_directory_popup {
+    position: absolute;
+    top: 35px;
+    left: 70%;
+    background: black;
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 5px;
+    border-radius: 6px;
+    border: 2px solid #4300e7;
+    opacity: 0.9;
+    transform: translateX(-50%);
+    z-index: 2;
+    box-shadow: 4px 4px 8px #4300e7;
+  }
+  
+  .kistey_dir__name-popup:hover {
+    background: #4300e7;
+  }
+  
+  .kistey_directory_popup .pop_active {
+    color: #38ffc1;
+  }
+  /* -- end Styles Kistey -- */  
+`;
     document.head.append(limybrush, style);
   },
   async setup(app) {
