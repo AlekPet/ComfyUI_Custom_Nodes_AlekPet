@@ -5,7 +5,6 @@ import os
 import importlib.util
 import subprocess
 import sys
-import filecmp
 import shutil
 import __main__
 import pkgutil
@@ -19,9 +18,10 @@ extension_folder = os.path.dirname(os.path.realpath(__file__))
 
 # ComfyUI folders web
 folder_web = os.path.join(os.path.dirname(os.path.realpath(__main__.__file__)), "web")
-folder_web_extensions = os.path.join(folder_web, "extensions")
+folder_comfyui_web_extensions = os.path.join(folder_web, "extensions")
+
 folder__web_lib = os.path.join(folder_web, 'lib')
-extension_dirs = ["AlekPet_Nodes",]
+extension_dirs = ["web_alekpet_nodes",]
 #
 DEBUG = False
 NODE_CLASS_MAPPINGS = {}
@@ -90,7 +90,7 @@ def addComfyUINodesToMapping(nodeElement):
 def checkFolderIsset():
     log(f"*  Check and make not isset dirs...")
     for d in extension_dirs:
-        dir_ = os.path.join(folder_web_extensions, d)
+        dir_ = os.path.join(extension_folder, d)
         if not os.path.exists(dir_):
             log(f"* Dir <{d}> is not found, create...")
             os.mkdir(dir_)
@@ -105,7 +105,7 @@ def printColorInfo(text, color='\033[92m'):
 def installNodes():
     log(f"\n-------> AlekPet Node Installing [DEBUG] <-------")
     printColorInfo(f"### [START] ComfyUI AlekPet Nodes ###", "\033[1;35m")
-    web_extensions_dir = os.path.join(folder_web_extensions, extension_dirs[0])
+    web_extensions_dir = os.path.join(extension_folder, extension_dirs[0])
     
     # Remove files in lib directory 
     libfiles = ['fabric.js']
@@ -140,5 +140,6 @@ def installNodes():
             
     printColorInfo(f"### [END] ComfyUI AlekPet Nodes ###", "\033[1;35m")
 
+WEB_DIRECTORY = f"./{extension_dirs[0]}"
 
 installNodes()

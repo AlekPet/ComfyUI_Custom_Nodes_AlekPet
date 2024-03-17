@@ -14,7 +14,7 @@ import {
   getColorHEX,
   showHide,
   makeElement,
-} from "./lib/painternode/utils.js";
+} from "./lib/painternode/helpers.js";
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
@@ -1803,7 +1803,8 @@ app.registerExtension({
   name: "Comfy.PainterNode",
   async init(app) {
     const limybrush = document.createElement("script");
-    limybrush.src = "extensions/AlekPet_Nodes/lib/painternode/mybrush.js";
+    limybrush.src =
+      "extensions/ComfyUI_Custom_Nodes_AlekPet/lib/painternode/mybrush.js";
 
     const style = document.createElement("style");
     style.innerText = `.panelPaintBox {
@@ -2092,8 +2093,11 @@ app.registerExtension({
   
   .kistey__name {
     background: #2a272b;
-    width: 100%;
     font-size: 0.5rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    width: 50px;    
   }
   
   .kistey__arrow {

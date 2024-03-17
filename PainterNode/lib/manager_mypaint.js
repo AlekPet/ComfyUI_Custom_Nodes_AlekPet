@@ -1,4 +1,4 @@
-import { makeElement, rgbToHsv, getDataJSON } from "./utils.js";
+import { makeElement, rgbToHsv, getDataJSON } from "./helpers.js";
 
 // Menu select brush in the menu
 class MenuBrushes {
@@ -115,14 +115,16 @@ class MenuBrushes {
         });
         kistey__img.append(imageBrush);
 
-        // const brushName = makeElement("div", {
-        //   class: ["kistey__name"], textContent: filename});
+        const brushName = makeElement("div", {
+          class: ["kistey__name"],
+          textContent: filename,
+        });
 
         imageBrush.onerror = () => {
           imageBrush.src = `${this.managerMyPaint.basePath}/img/no_image.svg`;
         };
 
-        kistey__item.append(kistey__img /* brushName */);
+        kistey__item.append(kistey__img, brushName);
         kistey__body.append(kistey__item);
       });
     } else {
@@ -270,7 +272,8 @@ class MyPaintManager {
 
     this.painterNode = painterNode;
 
-    this.basePath = "extensions/AlekPet_Nodes/assets/painternode";
+    this.basePath =
+      "extensions/ComfyUI_Custom_Nodes_AlekPet/assets/painternode";
     this.brushName = brushName;
     this.currentBrushSettings = null;
   }
