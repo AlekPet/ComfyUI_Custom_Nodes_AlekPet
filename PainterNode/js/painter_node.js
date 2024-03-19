@@ -2157,7 +2157,7 @@ app.registerExtension({
     background: #4300e7;
   }
   
-  .kistey_directory_popup .pop_active {
+  .pop_active {
     color: #38ffc1;
   }
   /* -- end Styles Kistey -- */  

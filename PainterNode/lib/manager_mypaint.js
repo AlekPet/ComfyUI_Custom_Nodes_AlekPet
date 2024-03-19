@@ -19,6 +19,7 @@ class MenuBrushes {
     //
     this.selectedBrushIndex = null;
     this.prevSelected = null;
+    this.getAvailablesBrushes();
   }
 
   init() {
@@ -26,6 +27,27 @@ class MenuBrushes {
     this.createDirList();
     this.createBrushList();
     this.bindEvents();
+  }
+
+  getAvailablesBrushes() {
+    const availablesAll = this.keysDir
+      .map((dir) => ({
+        dir,
+        count: this.listBrushes[dir].length,
+      }))
+      .filter((item) => item.count > 0);
+
+    const availablesRoot = availablesAll.filter(
+      (item) => item.dir === "brushes"
+    );
+
+    if (availablesRoot.length) {
+      this.currentDir = availablesRoot[0].dir;
+    } else {
+      this.currentDir = availablesAll[0].dir;
+      this.managerMyPaint.brushName =
+        this.listBrushes[this.currentDir][0].filename;
+    }
   }
 
   createLayout() {
@@ -71,28 +93,39 @@ class MenuBrushes {
     const kistey_directory_slider = this.wrepper__kistey.querySelector(
       ".kistey_directory_slider"
     );
-    this.currentDir = this.keysDir[0];
+    const kistey_dir__name_wrapper = this.wrepper__kistey.querySelector(
+      ".kistey_dir__name_wrapper"
+    );
+
     this.keysDir.forEach((dir, idx) => {
       const kistey_dir__name = document.createElement("div");
       kistey_dir__name.className = "kistey_dir__name";
-      if (idx === this.currentSlide)
+      if (dir === this.currentDir) {
+        this.currentSlide = idx;
+        this.pos = -this.currentSlide * this.step;
+        kistey_directory_slider.style.left = `${this.pos}px`;
         kistey_dir__name.classList.add("pop_active");
+      }
 
       kistey_dir__name.textContent = dir;
       kistey_dir__name.title = dir[0].toUpperCase() + dir.slice(1);
 
       kistey_directory_slider.append(kistey_dir__name);
     });
+
+    // Popup
+    const kistey_directory_popup = kistey_directory_slider.cloneNode(true);
+    kistey_directory_popup.style.left = "";
+    kistey_directory_popup.className = "kistey_directory_popup";
+    kistey_directory_popup.style.display = "none";
+    Array.from(kistey_directory_popup.children).forEach((dir) =>
+      dir.classList.add("kistey_dir__name-popup")
+    );
+    kistey_dir__name_wrapper.append(kistey_directory_popup);
   }
 
   createBrushList() {
     const kistey__body = this.wrepper__kistey.querySelector(".kistey__body");
-    const kistey_dir__name_wrapper = this.wrepper__kistey.querySelector(
-      ".kistey_dir__name_wrapper"
-    );
-    const kistey_directory_slider = this.wrepper__kistey.querySelector(
-      ".kistey_directory_slider"
-    );
 
     kistey__body.innerHTML = "";
     kistey__body.style.display = "grid";
@@ -110,10 +143,17 @@ class MenuBrushes {
         });
 
         const imageBrush = makeElement("img", {
-          src: `${this.managerMyPaint.basePath}/brushes/${path}${filename}_prev.png`,
+          src: encodeURI(
+            `${this.managerMyPaint.basePath}/brushes/${path}/${filename}_prev.png`
+          ),
           alt: filename,
         });
         kistey__img.append(imageBrush);
+
+        if (brush.filename === this.managerMyPaint.brushName) {
+          imageBrush.classList.add("selected");
+          this.prevSelected = imageBrush;
+        }
 
         const brushName = makeElement("div", {
           class: ["kistey__name"],
@@ -131,15 +171,6 @@ class MenuBrushes {
       kistey__body.style.display = "block";
       kistey__body.textContent = "No brush this directory...";
     }
-
-    // Popup
-    const kistey_directory_popup = kistey_directory_slider.cloneNode(true);
-    kistey_directory_popup.className = "kistey_directory_popup";
-    kistey_directory_popup.style.display = "none";
-    Array.from(kistey_directory_popup.children).forEach((dir) =>
-      dir.classList.add("kistey_dir__name-popup")
-    );
-    kistey_dir__name_wrapper.append(kistey_directory_popup);
   }
 
   setActiveDir() {
@@ -283,6 +314,10 @@ class MyPaintManager {
     this.viewMenuBrushes = makeElement("button", { textContent: "Brushes" });
     this.viewMenuBrushes.customSize = { w: 60, h: 25, fs: 10 };
     this.viewMenuBrushes.addEventListener("click", () => {
+      if (!this.menuBrushes.wrepper__kistey) {
+        this.menuBrushes.init();
+      }
+
       this.menuBrushes.wrepper__kistey.style.display =
         this.menuBrushes.wrepper__kistey.style.display === "none"
           ? "block"
@@ -356,7 +391,12 @@ class MyPaintManager {
     );
     this.menuBrushes = new MenuBrushes(this);
 
-    await this.loadBrushSetting("", "charcoal");
+    await this.loadBrushSetting(
+      this.menuBrushes.currentDir === "brushes"
+        ? "/"
+        : this.menuBrushes.currentDir,
+      this.brushName
+    );
   }
 
   appendElements(parent) {
@@ -372,14 +412,16 @@ class MyPaintManager {
       this.labelCheckboxDefSize
     );
 
-    this.menuBrushes.init();
     this.setPropertyBrush();
   }
 
   async loadBrushSetting(pathToBrush, brushName) {
-    if (pathToBrush === "") pathToBrush = "brushes/";
+    pathToBrush = `brushes/${pathToBrush}/`;
 
-    const pathToJsonBrush = `${this.basePath}/${pathToBrush}${brushName}`;
+    const pathToJsonBrush = encodeURI(
+      `${this.basePath}/${pathToBrush}${brushName}`
+    );
+
     this.currentBrushSettings = await getDataJSON(
       `${pathToJsonBrush}.myb.json`
     );
@@ -417,10 +459,6 @@ class MyPaintManager {
         this.currentBrushSettings.radius_logarithmic.base_value;
 
     this.painterNode.changePropertyBrush(this.painterNode.type);
-  }
-
-  hello() {
-    console.log("Hello!");
   }
 
   async setBrush(data) {
