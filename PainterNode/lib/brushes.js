@@ -201,13 +201,13 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
       if (!pressure) pressure = pressurePointer;
 
       if ((!pressure && !pressurePointer) || pressure === 0)
-        pressure = this.mousepressure.value / 100;
+        pressure = parseFloat(this.mousepressure.value);
     }
 
     // Mouse
     if (pointerType === "mouse" || pointerType === "touch") {
       if (pressure === undefined || pressure === 0) {
-        pressure = this.mousepressure.value / 100;
+        pressure = parseFloat(this.mousepressure.value);
       }
     }
 

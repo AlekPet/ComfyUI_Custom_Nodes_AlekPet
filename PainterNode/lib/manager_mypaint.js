@@ -51,8 +51,8 @@ class MenuBrushes {
   }
 
   createLayout() {
-    this.wrepper__kistey = makeElement("div", { class: ["wrepper__kistey"] });
-    this.wrepper__kistey.style.display = "none";
+    this.wrapper__kistey = makeElement("div", { class: ["wrapper__kistey"] });
+    this.wrapper__kistey.style.display = "none";
 
     const box__kistey = makeElement("div", { class: ["box__kistey"] });
 
@@ -82,18 +82,16 @@ class MenuBrushes {
     kistey__title.append(kistey__left, kistey_dir__name_wrapper, kistey__right);
     box__kistey.append(kistey__title, kistey__body);
 
-    this.wrepper__kistey.append(box__kistey);
+    this.wrapper__kistey.append(box__kistey);
 
-    this.managerMyPaint.viewMenuBrushes.parentElement.append(
-      this.wrepper__kistey
-    );
+    this.managerMyPaint.viewMenuBrushes.append(this.wrapper__kistey);
   }
 
   createDirList() {
-    const kistey_directory_slider = this.wrepper__kistey.querySelector(
+    const kistey_directory_slider = this.wrapper__kistey.querySelector(
       ".kistey_directory_slider"
     );
-    const kistey_dir__name_wrapper = this.wrepper__kistey.querySelector(
+    const kistey_dir__name_wrapper = this.wrapper__kistey.querySelector(
       ".kistey_dir__name_wrapper"
     );
 
@@ -125,7 +123,7 @@ class MenuBrushes {
   }
 
   createBrushList() {
-    const kistey__body = this.wrepper__kistey.querySelector(".kistey__body");
+    const kistey__body = this.wrapper__kistey.querySelector(".kistey__body");
 
     kistey__body.innerHTML = "";
     kistey__body.style.display = "grid";
@@ -174,10 +172,10 @@ class MenuBrushes {
   }
 
   setActiveDir() {
-    const kistey_directory_popup = this.wrepper__kistey.querySelector(
+    const kistey_directory_popup = this.wrapper__kistey.querySelector(
       ".kistey_directory_popup"
     );
-    const kistey_directory_slider = this.wrepper__kistey.querySelector(
+    const kistey_directory_slider = this.wrapper__kistey.querySelector(
       ".kistey_directory_slider"
     );
 
@@ -195,10 +193,10 @@ class MenuBrushes {
   }
 
   moveSlide(target) {
-    const kistey_directory_popup = this.wrepper__kistey.querySelector(
+    const kistey_directory_popup = this.wrapper__kistey.querySelector(
       ".kistey_directory_popup"
     );
-    const kistey_directory_slider = this.wrepper__kistey.querySelector(
+    const kistey_directory_slider = this.wrapper__kistey.querySelector(
       ".kistey_directory_slider"
     );
 
@@ -226,12 +224,12 @@ class MenuBrushes {
   }
 
   bindEvents() {
-    const kistey_directory_popup = this.wrepper__kistey.querySelector(
+    const kistey_directory_popup = this.wrapper__kistey.querySelector(
       ".kistey_directory_popup"
     );
-    const kistey__body = this.wrepper__kistey.querySelector(".kistey__body");
+    const kistey__body = this.wrapper__kistey.querySelector(".kistey__body");
 
-    this.wrepper__kistey
+    this.wrapper__kistey
       .querySelector(".box__kistey")
       .addEventListener("click", (e) => {
         let target = e.target;
@@ -310,80 +308,55 @@ class MyPaintManager {
   }
 
   async createElements() {
+    // Wrapper from brushes menu and settings
+    this.viewMenuBrushes = makeElement("div", {
+      class: ["viewMenuBrushes"],
+    });
+
     // Open menu brushes
-    this.viewMenuBrushes = makeElement("button", { textContent: "Brushes" });
-    this.viewMenuBrushes.customSize = { w: 60, h: 25, fs: 10 };
-    this.viewMenuBrushes.addEventListener("click", () => {
-      if (!this.menuBrushes.wrepper__kistey) {
+    this.boxButtonsBrushes = makeElement("div", {
+      class: ["boxButtonsBrushes"],
+    });
+
+    const buttonMenuBrushes = makeElement("button", {
+      class: ["buttonMenuBrushes"],
+      textContent: "Brushes",
+    });
+    buttonMenuBrushes.customSize = { w: 60, h: 25, fs: 10 };
+
+    buttonMenuBrushes.addEventListener("click", () => {
+      if (!this.menuBrushes.wrapper__kistey) {
         this.menuBrushes.init();
       }
 
-      this.menuBrushes.wrepper__kistey.style.display =
-        this.menuBrushes.wrepper__kistey.style.display === "none"
+      this.menuBrushes.wrapper__kistey.style.display =
+        this.menuBrushes.wrapper__kistey.style.display === "none"
           ? "block"
           : "none";
     });
 
-    // Mouse Pressure
-    this.labelMousePressure = makeElement("label", {
-      textContent: "Pressure: ",
-      style:
-        "display: flex;  align-items: center; font-size: 10px; margin-left: 3px",
-      title: "Mouse pressure",
+    // Settings brushes
+    const buttonMenuSettings = makeElement("button", {
+      class: ["buttonMenuSettings"],
+      textContent: "Settings",
+    });
+    buttonMenuSettings.customSize = { w: 60, h: 25, fs: 10 };
+
+    buttonMenuSettings.addEventListener("click", () => {
+      this.kistey_wrapper_settings.style.display =
+        this.kistey_wrapper_settings.style.display === "none"
+          ? "block"
+          : "none";
     });
 
-    this.mousepressure = makeElement("input", {
-      class: ["mypaint_mousepressure"],
-      type: "range",
-      min: 1,
-      max: 100,
-      value: 50,
-    });
-    this.mousepressure.customSize = { w: 60, h: 25, fs: 10 };
-
-    this.labelMousePressure.append(
-      this.mousepressure,
-      makeElement("span", { textContent: this.mousepressure.value / 100 })
+    this.boxButtonsBrushes.append(
+      buttonMenuBrushes,
+      buttonMenuSettings,
+      this.viewMenuBrushes
     );
 
-    // Load size for settings brush
-    this.labelCheckboxDefSize = makeElement("label", {
-      textContent: "Default Size: ",
-      style:
-        "display: flex;  align-items: center; font-size: 10px; margin-left: 3px",
-      title: "Apply size from brush settings",
-    });
-
-    this.CheckboxDefSize = makeElement("input", {
-      type: "checkbox",
-      class: ["mypaint_checkboxDefSize"],
-      checked:
-        window.LS_Painters[this.painterNode.node.name].settings
-          ?.mypaint_settings?.preset_brush_size ?? true,
-    });
-
-    this.CheckboxDefSize.customSize = { w: 15, h: 15, fs: 10 };
-
-    this.CheckboxDefSize.addEventListener("change", () => {
-      const lsPainter = window.LS_Painters[this.painterNode.node.name].settings;
-      if (!lsPainter.hasOwnProperty("mypaint_settings"))
-        window.LS_Painters[
-          this.painterNode.node.name
-        ].settings.mypaint_settings = {};
-
-      window.LS_Painters[
-        this.painterNode.node.name
-      ].settings.mypaint_settings.preset_brush_size =
-        this.CheckboxDefSize.checked;
-
-      // Save to localStorage
-      localStorage.setItem(
-        "ComfyUI_Painter",
-        JSON.stringify(window.LS_Painters)
-      );
-    });
-
-    this.labelCheckboxDefSize.append(this.CheckboxDefSize);
+    // Create menu settings
+    this.createMenuSettings();
 
     // Select brush items
     this.brushesData = await getDataJSON(
@@ -399,18 +372,176 @@ class MyPaintManager {
     );
   }
 
+  createMenuSettings() {
+    this.kistey_wrapper_settings = makeElement("div", {
+      class: ["kistey_wrapper_settings"],
+      style: "display: none;",
+    });
+    const box__kistey_settings = makeElement("div", {
+      class: ["box__kistey_settings"],
+    });
+    const kistey_settings_body = makeElement("div", {
+      class: ["kistey_settings_body"],
+    });
+    const titleSettings = makeElement("div", {
+      class: ["titleSettings"],
+      textContent: "Settings",
+    });
+
+    box__kistey_settings.append(titleSettings, kistey_settings_body);
+    this.kistey_wrapper_settings.append(box__kistey_settings);
+
+    // Range events
+    const rangeInputEvent = (e) => {
+      e.currentTarget.nextSibling.textContent = (+e.currentTarget
+        .value).toFixed(2);
+      const valueRange =
+        ((e.currentTarget.value - e.currentTarget.min) /
+          (e.currentTarget.max - e.currentTarget.min)) *
+        100;
+      e.currentTarget.style.background =
+        "linear-gradient(to right, #15539e 0%, #15539e " +
+        valueRange +
+        "%, #282828 " +
+        valueRange +
+        "%, #282828 100%)";
+    };
+
+    const settings = [
+      // { name: "size", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
+      // { name: "opaque", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
+      // { name: "sharp", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
+      // { name: "gain", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
+      // { name: "pigment", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
+      // { name: "smooth", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
+      {
+        name: "pressure",
+        max: 1.0,
+        min: 0,
+        step: 0.01,
+        value: 0.75,
+        type: "range",
+        title: "Pressure (Mouse pressure)",
+        events: { input: rangeInputEvent },
+      },
+      // { name: "twist", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
+      {
+        name: "default size",
+        checked:
+          window.LS_Painters[this.painterNode.node.name].settings
+            ?.mypaint_settings?.preset_brush_size ?? true,
+        type: "checkbox",
+        title: "Apply size from brush settings",
+        events: {
+          change: (e) => {
+            const lsPainter =
+              window.LS_Painters[this.painterNode.node.name].settings;
+            if (!lsPainter.hasOwnProperty("mypaint_settings"))
+              window.LS_Painters[
+                this.painterNode.node.name
+              ].settings.mypaint_settings = {};
+
+            window.LS_Painters[
+              this.painterNode.node.name
+            ].settings.mypaint_settings.preset_brush_size =
+              this.CheckboxDefSize.checked;
+
+            // Save to localStorage
+            localStorage.setItem(
+              "ComfyUI_Painter",
+              JSON.stringify(window.LS_Painters)
+            );
+          },
+        },
+      },
+    ];
+    settings.forEach((setting, idx) => {
+      let element, elementValue;
+
+      const { name, value, type, title } = setting;
+      const namedClass = name.includes(" ") ? name.replace(/\W|\s/g, "") : name;
+      const boxElement = makeElement("div", {
+        class: ["kistey_setting__item"],
+      });
+
+      if (type === "range") {
+        const { min, max, step } = setting;
+        const range = makeElement("input", {
+          max,
+          min,
+          step,
+          value,
+          title,
+          type,
+          class: [`input_range_${namedClass}`],
+        });
+
+        const valueRange =
+          ((range.value - range.min) / (range.max - range.min)) * 100;
+
+        range.customSize = { w: 100, h: 6, fs: 10 };
+        range.style.background =
+          "linear-gradient(to right, #15539e 0%, #15539e " +
+          valueRange +
+          "%, #282828 " +
+          valueRange +
+          "%, #282828 100%)";
+
+        if (setting?.events && Object.keys(setting.events).length) {
+          Object.keys(setting.events).forEach((eventName) =>
+            range.addEventListener(eventName, setting.events[eventName])
+          );
+        }
+
+        element = range;
+        elementValue = makeElement("span", { textContent: element.value });
+      } else if (type === "checkbox") {
+        const { checked } = setting;
+        const checkbox = makeElement("input", {
+          type,
+          title,
+          checked,
+          class: [`checkbox_${namedClass}`],
+        });
+
+        checkbox.customSize = { w: 15, h: 15, fs: 10 };
+
+        if (setting?.events && Object.keys(setting.events).length) {
+          Object.keys(setting.events).forEach((eventName) =>
+            checkbox.addEventListener(eventName, setting.events[eventName])
+          );
+        }
+
+        element = checkbox;
+        elementValue = makeElement("span", { textContent: element.checked });
+      }
+
+      // Append element
+      const textNode = makeElement("span", {
+        textContent: name[0].toUpperCase() + name.slice(1),
+      });
+
+      boxElement.append(textNode, element, elementValue);
+      kistey_settings_body.append(boxElement);
+    });
+
+    // Mouse Pressure
+    this.mousepressure = this.kistey_wrapper_settings.querySelector(
+      ".input_range_pressure"
+    );
+
+    // Load size for settings brush
+    this.CheckboxDefSize = this.kistey_wrapper_settings.querySelector(
+      ".checkbox_defaultsize"
+    );
+
+    this.viewMenuBrushes.append(this.kistey_wrapper_settings);
+  }
+
   appendElements(parent) {
     const separator = makeElement("div", { class: ["separator"] });
 
-    parent.append(
-      // this.labelSetBrush,
-      separator,
-      this.viewMenuBrushes,
-      separator.cloneNode(true),
-      this.labelMousePressure,
-      separator.cloneNode(true),
-      this.labelCheckboxDefSize
-    );
+    parent.append(separator, this.boxButtonsBrushes);
 
     this.setPropertyBrush();
   }

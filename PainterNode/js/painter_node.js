@@ -2021,17 +2021,24 @@ app.registerExtension({
   .active svg > * {
     stroke: var(--error-text);
   }
-  /* -- Styles Kistey */  
-  .wrepper__kistey {
+
+  /* -- Styles Kistey */
+  .viewMenuBrushes {
     position: absolute;
-    top: 5%;
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: 300px;
     opacity: 0.9;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    left: 101%;
+  }
+
+  .wrapper__kistey {
+    max-width: 300px;
   }
   
-  .box__kistey {
+  .box__kistey, .box__kistey_settings {
     display: flex;
     flex-direction: column;
     background: #0e0e0e;
@@ -2042,10 +2049,11 @@ app.registerExtension({
     text-align: center;
     border-radius: 6px;
     color: white;
-    border: 2px solid limegreen;
+    border: 2px solid #00ff00ab;
     font-family: monospace;
-    box-shadow: 4px 4px 8px limegreen;
+    box-shadow: 2px 2px 4px #00ff00ab;
   }
+  
   .kistey__title {
     display: flex;
     gap: 5px;
@@ -2134,6 +2142,7 @@ app.registerExtension({
     justify-content: flex-start;
     align-items: flex-start;
     position: relative;
+    transition: 1s all;
   }
   
   .kistey_directory_popup {
@@ -2160,7 +2169,72 @@ app.registerExtension({
   .pop_active {
     color: #38ffc1;
   }
-  /* -- end Styles Kistey -- */  
+  /* -- end Styles Kistey -- */
+  
+  /* -- Styles Settigs Kistey -- */
+  .
+  .kistey_wrapper_settings {
+    max-width: 250px;
+  }
+  
+  .box__kistey_settings {
+    gap: 5px;
+    transition: 0.5s opacity;
+  }
+  
+  .kistey_settings_body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+  }
+
+  .kistey_setting__item {
+    display: flex;
+    align-items: center;
+  }
+
+  .kistey_settings_body input[type="range"] {
+    width: 100px;
+  }
+  .kistey_settings_body input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: linear-gradient(
+      to right,
+      #15539e 0%,
+      #15539e 50%,
+      #282828 50%,
+      #282828 100%
+    );
+    cursor: pointer;
+    border-radius: 16px;
+    border: 1px solid black;
+    transition: background 400ms ease-in;
+  }
+  
+  .kistey_settings_body input[type="range"]::-webkit-slider-runnable-track {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 16px;
+    height: 3.2px;
+  }
+  
+  .kistey_settings_body input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    margin-top: -6.4px;
+    background: #2b2b2b;
+    border: 1px solid black;
+    height: 1rem;
+    width: 1rem;
+    border-radius: 50%;
+  }
+  
+  .kistey_settings_body input[type="range"]::-webkit-slider-thumb:hover {
+    background-color: rgb(49 49 49);
+  }
+  /* -- end Styles Settigs Kistey -- */  
 `;
     document.head.append(limybrush, style);
   },
