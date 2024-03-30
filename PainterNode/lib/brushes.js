@@ -160,7 +160,11 @@ fabric.SymmetryBrush = fabric.util.createClass(fabric.BaseBrush, {
 
 // MyPaintBrush symmetry
 fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
-  initialize: function (canvas, mousepressure = null, brushSettings = null) {
+  initialize: function (
+    canvas,
+    range_brush_pressure = null,
+    brushSettings = null
+  ) {
     this.callSuper("initialize", canvas);
 
     if (!brushSettings) {
@@ -171,7 +175,7 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
     this._options.width_x.enable = false;
     this.surface = new MypaintSurface(this.canvas);
     this.brush = new MypaintBrush(this.brushSettings, this.surface);
-    this.mousepressure = mousepressure;
+    this.range_brush_pressure = range_brush_pressure;
   },
 
   onMouseDown: function (pointer, options) {
@@ -201,17 +205,17 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
       if (!pressure) pressure = pressurePointer;
 
       if ((!pressure && !pressurePointer) || pressure === 0)
-        pressure = parseFloat(this.mousepressure.value);
+        pressure = parseFloat(this.range_brush_pressure.value);
     }
 
     // Mouse
     if (pointerType === "mouse" || pointerType === "touch") {
       if (pressure === undefined || pressure === 0) {
-        pressure = parseFloat(this.mousepressure.value);
+        pressure = parseFloat(this.range_brush_pressure.value);
       }
     }
 
-    this.mousepressure.nextElementSibling.textContent = pressure;
+    this.range_brush_pressure.nextElementSibling.textContent = pressure;
 
     const time = (new Date().getTime() - this.t1) / 1000;
 

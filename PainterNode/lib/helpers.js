@@ -59,7 +59,7 @@ function showHide({ elements = [], hide = null, displayProp = "block" }) {
       el.style.display = !hide ? displayProp : "none";
     } else {
       el.style.display =
-        !el.style.display || el.style.display == "none" ? displayProp : "none";
+        !el.style.display || el.style.display === "none" ? displayProp : "none";
     }
   });
 }
@@ -106,4 +106,21 @@ async function getDataJSON(url) {
   }
 }
 
-export { makeElement, rgbToHsv, getDataJSON, toRGBA, getColorHEX, showHide };
+function rangeGradient(rangeElement, color1 = "#15539e", color2 = "#282828") {
+  const valueRange =
+    ((rangeElement.value - rangeElement.min) /
+      (rangeElement.max - rangeElement.min)) *
+    100;
+
+  return `linear-gradient(to right, ${color1} 0%, ${color1} ${valueRange}%, ${color2} ${valueRange}%, ${color2} 100%)`;
+}
+
+export {
+  makeElement,
+  rgbToHsv,
+  getDataJSON,
+  toRGBA,
+  getColorHEX,
+  showHide,
+  rangeGradient,
+};

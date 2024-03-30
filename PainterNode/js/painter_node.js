@@ -889,7 +889,7 @@ class Painter {
 
                 this.canvas.freeDrawingBrush = new fabric.MyBrushPaintSymmetry(
                   this.canvas,
-                  this.MyBrushPaintManager.mousepressure,
+                  this.MyBrushPaintManager.range_brush_pressure,
                   this.MyBrushPaintManager.currentBrushSettings
                 );
               } // end BrushMyPaint
@@ -2023,6 +2023,25 @@ app.registerExtension({
   }
 
   /* -- Styles Kistey */
+  .close__box__button {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #3aa108;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.8rem;    
+  }
+
+  .close__box__button:hover {
+    opacity: 0.8;
+  }
+
   .viewMenuBrushes {
     position: absolute;
     opacity: 0.9;
@@ -2036,6 +2055,7 @@ app.registerExtension({
 
   .wrapper__kistey {
     max-width: 300px;
+    position: relative;
   }
   
   .box__kistey, .box__kistey_settings {
@@ -2052,6 +2072,10 @@ app.registerExtension({
     border: 2px solid #00ff00ab;
     font-family: monospace;
     box-shadow: 2px 2px 4px #00ff00ab;
+  }
+
+  .close__box__button_box__kistey {
+    background: #3aa108;
   }
   
   .kistey__title {
@@ -2172,14 +2196,20 @@ app.registerExtension({
   /* -- end Styles Kistey -- */
   
   /* -- Styles Settigs Kistey -- */
-  .
   .kistey_wrapper_settings {
     max-width: 250px;
+    position: relative;
   }
   
   .box__kistey_settings {
     gap: 5px;
     transition: 0.5s opacity;
+    border: 2px solid #4313e9ad;
+    box-shadow: 2px 2px 4px #4313e9ad;
+  }
+
+  .close__box__button__box__kistey_settings {
+    background: #4313e9ad;
   }
   
   .kistey_settings_body {
