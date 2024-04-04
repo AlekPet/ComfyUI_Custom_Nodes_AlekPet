@@ -114,6 +114,12 @@ def installNodes():
         if os.path.exists(filePath):
             os.remove(filePath)
     
+    # Remove old folder if exist
+    oldDirNodes = os.path.join(folder_comfyui_web_extensions, "AlekPet_Nodes")
+    if os.path.exists(oldDirNodes):
+        shutil.rmtree(oldDirNodes)       
+    
+    # Clear folder web_alekpet_nodes
     if os.path.exists(web_extensions_dir):
         shutil.rmtree(web_extensions_dir)
         

@@ -5,6 +5,7 @@
  * Github extensions ComfyUI: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 import { fabric } from "./fabric.js";
+import { rangeGradient } from "./helpers.js";
 
 // Brush symmetry fabricjs
 fabric.SymmetryBrush = fabric.util.createClass(fabric.BaseBrush, {
@@ -215,7 +216,11 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
       }
     }
 
-    this.range_brush_pressure.nextElementSibling.textContent = pressure;
+    this.range_brush_pressure.nextElementSibling.textContent =
+      pressure.toFixed(2);
+    this.range_brush_pressure.style.background = rangeGradient(
+      this.range_brush_pressure
+    );
 
     const time = (new Date().getTime() - this.t1) / 1000;
 

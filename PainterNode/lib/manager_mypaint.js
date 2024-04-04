@@ -545,10 +545,6 @@ class MyPaintManager {
         });
 
         const range = this[`range_brush_${name}`];
-
-        const valueRange =
-          ((range.value - range.min) / (range.max - range.min)) * 100;
-
         range.customSize = { w: 100, h: 6, fs: 10 };
         range.style.background = rangeGradient(range);
 
@@ -636,6 +632,7 @@ class MyPaintManager {
     this.painterNode.canvas.freeDrawingBrush.brush.readmyb_json(
       this.currentBrushSettings
     );
+
     this.setMenuSettingsValues();
   }
 
