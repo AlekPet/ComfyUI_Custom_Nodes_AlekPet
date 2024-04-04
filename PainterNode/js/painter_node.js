@@ -8,6 +8,7 @@
 import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 import { fabric } from "./lib/painternode/fabric.js";
+import "./lib/painternode/mybrush.js";
 import { svgSymmetryButtons } from "./lib/painternode/brushes.js";
 import {
   toRGBA,
@@ -429,7 +430,10 @@ class Painter {
         this.MyBrushPaintManager.setColorBrush(this.strokeColor.value);
 
         // Size brush
-        this.MyBrushPaintManager.setSizeBrush(this.strokeWidth.value);
+        this.MyBrushPaintManager.setPropertyBrushValue(
+          this.strokeWidth.value,
+          "radius_logarithmic"
+        );
         return;
       }
 
@@ -1802,10 +1806,6 @@ line-height: 1.5`;
 app.registerExtension({
   name: "Comfy.PainterNode",
   async init(app) {
-    const limybrush = document.createElement("script");
-    limybrush.src =
-      "extensions/ComfyUI_Custom_Nodes_AlekPet/lib/painternode/mybrush.js";
-
     const style = document.createElement("style");
     style.innerText = `.panelPaintBox {
       position: absolute;
@@ -2266,7 +2266,7 @@ app.registerExtension({
   }
   /* -- end Styles Settigs Kistey -- */  
 `;
-    document.head.append(limybrush, style);
+    document.head.append(style);
   },
   async setup(app) {
     let PainerNode = app.graph._nodes.filter((wi) => wi.type == "PainterNode");

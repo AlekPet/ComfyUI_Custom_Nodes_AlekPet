@@ -49,6 +49,15 @@ class MenuBrushes {
 
     if (availablesRoot.length) {
       this.currentDir = availablesRoot[0].dir;
+
+      if (
+        !this.listBrushes[this.currentDir].some(
+          (val) => this.managerMyPaint.brushName === val.filename
+        )
+      ) {
+        this.managerMyPaint.brushName =
+          this.listBrushes[this.currentDir][0].filename;
+      }
     } else {
       this.currentDir = availablesAll[0].dir;
       this.managerMyPaint.brushName =
@@ -429,11 +438,11 @@ class MyPaintManager {
         "%, #282828 100%)";
     };
 
-    const settings = [
-      {
+    this.settings_brush = {
+      size: {
         name: "size",
         max: 7.0,
-        min: 0.2,
+        min: -2.0,
         step: 0.01,
         value: 2,
         type: "range",
@@ -442,16 +451,33 @@ class MyPaintManager {
           input: rangeInputEvent,
           change: (e) => {
             this.painterNode.strokeWidth.value = e.currentTarget.value;
-            this.setSizeBrush(e.currentTarget.value);
+            this.setPropertyBrushValue(
+              e.currentTarget.value,
+              "radius_logarithmic"
+            );
           },
         },
       },
-      // { name: "opaque", max: 2.0, min: 0, step: 0.01, value: 1.0, type: "range", title:"" , events: {input: rangeInputEvent}},
-      // { name: "sharp", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
-      // { name: "gain", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
-      // { name: "pigment", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
-      // { name: "smooth", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
-      {
+      opaque: {
+        name: "opaque",
+        max: 2.0,
+        min: 0,
+        step: 0.01,
+        value: 1.0,
+        type: "range",
+        title: "Opacity",
+        events: {
+          input: rangeInputEvent,
+          change: (e) => {
+            this.setPropertyBrushValue(e.currentTarget.value, "opaque");
+          },
+        },
+      },
+      //"sharp": { name: "sharp", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
+      //"gain": { name: "gain", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
+      //"pigment": { name: "pigment", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
+      //"smooth": { name: "smooth", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
+      pressure: {
         name: "pressure",
         max: 1.0,
         min: 0,
@@ -462,7 +488,7 @@ class MyPaintManager {
         events: { input: rangeInputEvent },
       },
       // { name: "twist", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
-      {
+      DefaultSize: {
         name: "default size",
         checked:
           window.LS_Painters[this.painterNode.node.name].settings
@@ -491,10 +517,12 @@ class MyPaintManager {
           },
         },
       },
-    ];
+    };
 
-    settings.forEach((setting, idx) => {
+    Object.keys(this.settings_brush).forEach((setting_key) => {
       let element, elementValue;
+
+      const setting = this.settings_brush[setting_key];
 
       let { name, value, type, title } = setting;
       const namedClass = name.includes(" ") ? name.replace(/\W|\s/g, "") : name;
@@ -600,31 +628,44 @@ class MyPaintManager {
     this.painterNode.canvas.freeDrawingBrush.brush.readmyb_json(bs);
   }
 
-  setSizeBrush(sizevalue) {
-    this.setMenuSettingsValues();
-    this.currentBrushSettings.radius_logarithmic.base_value =
-      parseFloat(sizevalue);
+  setPropertyBrushValue(propvalue, prop) {
+    if (!prop) return;
+
+    this.currentBrushSettings[prop].base_value = parseFloat(propvalue);
 
     this.painterNode.canvas.freeDrawingBrush.brush.readmyb_json(
       this.currentBrushSettings
     );
+    this.setMenuSettingsValues();
   }
 
   setMenuSettingsValues() {
     // Size brush
-    this.range_brush_size.value = this.painterNode.strokeWidth.value;
+    this.range_brush_size.value =
+      this.currentBrushSettings.radius_logarithmic.base_value;
     this.range_brush_size.nextElementSibling.textContent =
       this.range_brush_size.value;
     this.range_brush_size.style.background = rangeGradient(
       this.range_brush_size
     );
+
+    // Opacity brush
+    this.range_brush_opaque.value = this.currentBrushSettings.opaque.base_value;
+    this.range_brush_opaque.nextElementSibling.textContent =
+      this.range_brush_opaque.value;
+    this.range_brush_opaque.style.background = rangeGradient(
+      this.range_brush_opaque
+    );
   }
 
   setPropertyBrush() {
     // Set brush property: color, width
-    this.painterNode.strokeWidth.max = this.range_brush_size.max = 7;
-    this.painterNode.strokeWidth.min = this.range_brush_size.min = 0.2;
-    this.painterNode.strokeWidth.step = this.range_brush_size.step = 0.01;
+
+    // Size brush
+    const { max, min, step } = this.settings_brush["size"];
+    this.painterNode.strokeWidth.max = this.range_brush_size.max = max;
+    this.painterNode.strokeWidth.min = this.range_brush_size.min = min;
+    this.painterNode.strokeWidth.step = this.range_brush_size.step = step;
 
     if (this.checkbox_brush_default_size.checked) {
       // Set brush size if default size load checked

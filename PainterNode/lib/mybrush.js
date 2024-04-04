@@ -1293,7 +1293,7 @@
         this.states[STATE.ACTUAL_RADIUS] = ACTUAL_RADIUS_MAX;
 
       // OPTIMIZE: expf() called too often
-      const base_radius = Math.exp(
+      let base_radius = Math.exp(
         this.settings[BRUSH.RADIUS_LOGARITHMIC].base_value
       );
 
