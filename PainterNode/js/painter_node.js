@@ -656,6 +656,15 @@ class Painter {
     this.node.onResize();
   }
 
+  setDefaultValuesInputs() {
+    if (+this.strokeWidth.value < 1) {
+      this.strokeWidth.max = 150;
+      this.strokeWidth.min = 0;
+      this.strokeWidth.step = 1;
+      this.strokeWidth.value = 5;
+    }
+  }
+
   bindEvents() {
     // Button tools select
     this.painter_shapes_box.onclick = (e) => {
@@ -663,6 +672,9 @@ class Painter {
         currentTarget = target.dataset?.shape;
       if (currentTarget) {
         this.type = currentTarget;
+
+        // Set default brush width if width < 1 (for fabricjs)
+        this.setDefaultValuesInputs();
 
         switch (currentTarget) {
           case "Erase":
@@ -718,6 +730,7 @@ class Painter {
             this.drawning = true;
             break;
         }
+
         this.selectPropertyToolbar(this.type);
         this.setActiveElement(target, this.painter_shapes_box);
       }
@@ -893,11 +906,7 @@ class Painter {
 
               // BrushSymmetry fabricjs
               if (this.type === "BrushSymmetry") {
-                this.strokeWidth.max = 150;
-                this.strokeWidth.min = 0;
-                this.strokeWidth.step = 1;
-                this.strokeWidth.value = 5;
-
+                this.setDefaultValuesInputs();
                 this.canvas.freeDrawingBrush = new fabric.SymmetryBrush(
                   this.canvas
                 );
