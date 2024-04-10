@@ -16,11 +16,11 @@ function manual_translate_prompt() {
 
   button_manual_translate.callback = async function () {
     if (!!!manual_translate.value) {
-      makeModal(
-        "Info",
-        "Manual translate disable!\nThe translation works when you start generating images.",
-        ""
-      );
+      makeModal({
+        title: "Info",
+        text: "<p>Manual translate disabled!</p><p>The translation works when you start generating images.</p>",
+      });
+
       return;
     }
 

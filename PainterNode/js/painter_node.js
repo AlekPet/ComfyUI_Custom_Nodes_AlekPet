@@ -10,12 +10,8 @@ import { api } from "/scripts/api.js";
 import { fabric } from "./lib/painternode/fabric.js";
 import "./lib/painternode/mybrush.js";
 import { svgSymmetryButtons } from "./lib/painternode/brushes.js";
-import {
-  toRGBA,
-  getColorHEX,
-  showHide,
-  makeElement,
-} from "./lib/painternode/helpers.js";
+import { toRGBA, getColorHEX } from "./lib/painternode/helpers.js";
+import { showHide, makeElement } from "./utils.js";
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
@@ -421,9 +417,6 @@ class Painter {
   changePropertyBrush(type = "Brush") {
     if (["Brush", "BrushSymmetry", "BrushMyPaint"].includes(type)) {
       if (type === "Brush" || type === "BrushSymmetry") {
-        this.strokeWidth.max = 150;
-        this.strokeWidth.min = 0;
-        this.strokeWidth.step = 1;
       }
 
       if (type === "BrushMyPaint") {
@@ -900,6 +893,11 @@ class Painter {
 
               // BrushSymmetry fabricjs
               if (this.type === "BrushSymmetry") {
+                this.strokeWidth.max = 150;
+                this.strokeWidth.min = 0;
+                this.strokeWidth.step = 1;
+                this.strokeWidth.value = 5;
+
                 this.canvas.freeDrawingBrush = new fabric.SymmetryBrush(
                   this.canvas
                 );

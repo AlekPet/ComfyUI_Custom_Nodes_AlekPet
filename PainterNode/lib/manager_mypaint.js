@@ -1,10 +1,5 @@
-import {
-  makeElement,
-  rgbToHsv,
-  getDataJSON,
-  showHide,
-  rangeGradient,
-} from "./helpers.js";
+import { rgbToHsv, rangeGradient } from "./helpers.js";
+import { getDataJSON, makeElement, showHide, makeModal } from "../../utils.js";
 
 // Menu select brush in the menu
 class MenuBrushes {
@@ -59,9 +54,14 @@ class MenuBrushes {
           this.listBrushes[this.currentDir][0].filename;
       }
     } else {
-      this.currentDir = availablesAll[0].dir;
-      this.managerMyPaint.brushName =
-        this.listBrushes[this.currentDir][0].filename;
+      if (availablesAll.length) {
+        this.currentDir = availablesAll[0].dir;
+        this.managerMyPaint.brushName =
+          this.listBrushes[this.currentDir][0].filename;
+      } else {
+        this.currentDir = null;
+        this.managerMyPaint.brushName = null;
+      }
     }
   }
 
@@ -245,6 +245,7 @@ class MenuBrushes {
     this.pos = -this.currentSlide * this.step;
     kistey_directory_slider.style.left = `${this.pos}px`;
     this.currentDir = this.keysDir[this.currentSlide];
+
     this.createBrushList();
   }
 
@@ -253,6 +254,15 @@ class MenuBrushes {
       ".kistey_directory_popup"
     );
     const kistey__body = this.wrapper__kistey.querySelector(".kistey__body");
+    const kistey_directory_slider = this.wrapper__kistey.querySelector(
+      ".kistey_directory_slider"
+    );
+
+    kistey_directory_slider.addEventListener("transitionend", (e) => {
+      if (e.propertyName === "left") {
+        this.setActiveDir();
+      }
+    });
 
     this.wrapper__kistey
       .querySelector(".box__kistey")
@@ -272,12 +282,8 @@ class MenuBrushes {
             const idx_item = Array.from(kistey__body.children).findIndex(
               (item) => target === item
             );
-            // console.log(
-            //   "Selected:",
-            //   this.currentDir,
-            //   this.listBrushes[this.currentDir][idx_item]
-            // );
 
+            // Set selected brush
             this.managerMyPaint.setBrush(
               this.listBrushes[this.currentDir][idx_item]
             );
@@ -310,7 +316,6 @@ class MenuBrushes {
             this.currentDir = this.keysDir[index];
             this.currentSlide = index;
             this.moveSlide();
-            this.setActiveDir();
           }
 
           target = target.parentNode;
@@ -382,6 +387,16 @@ class MyPaintManager {
       `${this.basePath}/json/brushes_data.json`
     );
     this.menuBrushes = new MenuBrushes(this);
+
+    if (this.brushName === null && this.menuBrushes.currentDir === null) {
+      makeModal({
+        title: "Warning",
+        text: "Brushes not found in the folder 'assets/brushes'!",
+        parent: this.painterNode.canvas.wrapperEl,
+        stylePos: "absolute",
+      });
+      return;
+    }
 
     await this.loadBrushSetting(
       this.menuBrushes.currentDir === "brushes"

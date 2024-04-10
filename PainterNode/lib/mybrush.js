@@ -50,7 +50,7 @@
   Date: 2024/02/16
   Licence: same as original version of brushlib in C++
 
-  Rewritten for use with Fabric.js (http://fabricjs.com/), added canvas check in the constructor MypaintSurface.
+  Rewritten for use with Fabric.js (http://fabricjs.com/), added canvas check in the constructor MypaintSurface, MypaintBrush and other...
   In my node PainterNode for ComfyUI: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/tree/master/PainterNode
 */
 
@@ -58,6 +58,8 @@
   const document = window.document,
     navigator = window.navigator,
     location = window.location;
+
+  const DEBUG = false; // Debug code, console log
 
   const ACTUAL_RADIUS_MIN = 0.2;
   const ACTUAL_RADIUS_MAX = 800; // safety guard against radius like 1e20 and against rendering overload with unexpected brush dynamics
@@ -164,6 +166,15 @@
     }
     toString() {
       return "AssertException: " + this.message;
+    }
+  }
+
+  function debugLog({ type = "log", style = "" }, ...text) {
+    if (DEBUG) {
+      let outText = style.trim() !== "" ? "%c" : "";
+      const len = text.length - 1;
+      for (const a in text) outText += text[a] + (a !== len ? " " : "");
+      console[type](outText, style);
     }
   }
 
@@ -504,12 +515,16 @@
       this.context.translate(x, y);
 
       let g1;
-      if (hardness < 1) {
-        g1 = this.context.createRadialGradient(0, 0, 0, 0, 0, radius);
-        g1.addColorStop(hardness, `rgba(${rr},${gg},${bb},${opaque})`);
-        g1.addColorStop(1, `rgba(${rr},${gg},${bb},0)`);
-      } else {
-        g1 = `rgba(${rr},${gg},${bb},${opaque})`;
+      try {
+        if (hardness < 1) {
+          g1 = this.context.createRadialGradient(0, 0, 0, 0, 0, radius);
+          g1.addColorStop(hardness, `rgba(${rr},${gg},${bb},${opaque})`);
+          g1.addColorStop(1, `rgba(${rr},${gg},${bb},0)`);
+        } else {
+          g1 = `rgba(${rr},${gg},${bb},${opaque})`;
+        }
+      } catch (err) {
+        debugLog({ type: "error" }, err);
       }
 
       this.context.rotate(90 + angle);
@@ -729,7 +744,7 @@
         const currentSetting = setting.toUpperCase();
 
         if (!BRUSH.hasOwnProperty(currentSetting)) {
-          console.error(`Not found: ${currentSetting}`);
+          debugLog({ type: "warn" }, `Not found: ${currentSetting}`);
           continue;
         }
 
@@ -742,7 +757,16 @@
 
         const settingsPointsList = settings[setting].pointsList;
         for (const prop in settingsPointsList) {
-          const propidx = INPUT[prop.toUpperCase()];
+          const propUpper = prop.toUpperCase();
+          if (!INPUT.hasOwnProperty(propUpper)) {
+            debugLog(
+              { type: "warn" },
+              `Property input ${propUpper} not found in ${currentSetting}`
+            );
+            continue;
+          }
+
+          const propidx = INPUT[propUpper];
           m.pointsList[propidx].n = settingsPointsList[prop].length / 2;
 
           for (let i = 0; i < m.pointsList[propidx].n; i++) {
