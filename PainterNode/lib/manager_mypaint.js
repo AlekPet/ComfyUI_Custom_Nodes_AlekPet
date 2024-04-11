@@ -103,9 +103,15 @@ class MenuBrushes {
       textContent: "Loading...",
     });
 
+    const kistey__brushes__info = makeElement("button", {
+      class: ["kistey__brushes__info"],
+      textContent: "Brushes information",
+    });
+    kistey__brushes__info.customSize = { w: 138, h: 17, fs: 10 };
+
     kistey_dir__name_wrapper.append(kistey_directory_slider);
     kistey__title.append(kistey__left, kistey_dir__name_wrapper, kistey__right);
-    box__kistey.append(kistey__title, kistey__body);
+    box__kistey.append(kistey__title, kistey__body, kistey__brushes__info);
 
     this.wrapper__kistey.append(close__box__button, box__kistey);
 
@@ -167,7 +173,7 @@ class MenuBrushes {
 
         const imageBrush = makeElement("img", {
           src: encodeURI(
-            `${this.managerMyPaint.basePath}/brushes/${path}/${filename}_prev.png`
+            `${this.managerMyPaint.basePath}/brushes${path}/${filename}_prev.png`
           ),
           alt: filename,
         });
@@ -316,6 +322,40 @@ class MenuBrushes {
             this.currentDir = this.keysDir[index];
             this.currentSlide = index;
             this.moveSlide();
+          }
+
+          if (target.classList.contains("kistey__brushes__info")) {
+            makeModal({
+              title: "Brushes information",
+              text: `
+              <style>
+              .alekpet_modal_body ul > li:nth-of-type(odd) {
+                background: #494949;
+            }
+              .alekpet_modal_body a {
+                color: limegreen;
+            }
+            </style>
+              <div style="text-align: left;"><h5>Rights to brushes belong to their owners, <a href="https://github.com/mypaint/mypaint-brushes?tab=readme-ov-file#licensing-policy" target="__blank">licensing-policy</a>.</h5>
+            <h4>List of <a title="Brushes" href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes" target="__blank">brushes</a>:</h4>
+            <ul>
+            <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/classic" target="__blank">Classic</a></li>
+            <li>
+            <div><a href="https://www.davidrevoy.com/article55/mypaint-v4-brushkit" target="__blank">Deevad4</a></div>
+            <div><small>New version is not working <a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/deevad" target="__blank">Deevad</a></small></div>
+            <div><small>Author site: <a href="https://www.davidrevoy.com" target="__blank">Deevad4</a></small></div>
+            </li>
+            <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/experimental" target="__blank">Experimental</a></li>
+            <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/kaerhon_v1" target="__blank">Kaerhon_v1</a></li>
+            <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/ramon" target="__blank">Ramon</a></li>
+            <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/tanda" target="__blank">Tanda</a></li>
+            <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/dieterle" target="__blank">Dieterle</a> <small>(doesn't work, not added to brushes)</small></li>
+            </ul>
+            <div><a href="https://github.com/mypaint/mypaint-brushes/releases/tag/pre_json_brushes" target="__blank">More brushes</a>, not sorted (needs converts, using <a href="https://github.com/AlekPet/brushlib.js" target="__blank">my converter</a>)</div>
+            </div>`,
+              parent: this.managerMyPaint.painterNode.canvas.wrapperEl,
+              stylePos: "absolute",
+            });
           }
 
           target = target.parentNode;
@@ -488,7 +528,21 @@ class MyPaintManager {
           },
         },
       },
-      //"sharp": { name: "sharp", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
+      sharp: {
+        name: "sharp",
+        max: 1.0,
+        min: 0,
+        step: 0.01,
+        value: 1.0,
+        type: "range",
+        title: "Hardness",
+        events: {
+          input: rangeInputEvent,
+          change: (e) => {
+            this.setPropertyBrushValue(e.currentTarget.value, "hardness");
+          },
+        },
+      },
       //"gain": { name: "gain", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
       //"pigment": { name: "pigment", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
       //"smooth": { name: "smooth", max: 1.0, min: 0, step: 0.01, value: 0.75, type: "range", title:"" , events: {input: rangeInputEvent}},
@@ -655,18 +709,27 @@ class MyPaintManager {
     // Size brush
     this.range_brush_size.value =
       this.currentBrushSettings.radius_logarithmic.base_value;
-    this.range_brush_size.nextElementSibling.textContent =
-      this.range_brush_size.value;
+    this.range_brush_size.nextElementSibling.textContent = (+this
+      .range_brush_size.value).toFixed(2);
     this.range_brush_size.style.background = rangeGradient(
       this.range_brush_size
     );
 
     // Opacity brush
     this.range_brush_opaque.value = this.currentBrushSettings.opaque.base_value;
-    this.range_brush_opaque.nextElementSibling.textContent =
-      this.range_brush_opaque.value;
+    this.range_brush_opaque.nextElementSibling.textContent = (+this
+      .range_brush_opaque.value).toFixed(2);
     this.range_brush_opaque.style.background = rangeGradient(
       this.range_brush_opaque
+    );
+
+    // Hardness (Sharp)
+    this.range_brush_sharp.value =
+      this.currentBrushSettings.hardness.base_value;
+    this.range_brush_sharp.nextElementSibling.textContent = (+this
+      .range_brush_sharp.value).toFixed(2);
+    this.range_brush_sharp.style.background = rangeGradient(
+      this.range_brush_sharp
     );
   }
 
