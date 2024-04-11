@@ -1,4 +1,4 @@
-import { rgbToHsv, rangeGradient } from "./helpers.js";
+import { rgbToHsv, rangeGradient, HsvToRgb } from "./helpers.js";
 import { getDataJSON, makeElement, showHide, makeModal } from "../../utils.js";
 
 // Menu select brush in the menu
@@ -34,7 +34,7 @@ class MenuBrushes {
     const availablesAll = this.keysDir
       .map((dir) => ({
         dir,
-        count: this.listBrushes[dir].length,
+        count: this.listBrushes[dir].items.length,
       }))
       .filter((item) => item.count > 0);
 
@@ -46,18 +46,18 @@ class MenuBrushes {
       this.currentDir = availablesRoot[0].dir;
 
       if (
-        !this.listBrushes[this.currentDir].some(
-          (val) => this.managerMyPaint.brushName === val.filename
+        !this.listBrushes[this.currentDir].items.some(
+          (val) => this.managerMyPaint.brushName === val
         )
       ) {
         this.managerMyPaint.brushName =
-          this.listBrushes[this.currentDir][0].filename;
+          this.listBrushes[this.currentDir].items[0];
       }
     } else {
       if (availablesAll.length) {
         this.currentDir = availablesAll[0].dir;
         this.managerMyPaint.brushName =
-          this.listBrushes[this.currentDir][0].filename;
+          this.listBrushes[this.currentDir].items[0];
       } else {
         this.currentDir = null;
         this.managerMyPaint.brushName = null;
@@ -105,7 +105,7 @@ class MenuBrushes {
 
     const kistey__brushes__info = makeElement("button", {
       class: ["kistey__brushes__info"],
-      textContent: "Brushes information",
+      textContent: "INFORMATION",
     });
     kistey__brushes__info.customSize = { w: 138, h: 17, fs: 10 };
 
@@ -158,13 +158,12 @@ class MenuBrushes {
 
     kistey__body.innerHTML = "";
     kistey__body.style.display = "grid";
-    if (this.listBrushes[this.currentDir].length) {
-      this.listBrushes[this.currentDir].forEach((brush, idx) => {
-        const { filename, path } = brush;
-
+    const { items, path } = this.listBrushes[this.currentDir];
+    if (items.length) {
+      items.forEach((brush, idx) => {
         const kistey__item = makeElement("div", {
           class: ["kistey__item"],
-          title: filename,
+          title: brush,
         });
 
         const kistey__img = makeElement("div", {
@@ -173,20 +172,20 @@ class MenuBrushes {
 
         const imageBrush = makeElement("img", {
           src: encodeURI(
-            `${this.managerMyPaint.basePath}/brushes${path}/${filename}_prev.png`
+            `${this.managerMyPaint.basePath}/brushes/${path}/${brush}_prev.png`
           ),
-          alt: filename,
+          alt: brush,
         });
         kistey__img.append(imageBrush);
 
-        if (brush.filename === this.managerMyPaint.brushName) {
+        if (brush === this.managerMyPaint.brushName) {
           imageBrush.classList.add("selected");
           this.prevSelected = imageBrush;
         }
 
         const brushName = makeElement("div", {
           class: ["kistey__name"],
-          textContent: filename,
+          textContent: brush,
         });
 
         imageBrush.onerror = () => {
@@ -198,7 +197,7 @@ class MenuBrushes {
       });
     } else {
       kistey__body.style.display = "block";
-      kistey__body.textContent = "No brush this directory...";
+      kistey__body.textContent = "No brushes this directory...";
     }
   }
 
@@ -290,9 +289,10 @@ class MenuBrushes {
             );
 
             // Set selected brush
-            this.managerMyPaint.setBrush(
-              this.listBrushes[this.currentDir][idx_item]
-            );
+            this.managerMyPaint.setBrush({
+              filename: this.listBrushes[this.currentDir].items[idx_item],
+              path: this.listBrushes[this.currentDir].path,
+            });
 
             if (this.prevSelected !== target.children[0].children[0]) {
               if (this.prevSelected)
@@ -326,7 +326,7 @@ class MenuBrushes {
 
           if (target.classList.contains("kistey__brushes__info")) {
             makeModal({
-              title: "Brushes information",
+              title: "Information",
               text: `
               <style>
               .alekpet_modal_body ul > li:nth-of-type(odd) {
@@ -336,22 +336,30 @@ class MenuBrushes {
                 color: limegreen;
             }
             </style>
-              <div style="text-align: left;"><h5>Rights to brushes belong to their owners, <a href="https://github.com/mypaint/mypaint-brushes?tab=readme-ov-file#licensing-policy" target="__blank">licensing-policy</a>.</h5>
-            <h4>List of <a title="Brushes" href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes" target="__blank">brushes</a>:</h4>
-            <ul>
-            <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/classic" target="__blank">Classic</a></li>
-            <li>
-            <div><a href="https://www.davidrevoy.com/article55/mypaint-v4-brushkit" target="__blank">Deevad4</a></div>
-            <div><small>New version is not working <a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/deevad" target="__blank">Deevad</a></small></div>
-            <div><small>Author site: <a href="https://www.davidrevoy.com" target="__blank">Deevad4</a></small></div>
-            </li>
-            <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/experimental" target="__blank">Experimental</a></li>
-            <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/kaerhon_v1" target="__blank">Kaerhon_v1</a></li>
-            <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/ramon" target="__blank">Ramon</a></li>
-            <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/tanda" target="__blank">Tanda</a></li>
-            <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/dieterle" target="__blank">Dieterle</a> <small>(doesn't work, not added to brushes)</small></li>
-            </ul>
-            <div><a href="https://github.com/mypaint/mypaint-brushes/releases/tag/pre_json_brushes" target="__blank">More brushes</a>, not sorted (needs converts, using <a href="https://github.com/AlekPet/brushlib.js" target="__blank">my converter</a>)</div>
+            <div style="text-align: left;">
+              <h5 style="margin: 2px;">
+                <p style="background: sienna; padding: 5px; margin: 0;">Thanks to <a href="https://github.com/mypaint" title="Github mypaint" style="color: #ffca00;" target="__blank">Mypaint team </a> and <a href="https://github.com/yapcheahshen" title="Github Yap Cheah Shen" style="color: #ffca00;" target="__blank">Yap Cheah Shen</a> for his library <a href="https://github.com/yapcheahshen/brushlib.js" target="__blank" title="Github brushlib.js">brushlib.js</a>, none of this would have happened without it 😉!</p>
+                <p>Rights to brushes belong to their owners, <a href="https://github.com/mypaint/mypaint-brushes?tab=readme-ov-file#licensing-policy" target="__blank">licensing-policy</a>.</p>
+              </h5>
+              <h4 style="margin: 10px;">List of <a title="Brushes" href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes" target="__blank">brushes</a>:</h4>
+              <ul style="margin: 0;">
+                <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/classic" target="__blank">Classic</a></li>
+                <li>
+                <div><a href="https://www.davidrevoy.com/article55/mypaint-v4-brushkit" target="__blank">Deevad4</a></div>
+                <div><small>New version is not working <a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/deevad" target="__blank">Deevad</a></small></div>
+                <div><small>Author site: <a href="https://www.davidrevoy.com" target="__blank">Deevad4</a></small></div>
+                </li>
+                <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/experimental" target="__blank">Experimental</a></li>
+                <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/kaerhon_v1" target="__blank">Kaerhon_v1</a></li>
+                <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/ramon" target="__blank">Ramon</a></li>
+                <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/tanda" target="__blank">Tanda</a></li>
+                <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/dieterle" target="__blank">Dieterle</a> <small>(doesn't work, not added to brushes)</small></li>
+              </ul>
+              <div><small><a href="https://github.com/mypaint/mypaint-brushes/releases/tag/pre_json_brushes" target="__blank">More brushes</a>, not sorted.</small></div>
+              <h6 style="margin: 2px;">
+                <p><span style="color: #ffca00;">NOTE:</span> Not all brushes work correctly (brushlib.js does not support the functions of the latest version of mypaint), use the settings to adjust!</p>
+                <p><span style="color: #ffca00;">NOTE:</span> All brushes needs converts, using <a href="https://github.com/AlekPet/brushlib.js" target="__blank">my converter</a>)</p>
+              </h6>
             </div>`,
               parent: this.managerMyPaint.painterNode.canvas.wrapperEl,
               stylePos: "absolute",
@@ -586,6 +594,35 @@ class MyPaintManager {
           },
         },
       },
+      DefaultColor: {
+        name: "default color",
+        checked:
+          window.LS_Painters[this.painterNode.node.name].settings
+            ?.mypaint_settings?.preset_brush_color ?? false,
+        type: "checkbox",
+        title: "Apply color from brush settings",
+        events: {
+          change: (e) => {
+            const lsPainter =
+              window.LS_Painters[this.painterNode.node.name].settings;
+            if (!lsPainter.hasOwnProperty("mypaint_settings"))
+              window.LS_Painters[
+                this.painterNode.node.name
+              ].settings.mypaint_settings = {};
+
+            window.LS_Painters[
+              this.painterNode.node.name
+            ].settings.mypaint_settings.preset_brush_color =
+              this.checkbox_brush_default_color.checked;
+
+            // Save to localStorage
+            localStorage.setItem(
+              "ComfyUI_Painter",
+              JSON.stringify(window.LS_Painters)
+            );
+          },
+        },
+      },
     };
 
     Object.keys(this.settings_brush).forEach((setting_key) => {
@@ -746,6 +783,15 @@ class MyPaintManager {
       // Set brush size if default size load checked
       this.painterNode.strokeWidth.value =
         this.currentBrushSettings.radius_logarithmic.base_value;
+    }
+
+    if (this.checkbox_brush_default_color.checked) {
+      // Set brush color if default color load checked
+      const rgbColor = HsvToRgb(this.currentBrushSettings);
+      if (rgbColor) {
+        const { red, green, blue } = rgbColor;
+        this.painterNode.strokeColor.value = `#${red}${green}${blue}`;
+      }
     }
 
     // Settings range visible correct and apply values

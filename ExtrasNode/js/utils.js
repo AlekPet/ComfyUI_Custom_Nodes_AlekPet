@@ -30,11 +30,8 @@ function makeModal({
     top: "50%",
     left: "50%",
     transform: "translate(-50%,-50%)",
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "column",
     background: "#525252",
-    maxWidth: "20rem",
+    minWidth: "300px",
     fontFamily: "sans-serif",
     zIndex: "501",
     border: "1px solid rgb(255 255 255 / 45%)",
@@ -53,10 +50,10 @@ function makeModal({
 
   const boxModalHtml = `
   <div class="alekpet_modal_header" style="display: flex;  align-items: center;  background: #222;  width: 100%;justify-content: center;">
-  <div class="alekpet_modal_title" style="flex-basis: 85%; text-align: center;padding: 8px;">${title}</div>
+  <div class="alekpet_modal_title" style="flex-basis: 85%; text-align: center;padding: 5px;">${title}</div>
   <div class="alekpet_modal_close">✕</div>
   </div>
-  <div class="alekpet_modal_description" style="padding: 10px;">${text}</div>`;
+  <div class="alekpet_modal_description" style="padding: 8px;">${text}</div>`;
   boxModalBody.innerHTML = boxModalHtml;
 
   const alekpet_modal_header = boxModalBody.querySelector(

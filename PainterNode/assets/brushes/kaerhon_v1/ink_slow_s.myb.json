@@ -1,0 +1,197 @@
+{
+  "anti_aliasing": {
+    "base_value": 1.0
+  },
+  "change_color_h": {
+    "base_value": 0.0
+  },
+  "change_color_hsl_s": {
+    "base_value": 0.0
+  },
+  "change_color_hsv_s": {
+    "base_value": 0.0
+  },
+  "change_color_l": {
+    "base_value": 0.0
+  },
+  "change_color_v": {
+    "base_value": 0.0
+  },
+  "color_h": {
+    "base_value": 0.0
+  },
+  "color_s": {
+    "base_value": 0.0
+  },
+  "color_v": {
+    "base_value": 0.00784313725490196
+  },
+  "colorize": {
+    "base_value": 0.0
+  },
+  "custom_input": {
+    "base_value": 0.0
+  },
+  "custom_input_slowness": {
+    "base_value": 0.0
+  },
+  "dabs_per_actual_radius": {
+    "base_value": 6.0
+  },
+  "dabs_per_basic_radius": {
+    "base_value": 0.0
+  },
+  "dabs_per_second": {
+    "base_value": 0.0
+  },
+  "direction_filter": {
+    "base_value": 2.0
+  },
+  "elliptical_dab_angle": {
+    "base_value": 90.0,
+    "pointsList": {
+      "direction": [
+        0.0,
+        0.0,
+        180.0,
+        180.0
+      ]
+    }
+  },
+  "elliptical_dab_ratio": {
+    "base_value": 1.0
+  },
+  "eraser": {
+    "base_value": 0.0
+  },
+  "hardness": {
+    "base_value": 0.59,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        -0.4,
+        0.24172185430463577,
+        -0.24583333333333332,
+        0.6225165562913907,
+        -0.016666666666666698,
+        1.0,
+        0.32083333333333336
+      ]
+    }
+  },
+  "lock_alpha": {
+    "base_value": 0.0
+  },
+  "offset_by_random": {
+    "base_value": 0.0
+  },
+  "offset_by_speed": {
+    "base_value": 0.0
+  },
+  "offset_by_speed_slowness": {
+    "base_value": 1.0
+  },
+  "opaque": {
+    "base_value": 1.0
+  },
+  "opaque_linearize": {
+    "base_value": 0.5
+  },
+  "opaque_multiply": {
+    "base_value": 0.0,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        0.0,
+        0.015,
+        0.0,
+        0.069277,
+        0.9375,
+        0.25,
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "pressure_gain_log": {
+    "base_value": 0.0
+  },
+  "radius_by_random": {
+    "base_value": 0.0
+  },
+  "radius_logarithmic": {
+    "base_value": 1.9999999999999998,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        -2.52,
+        1.0,
+        1.26
+      ]
+    }
+  },
+  "restore_color": {
+    "base_value": 0.0
+  },
+  "slow_tracking": {
+    "base_value": 4.83
+  },
+  "slow_tracking_per_dab": {
+    "base_value": 0.0
+  },
+  "smudge": {
+    "base_value": 0.0,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        0.066667,
+        1.0,
+        -0.1
+      ]
+    }
+  },
+  "smudge_length": {
+    "base_value": 0.5,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        -0.326667,
+        0.245033,
+        0.178646,
+        1.0,
+        0.49
+      ]
+    }
+  },
+  "smudge_radius_log": {
+    "base_value": 0.0
+  },
+  "snap_to_pixel": {
+    "base_value": 0.0
+  },
+  "speed1_gamma": {
+    "base_value": 4.0
+  },
+  "speed1_slowness": {
+    "base_value": 0.04
+  },
+  "speed2_gamma": {
+    "base_value": 4.0
+  },
+  "speed2_slowness": {
+    "base_value": 3.0
+  },
+  "stroke_duration_logarithmic": {
+    "base_value": 4.0
+  },
+  "stroke_holdtime": {
+    "base_value": 0.0
+  },
+  "stroke_threshold": {
+    "base_value": 0.0
+  },
+  "tracking_noise": {
+    "base_value": 0.0
+  }
+}

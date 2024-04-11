@@ -53,59 +53,6 @@ function getColorHEX(c) {
   return { color: `#${color}`, alpha: parseFloat(alpha) };
 }
 
-function showHide({ elements = [], hide = null, displayProp = "block" }) {
-  Array.from(elements).forEach((el) => {
-    if (hide !== null) {
-      el.style.display = !hide ? displayProp : "none";
-    } else {
-      el.style.display =
-        !el.style.display || el.style.display === "none" ? displayProp : "none";
-    }
-  });
-}
-
-function makeElement(tag, attrs = {}) {
-  if (!tag) tag = "div";
-  const element = document.createElement(tag);
-  Object.keys(attrs).forEach((key) => {
-    const currValue = attrs[key];
-    if (key === "class") {
-      if (Array.isArray(currValue)) {
-        element.classList.add(...currValue);
-      } else if (currValue instanceof String && typeof currValue === "string") {
-        element.className = currValue;
-      }
-    } else if (key === "dataset") {
-      try {
-        if (Array.isArray(currValue)) {
-          currValue.forEach((datasetArr) => {
-            const [prop, propval] = Object.entries(datasetArr)[0];
-            element.dataset[prop] = propval;
-          });
-        } else {
-          const [prop, propval] = Object.entries(currValue)[0];
-          element.dataset[prop] = propval;
-        }
-      } catch (err) {
-        console.log(err);
-      }
-    } else {
-      element[key] = currValue;
-    }
-  });
-  return element;
-}
-
-async function getDataJSON(url) {
-  try {
-    const response = await fetch(url);
-    const jsonData = await response.json();
-    return jsonData;
-  } catch (err) {
-    return new Error(err);
-  }
-}
-
 function rangeGradient(rangeElement, color1 = "#15539e", color2 = "#282828") {
   const valueRange =
     ((rangeElement.value - rangeElement.min) /
@@ -115,12 +62,29 @@ function rangeGradient(rangeElement, color1 = "#15539e", color2 = "#282828") {
   return `linear-gradient(to right, ${color1} 0%, ${color1} ${valueRange}%, ${color2} ${valueRange}%, ${color2} 100%)`;
 }
 
-export {
-  makeElement,
-  rgbToHsv,
-  getDataJSON,
-  toRGBA,
-  getColorHEX,
-  showHide,
-  rangeGradient,
-};
+function HsvToRgb(brush_settings) {
+  if (
+    !brush_settings?.color_h &&
+    !brush_settings?.color_s &&
+    !brush_settings?.color_v
+  )
+    return null;
+
+  const colorhsv = new ColorHSV(
+    brush_settings.color_h.base_value,
+    brush_settings.color_s.base_value,
+    brush_settings.color_v.base_value
+  );
+  colorhsv.hsv_to_rgb_float();
+
+  let red = Math.floor(colorhsv.r * 255).toString(16);
+  let green = Math.floor(colorhsv.g * 255).toString(16);
+  let blue = Math.floor(colorhsv.b * 255).toString(16);
+
+  if (red.length < 2) red = `0${red}`;
+  if (green.length < 2) green = `0${green}`;
+  if (blue.length < 2) blue = `0${blue}`;
+  return { red, green, blue };
+}
+
+export { rgbToHsv, toRGBA, getColorHEX, rangeGradient, HsvToRgb };

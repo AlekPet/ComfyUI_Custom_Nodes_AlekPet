@@ -1,0 +1,194 @@
+{
+  "version": {
+    "base_value": 2.0
+  },
+  "tracking_noise": {
+    "base_value": 0.0
+  },
+  "speed2_gamma": {
+    "base_value": 4.0
+  },
+  "speed2_slowness": {
+    "base_value": 0.8
+  },
+  "stroke_holdtime": {
+    "base_value": 0.0
+  },
+  "stroke_duration_logarithmic": {
+    "base_value": 4.0
+  },
+  "slow_tracking": {
+    "base_value": 0.0
+  },
+  "change_color_v": {
+    "base_value": 0.0
+  },
+  "elliptical_dab_ratio": {
+    "base_value": 6.52
+  },
+  "change_color_h": {
+    "base_value": 0.0
+  },
+  "change_color_l": {
+    "base_value": 0.0,
+    "pointsList": {
+      "stroke": [
+        0.0,
+        -0.01,
+        0.5,
+        0.01,
+        1.0,
+        -0.01
+      ]
+    }
+  },
+  "offset_by_speed_slowness": {
+    "base_value": 1.0
+  },
+  "speed1_gamma": {
+    "base_value": 4.0
+  },
+  "slow_tracking_per_dab": {
+    "base_value": 0.0
+  },
+  "dabs_per_basic_radius": {
+    "base_value": 0.51
+  },
+  "opaque": {
+    "base_value": 1.0
+  },
+  "color_s": {
+    "base_value": 0.901715265866
+  },
+  "opaque_multiply": {
+    "base_value": 0.0,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        0.0,
+        0.111111,
+        0.5,
+        0.308642,
+        0.833333,
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "elliptical_dab_angle": {
+    "base_value": 90.0,
+    "pointsList": {
+      "direction": [
+        0.0,
+        0.0,
+        180.0,
+        180.0
+      ]
+    }
+  },
+  "eraser": {
+    "base_value": 0.0
+  },
+  "stroke_threshold": {
+    "base_value": 0.0
+  },
+  "color_h": {
+    "base_value": 0.0286214500595
+  },
+  "parent_brush_name": {
+    "base_value": "knife"
+  },
+  "speed1_slowness": {
+    "base_value": 0.04
+  },
+  "smudge": {
+    "base_value": 0.0,
+    "pointsList": {
+      "custom": [
+        0.0,
+        0.94,
+        0.648148,
+        0.76375,
+        0.833333,
+        0.5875,
+        0.916667,
+        0.362292,
+        1.0,
+        -0.0
+      ]
+    }
+  },
+  "change_color_hsv_s": {
+    "base_value": 0.0
+  },
+  "radius_by_random": {
+    "base_value": 0.0
+  },
+  "dabs_per_second": {
+    "base_value": 0.0
+  },
+  "color_v": {
+    "base_value": 0.80064087892
+  },
+  "custom_input": {
+    "base_value": 0.0,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "hardness": {
+    "base_value": 0.8
+  },
+  "opaque_linearize": {
+    "base_value": 0.9
+  },
+  "smudge_length": {
+    "base_value": 0.26
+  },
+  "radius_logarithmic": {
+    "base_value": 3.8,
+    "pointsList": {
+      "custom": [
+        -2.0,
+        0.45,
+        2.0,
+        -0.45
+      ],
+      "speed1": [
+        0.0,
+        -0.112857,
+        4.0,
+        0.79
+      ],
+      "speed2": [
+        0.0,
+        -0.168572,
+        4.0,
+        1.18
+      ]
+    }
+  },
+  "change_color_hsl_s": {
+    "base_value": 0.0
+  },
+  "custom_input_slowness": {
+    "base_value": 0.71
+  },
+  "offset_by_speed": {
+    "base_value": 0.0
+  },
+  "dabs_per_actual_radius": {
+    "base_value": 2.0
+  },
+  "offset_by_random": {
+    "base_value": 0.0
+  },
+  "direction_filter": {
+    "base_value": 2.99
+  }
+}

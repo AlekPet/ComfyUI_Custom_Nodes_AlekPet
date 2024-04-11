@@ -1,0 +1,155 @@
+{
+  "version": {
+    "base_value": 2.0
+  },
+  "tracking_noise": {
+    "base_value": 0.0
+  },
+  "speed2_gamma": {
+    "base_value": 4.0
+  },
+  "speed2_slowness": {
+    "base_value": 0.8
+  },
+  "stroke_holdtime": {
+    "base_value": 0.0
+  },
+  "stroke_duration_logarithmic": {
+    "base_value": 4.0
+  },
+  "slow_tracking": {
+    "base_value": 0.0
+  },
+  "change_color_v": {
+    "base_value": 0.0
+  },
+  "elliptical_dab_ratio": {
+    "base_value": 1.0
+  },
+  "change_color_h": {
+    "base_value": 0.0
+  },
+  "change_color_l": {
+    "base_value": 0.0
+  },
+  "offset_by_speed_slowness": {
+    "base_value": 1.0
+  },
+  "speed1_gamma": {
+    "base_value": 4.0
+  },
+  "slow_tracking_per_dab": {
+    "base_value": 0.0
+  },
+  "dabs_per_basic_radius": {
+    "base_value": 0.0
+  },
+  "opaque": {
+    "base_value": 0.57
+  },
+  "color_s": {
+    "base_value": 0.0
+  },
+  "opaque_multiply": {
+    "base_value": 0.0,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        0.0,
+        0.302469,
+        0.104167,
+        0.546296,
+        0.333333,
+        0.688272,
+        0.729167,
+        0.814815,
+        0.927083,
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "elliptical_dab_angle": {
+    "base_value": 90.0
+  },
+  "eraser": {
+    "base_value": 0.0
+  },
+  "stroke_threshold": {
+    "base_value": 0.0
+  },
+  "color_h": {
+    "base_value": 0.0
+  },
+  "speed1_slowness": {
+    "base_value": 0.04
+  },
+  "smudge": {
+    "base_value": 0.0
+  },
+  "change_color_hsv_s": {
+    "base_value": 0.0
+  },
+  "radius_by_random": {
+    "base_value": 0.0
+  },
+  "dabs_per_second": {
+    "base_value": 0.0
+  },
+  "color_v": {
+    "base_value": 0.0
+  },
+  "custom_input": {
+    "base_value": 0.0
+  },
+  "hardness": {
+    "base_value": 0.55,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        0.12,
+        1.0,
+        -0.18
+      ]
+    }
+  },
+  "opaque_linearize": {
+    "base_value": 0.0
+  },
+  "smudge_length": {
+    "base_value": 0.5
+  },
+  "radius_logarithmic": {
+    "base_value": 0.72,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        -0.5,
+        0.228395,
+        0.054687,
+        0.574074,
+        0.515625,
+        1.0,
+        0.75
+      ]
+    }
+  },
+  "change_color_hsl_s": {
+    "base_value": 0.0
+  },
+  "custom_input_slowness": {
+    "base_value": 0.0
+  },
+  "offset_by_speed": {
+    "base_value": 0.0
+  },
+  "dabs_per_actual_radius": {
+    "base_value": 2.0
+  },
+  "offset_by_random": {
+    "base_value": 0.0
+  },
+  "direction_filter": {
+    "base_value": 2.0
+  }
+}
