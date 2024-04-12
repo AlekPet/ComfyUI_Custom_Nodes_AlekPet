@@ -6,7 +6,7 @@
 
 > 2024.04.11 - Implement **MyPaint** brush tool ([issue MyPaint Brush make](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/36))
 
-> 2024.02.05 - Add Symmetry Brush and cheche structures toolbar options ([examle Symmetry Brush](#symmetry-brush))
+> 2024.02.05 - Add Symmetry Brush and change structures toolbar options ([examle Symmetry Brush](#symmetry-brush))
 
 > Features:
 
