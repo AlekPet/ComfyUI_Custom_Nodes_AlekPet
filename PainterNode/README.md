@@ -5,6 +5,7 @@
 ## Changelog:
 
 > 2024.04.11 - Implement **MyPaint** brush tool ([issue MyPaint Brush make](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/36))
+
 > 2024.02.05 - Add Symmetry Brush and cheche structures toolbar options ([examle Symmetry Brush](#symmetry-brush))
 
 > Features:
@@ -28,3 +29,67 @@
 # MyPaint Brush (tools)
 
 ![Screenshot MyPaint Brush](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/PainterNode/mypaintBrush.jpg)
+
+### Thanks to [Mypaint team](https://github.com/mypaint "Github mypaint") and [Yap Cheah Shen](https://github.com/yapcheahshen "Github Yap Cheah Shen") for his library [brushlib.js](https://github.com/yapcheahshen/brushlib.js "Github brushlib.js"), none of this would have happened without it 😉!
+
+Rights to brushes belong to their owners, [licensing-policy](https://github.com/mypaint/mypaint-brushes?tab=readme-ov-file#licensing-policy).
+
+#### List of [brushes](https://github.com/mypaint/mypaint-brushes/tree/master/brushes "Brushes"):
+
+- [Classic](https://github.com/mypaint/mypaint-brushes/tree/master/brushes/classic)
+- [Concept Design (C_D)](https://github.com/mypaint/mypaint/wiki/Brush-Packages#concept-design-c_d)
+- [Deevad4](https://www.davidrevoy.com/article55/mypaint-v4-brushkit)
+
+  New version is not working [Deevad](https://github.com/mypaint/mypaint-brushes/tree/master/brushes/deevad)
+
+  Author site: [Deevad4](https://www.davidrevoy.com)
+
+- [Experimental](https://github.com/mypaint/mypaint-brushes/tree/master/brushes/experimental)
+- [Kaerhon_v1](https://github.com/mypaint/mypaint-brushes/tree/master/brushes/kaerhon_v1)
+- [Ramon](https://github.com/mypaint/mypaint-brushes/tree/master/brushes/ramon)
+- [Tanda](https://github.com/mypaint/mypaint-brushes/tree/master/brushes/tanda)
+- [Dieterle](https://github.com/mypaint/mypaint-brushes/tree/master/brushes/dieterle) (doesn't work, not added to brushes)
+
+[More brushes mypaint is here](https://github.com/mypaint/mypaint/wiki/Brush-Packages)
+
+######
+
+**NOTE**: Not all brushes work correctly (brushlib.js does not support the functions of the latest version of mypaint), use the settings to adjust!
+
+**NOTE**: All brushes needs converts, using [my converter](https://github.com/AlekPet/brushlib.js))
+
+## Convert information:
+
+All avaiables convertered brushes written indise in the file **brushes_data.json**
+
+### Use brushConverter.py:
+
+**run_converter_python.cmd**
+
+##### Convert brushes (python)
+
+```bash
+python brushConverter.py convert
+```
+
+##### Generate list brushes (python)
+
+```bash
+python brushConverter.py brushes
+```
+
+### Use brushConverter.js nodejs:
+
+##### Convert brushes (nodejs)
+
+```bash
+npm run convert
+```
+
+##### Generate list brushes (nodejs)
+
+```bash
+npm run brushes
+```
+
+### Read more in file txt inside folder packs_brushes

@@ -341,9 +341,10 @@ class MenuBrushes {
                 <p style="background: sienna; padding: 5px; margin: 0;">Thanks to <a href="https://github.com/mypaint" title="Github mypaint" style="color: #ffca00;" target="__blank">Mypaint team </a> and <a href="https://github.com/yapcheahshen" title="Github Yap Cheah Shen" style="color: #ffca00;" target="__blank">Yap Cheah Shen</a> for his library <a href="https://github.com/yapcheahshen/brushlib.js" target="__blank" title="Github brushlib.js">brushlib.js</a>, none of this would have happened without it 😉!</p>
                 <p>Rights to brushes belong to their owners, <a href="https://github.com/mypaint/mypaint-brushes?tab=readme-ov-file#licensing-policy" target="__blank">licensing-policy</a>.</p>
               </h5>
-              <h4 style="margin: 10px;">List of <a title="Brushes" href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes" target="__blank">brushes</a>:</h4>
-              <ul style="margin: 0;">
+              <h4 style="margin: 8px;">List of <a title="Brushes" href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes" target="__blank">brushes</a>:</h4>
+              <ul style="margin: 0; font-size:0.9rem;">
                 <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/classic" target="__blank">Classic</a></li>
+                <li><a href="https://github.com/mypaint/mypaint/wiki/Brush-Packages#concept-design-c_d" target="__blank">Concept Design (C_D)</a></li>
                 <li>
                 <div><a href="https://www.davidrevoy.com/article55/mypaint-v4-brushkit" target="__blank">Deevad4</a></div>
                 <div><small>New version is not working <a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/deevad" target="__blank">Deevad</a></small></div>
@@ -355,10 +356,11 @@ class MenuBrushes {
                 <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/tanda" target="__blank">Tanda</a></li>
                 <li><a href="https://github.com/mypaint/mypaint-brushes/tree/master/brushes/dieterle" target="__blank">Dieterle</a> <small>(doesn't work, not added to brushes)</small></li>
               </ul>
-              <div><small><a href="https://github.com/mypaint/mypaint-brushes/releases/tag/pre_json_brushes" target="__blank">More brushes</a>, not sorted.</small></div>
+              <div><small><a href="https://github.com/mypaint/mypaint/wiki/Brush-Packages" target="__blank">More brushes</a>, not sorted.</small></div>
               <h6 style="margin: 2px;">
                 <p><span style="color: #ffca00;">NOTE:</span> Not all brushes work correctly (brushlib.js does not support the functions of the latest version of mypaint), use the settings to adjust!</p>
                 <p><span style="color: #ffca00;">NOTE:</span> All brushes needs converts, using <a href="https://github.com/AlekPet/brushlib.js" target="__blank">my converter</a>)</p>
+                <p>Information convert brushes: <a href="https://github.com/AlekPet/brushlib.js#convert-information">here</a> or <a href="https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/PainterNode/README.md#mypaint-brush-tools">here</a></p>
               </h6>
             </div>`,
               parent: this.managerMyPaint.painterNode.canvas.wrapperEl,

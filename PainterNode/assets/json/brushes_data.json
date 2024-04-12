@@ -69,6 +69,30 @@
       "enabled": true
     }
   },
+  "C_D": {
+    "items": [
+      "04_pen",
+      "08_pen",
+      "Big_BG",
+      "Blender_Marker",
+      "Dark_Marker",
+      "Draw_1",
+      "Draw_2",
+      "Eraser",
+      "InkBrush_and_eraser",
+      "Light_Marker",
+      "Medium_Marker",
+      "Penbrush",
+      "Permanent_Black",
+      "Text_Marker",
+      "Wide_Big",
+      "Wide_small"
+    ],
+    "path": "C_D",
+    "settings": {
+      "enabled": true
+    }
+  },
   "deevad4": {
     "items": [
       "2B",

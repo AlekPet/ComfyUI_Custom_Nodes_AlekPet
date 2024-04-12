@@ -1,0 +1,205 @@
+{
+  "version": {
+    "base_value": 2.0
+  },
+  "tracking_noise": {
+    "base_value": 0.0
+  },
+  "speed2_gamma": {
+    "base_value": 4.0
+  },
+  "speed2_slowness": {
+    "base_value": 0.9
+  },
+  "stroke_holdtime": {
+    "base_value": 0.0
+  },
+  "stroke_duration_logarithmic": {
+    "base_value": 4.0
+  },
+  "slow_tracking": {
+    "base_value": 0.0
+  },
+  "change_color_v": {
+    "base_value": 0.0
+  },
+  "elliptical_dab_ratio": {
+    "base_value": 10.0,
+    "pointsList": {
+      "speed1": [
+        0.0,
+        -2.954102,
+        1.127451,
+        -1.015625,
+        4.0,
+        0.0
+      ]
+    }
+  },
+  "change_color_h": {
+    "base_value": 0.0
+  },
+  "change_color_l": {
+    "base_value": 0.0
+  },
+  "offset_by_speed_slowness": {
+    "base_value": 1.0
+  },
+  "speed1_gamma": {
+    "base_value": 4.0
+  },
+  "slow_tracking_per_dab": {
+    "base_value": 0.0
+  },
+  "dabs_per_basic_radius": {
+    "base_value": 4.22
+  },
+  "opaque": {
+    "base_value": 2.0,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "color_s": {
+    "base_value": 1.0
+  },
+  "opaque_multiply": {
+    "base_value": 0.35,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        -0.718958,
+        0.058642,
+        0.718959,
+        1.0,
+        1.19
+      ]
+    }
+  },
+  "elliptical_dab_angle": {
+    "base_value": 0.0,
+    "pointsList": {
+      "direction": [
+        0.0,
+        0.0,
+        180.0,
+        180.0
+      ]
+    }
+  },
+  "lock_alpha": {
+    "base_value": 0.0
+  },
+  "eraser": {
+    "base_value": 0.0,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        0.0,
+        0.642157,
+        0.0,
+        0.698529,
+        0.105,
+        0.732843,
+        0.24,
+        1.0,
+        0.24
+      ]
+    }
+  },
+  "stroke_threshold": {
+    "base_value": 0.0
+  },
+  "color_h": {
+    "base_value": 0.188217257994
+  },
+  "smudge_radius_log": {
+    "base_value": "-1.6"
+  },
+  "speed1_slowness": {
+    "base_value": 0.04
+  },
+  "smudge": {
+    "base_value": 0.88,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        -0.025833,
+        0.723039,
+        0.0775,
+        1.0,
+        0.62
+      ]
+    }
+  },
+  "change_color_hsv_s": {
+    "base_value": 0.0
+  },
+  "radius_by_random": {
+    "base_value": 0.0
+  },
+  "dabs_per_second": {
+    "base_value": 28.87
+  },
+  "color_v": {
+    "base_value": 0.0
+  },
+  "custom_input": {
+    "base_value": 0.0
+  },
+  "hardness": {
+    "base_value": 0.0,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        0.53125,
+        1.0,
+        0.479167
+      ]
+    }
+  },
+  "opaque_linearize": {
+    "base_value": 0.0
+  },
+  "smudge_length": {
+    "base_value": 0.93
+  },
+  "radius_logarithmic": {
+    "base_value": 3.2,
+    "pointsList": {
+      "pressure": [
+        0.0,
+        -1.233333,
+        0.404412,
+        0.0,
+        0.590686,
+        0.346875,
+        1.0,
+        1.85
+      ]
+    }
+  },
+  "change_color_hsl_s": {
+    "base_value": 0.0
+  },
+  "custom_input_slowness": {
+    "base_value": 0.0
+  },
+  "offset_by_speed": {
+    "base_value": 0.0
+  },
+  "dabs_per_actual_radius": {
+    "base_value": 2.63
+  },
+  "offset_by_random": {
+    "base_value": 0.0
+  },
+  "direction_filter": {
+    "base_value": 2.23
+  }
+}
