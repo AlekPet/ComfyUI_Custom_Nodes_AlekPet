@@ -360,7 +360,7 @@ class MenuBrushes {
               <h6 style="margin: 2px;">
                 <p><span style="color: #ffca00;">NOTE:</span> Not all brushes work correctly (brushlib.js does not support the functions of the latest version of mypaint), use the settings to adjust!</p>
                 <p><span style="color: #ffca00;">NOTE:</span> All brushes needs converts, using <a href="https://github.com/AlekPet/brushlib.js" target="__blank">my converter</a>)</p>
-                <p>Information convert brushes: <a href="https://github.com/AlekPet/brushlib.js#convert-information">here</a> or <a href="https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/PainterNode/README.md#mypaint-brush-tools">here</a></p>
+                <p>Information convert brushes: <a href="https://github.com/AlekPet/brushlib.js#convert-information" target="__blank" title="brushlib.js github info">here</a> or <a href="https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/PainterNode/README.md#mypaint-brush-tools" target="__blank" title="PainterNode github info">here</a></p>
               </h6>
             </div>`,
               parent: this.managerMyPaint.painterNode.canvas.wrapperEl,
