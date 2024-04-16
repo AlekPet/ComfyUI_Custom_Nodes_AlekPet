@@ -11,7 +11,7 @@ import { fabric } from "./lib/painternode/fabric.js";
 import "./lib/painternode/mybrush.js";
 import { svgSymmetryButtons } from "./lib/painternode/brushes.js";
 import { toRGBA, getColorHEX } from "./lib/painternode/helpers.js";
-import { showHide, makeElement } from "./utils.js";
+import { showHide, makeElement, makeModal } from "./utils.js";
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
@@ -137,6 +137,14 @@ class Painter {
 
     this.canvas.backgroundColor = "#000000";
 
+    fabric.util.addListener(
+      this.canvas.upperCanvasEl,
+      "contextmenu",
+      function (e) {
+        e.preventDefault();
+      }
+    );
+
     return this.canvas;
   }
 
@@ -246,19 +254,19 @@ class Painter {
     ] = this.painter_drawning_elements.children;
 
     // LS save checkbox
-    // const labelLSSave = makeElement("label", {
-    //   textContent: "LS Save:",
-    //   style: "font-size: 10px; display: block;",
-    //   alt: "localStorage save canvas",
-    // });
-    // this.checkBoxLSSave = makeElement("input", {
-    //   type: "checkbox",
-    //   class: ["lsSave_checkbox"],
-    //   checked: true,
-    // });
-    // this.checkBoxLSSave.customSize = { w: 10, h: 10, fs: 10 };
-    // labelLSSave.append(this.checkBoxLSSave);
-    // this.painter_settings_box.append(labelLSSave);
+    const labelLSSave = makeElement("label", {
+      textContent: "LS Save:",
+      style: "font-size: 10px; display: block;",
+      alt: "localStorage save canvas",
+    });
+    this.checkBoxLSSave = makeElement("input", {
+      type: "checkbox",
+      class: ["lsSave_checkbox"],
+      checked: true,
+    });
+    this.checkBoxLSSave.customSize = { w: 10, h: 10, fs: 10 };
+    labelLSSave.append(this.checkBoxLSSave);
+    this.painter_settings_box.append(labelLSSave);
 
     this.change_mode = panelPaintBox.querySelector("#painter_change_mode");
     this.painter_shapes_box = panelPaintBox.querySelector(
@@ -1058,10 +1066,26 @@ class Painter {
     });
 
     // History undo, redo
+    function showURModal() {
+      if (this.type === "BrushMyPaint") {
+        makeModal({
+          title: "Info",
+          text: "Undo/Redo not avaibles in MyPaint 😞!",
+          stylePos: "absolute",
+          parent: this.canvas.wrapperEl,
+        });
+        return false;
+      }
+      return true;
+    }
+
     this.undo_button.onclick = (e) => {
+      if (!showURModal.call(this)) return;
       this.undo();
     };
+
     this.redo_button.onclick = (e) => {
+      if (!showURModal.call(this)) return;
       this.redo();
     };
 
@@ -1341,7 +1365,7 @@ class Painter {
       "object:added": (o) => {
         if (["BrushMyPaint"].includes(this.type)) {
           if (o.target.type !== "group") this.canvas.remove(o.target);
-          this.addToHistory();
+          // this.addToHistory();
           this.canvas.renderAll();
           this.uploadPaintFile(this.node.name);
         }
@@ -1363,9 +1387,10 @@ class Painter {
   }
 
   addToHistory() {
-    // if (!this.checkBoxLSSave.checked) return;
+    if (!this.checkBoxLSSave.checked) return;
+
     // Undo / rendo
-    const objs = this.canvas.toJSON();
+    const objs = this.canvas.toJSON(["mypaintlib"]);
 
     if (this.undo_history.length > this.max_history_steps) {
       this.undo_history.shift();
@@ -1534,8 +1559,7 @@ class Painter {
             });
             this.canvas.renderAll();
           }
-          // if (this.checkBoxLSSave.checked) this.canvasSaveSettingsPainter();
-          this.canvasSaveSettingsPainter();
+          if (this.checkBoxLSSave.checked) this.canvasSaveSettingsPainter();
         } else {
           alert(resp.status + " - " + resp.statusText);
         }
