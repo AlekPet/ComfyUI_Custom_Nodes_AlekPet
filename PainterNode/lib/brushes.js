@@ -177,12 +177,35 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
     this.surface = new MypaintSurface(this.canvas);
     this.brush = new MypaintBrush(this.brushSettings, this.surface);
     this.range_brush_pressure = range_brush_pressure;
+
+    this.group = new fabric.Group();
+    Object.assign(this.group, {
+      width: this.canvas.width,
+      height: this.canvas.height,
+      strokeWidth: 0,
+      mypaintlib: true,
+    });
+
+    this.canvas.add(this.group);
   },
 
   onMouseDown: function (pointer, options) {
     if (!this.canvas._isMainEvent(options.e)) {
       return;
     }
+
+    if (!this.canvas.getObjects().length) {
+      this.group = new fabric.Group();
+      Object.assign(this.group, {
+        width: this.canvas.width,
+        height: this.canvas.height,
+        strokeWidth: 0,
+        mypaintlib: true,
+      });
+
+      this.canvas.add(this.group);
+    }
+
     this._updatePoints(options);
 
     this.t1 = new Date().getTime();
@@ -255,14 +278,17 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
     const canvasToImage = this.canvas.upperCanvasEl.toDataURL();
     fabric.Image.fromURL(canvasToImage, (myImg) => {
       const imageCanv = myImg.set({
-        left: 0,
-        top: 0,
+        left: this.group.left - this.group.width / 2,
+        top: this.group.top - this.group.height / 2,
+        originX: "left",
+        originY: "top",
         width: myImg.width,
         height: myImg.height,
         mypaintlib: true,
       });
       this.canvas.clearContext(this.ctx);
-      this.canvas.add(imageCanv);
+      this.group.add(imageCanv);
+      this.canvas.add(new fabric.Image("")); // empty object, hook
       this.canvas.requestRenderAll();
     });
 

@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2024.04.11
+ * Version: 2024.04.16
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -204,7 +204,7 @@ class Painter {
                 <button bgImage="img_reset" title="Remove background image">IMG <span style="color: var(--error-text);">✖</span></button>
             </div>
             <div class="painter_settings_box fieldset_box comfy-menu-btns" f_name="Settimgs">      
-            <button id="painter_canvas_size" title="Set canvas size">Canvas size</button>  
+            <button id="painter_canvas_size" title="Set canvas size">Canvas size</button>
           </div>
         </div>
     </div>
@@ -242,7 +242,23 @@ class Painter {
       this.painter_colors_box,
       this.painter_stroke_box,
       this.painter_bg_setting,
+      this.painter_settings_box,
     ] = this.painter_drawning_elements.children;
+
+    // LS save checkbox
+    // const labelLSSave = makeElement("label", {
+    //   textContent: "LS Save:",
+    //   style: "font-size: 10px; display: block;",
+    //   alt: "localStorage save canvas",
+    // });
+    // this.checkBoxLSSave = makeElement("input", {
+    //   type: "checkbox",
+    //   class: ["lsSave_checkbox"],
+    //   checked: true,
+    // });
+    // this.checkBoxLSSave.customSize = { w: 10, h: 10, fs: 10 };
+    // labelLSSave.append(this.checkBoxLSSave);
+    // this.painter_settings_box.append(labelLSSave);
 
     this.change_mode = panelPaintBox.querySelector("#painter_change_mode");
     this.painter_shapes_box = panelPaintBox.querySelector(
@@ -299,11 +315,19 @@ class Painter {
     list_body.innerHTML = "";
 
     let objectNames = [];
+
     this.canvas.getObjects().forEach((o) => {
-      let type = o.type,
-        obEl = document.createElement("button"),
+      const type = o.type,
+        boxOb = makeElement("div", { class: ["viewlist__itembox"] }),
+        itemRemove = makeElement("img", {
+          src: removeIcon,
+          title: "Remove object",
+        }),
+        obEl = makeElement("button"),
         countType = objectNames.filter((t) => t == type).length + 1,
-        text_value = type + `_${countType}`;
+        text_value = !o.hasOwnProperty("mypaintlib")
+          ? type + `_${countType}`
+          : `mypaint_${countType}`;
 
       obEl.setAttribute("painter_object", text_value);
       obEl.textContent = text_value;
@@ -319,7 +343,14 @@ class Painter {
         this.canvas.renderAll();
       });
 
-      list_body.appendChild(obEl);
+      itemRemove.addEventListener("click", () => {
+        removeObject.call(this, null, { target: o });
+        this.canvas.renderAll();
+        this.uploadPaintFile(this.node.name);
+      });
+
+      boxOb.append(obEl, itemRemove);
+      list_body.append(boxOb);
     });
   }
 
@@ -1124,7 +1155,7 @@ class Painter {
         if (
           !this.drawning &&
           !["Erase", "Brush", "BrushMyPaint", "BrushSymmetry"].includes(
-            target.type
+            this.type
           )
         ) {
           this.strokeWidth.value = parseInt(
@@ -1309,6 +1340,7 @@ class Painter {
 
       "object:added": (o) => {
         if (["BrushMyPaint"].includes(this.type)) {
+          if (o.target.type !== "group") this.canvas.remove(o.target);
           this.addToHistory();
           this.canvas.renderAll();
           this.uploadPaintFile(this.node.name);
@@ -1331,6 +1363,7 @@ class Painter {
   }
 
   addToHistory() {
+    // if (!this.checkBoxLSSave.checked) return;
     // Undo / rendo
     const objs = this.canvas.toJSON();
 
@@ -1350,7 +1383,7 @@ class Painter {
   // Save canvas data to localStorage or JSON
   canvasSaveSettingsPainter() {
     try {
-      const data = this.canvas.toJSON();
+      const data = this.canvas.toJSON(["mypaintlib"]);
       if (LS_Painters && LS_Painters.hasOwnProperty(this.node.name)) {
         LS_Painters[this.node.name].canvas_settings = painters_settings_json
           ? data
@@ -1501,6 +1534,7 @@ class Painter {
             });
             this.canvas.renderAll();
           }
+          // if (this.checkBoxLSSave.checked) this.canvasSaveSettingsPainter();
           this.canvasSaveSettingsPainter();
         } else {
           alert(resp.status + " - " + resp.statusText);
@@ -1975,6 +2009,20 @@ app.registerExtension({
    .list_objects_align > div{
     flex: 1;
    }
+   .viewlist__itembox {
+    flex-direction: row;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 2px;
+    }
+    .viewlist__itembox > img {
+      width: 12px;
+      cursor: pointer;
+    }
+    .viewlist__itembox > img:hover{
+      opacity: 0.8;
+    }
    .painter_history_panel {
     position: absolute;
     padding: 4px;
