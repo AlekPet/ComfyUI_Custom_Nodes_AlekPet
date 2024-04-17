@@ -178,6 +178,10 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
     this.brush = new MypaintBrush(this.brushSettings, this.surface);
     this.range_brush_pressure = range_brush_pressure;
 
+    this.newGroup();
+  },
+
+  newGroup: function () {
     this.group = new fabric.Group();
     Object.assign(this.group, {
       width: this.canvas.width,
@@ -195,15 +199,7 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
     }
 
     if (!this.canvas.getObjects().length) {
-      this.group = new fabric.Group();
-      Object.assign(this.group, {
-        width: this.canvas.width,
-        height: this.canvas.height,
-        strokeWidth: 0,
-        mypaintlib: true,
-      });
-
-      this.canvas.add(this.group);
+      this.newGroup();
     }
 
     this._updatePoints(options);

@@ -257,16 +257,22 @@ class Painter {
     const labelLSSave = makeElement("label", {
       textContent: "LS Save:",
       style: "font-size: 10px; display: block;",
-      alt: "localStorage save canvas",
+      title: "LocalStorage save canvas",
     });
     this.checkBoxLSSave = makeElement("input", {
       type: "checkbox",
       class: ["lsSave_checkbox"],
-      checked: true,
+      checked: LS_Painters[this.node.name].settings?.lsSavePainter ?? true,
+      onchange: (e) => {
+        LS_Painters[this.node.name].settings.lsSavePainter =
+          this.checkBoxLSSave.checked;
+        LS_Save();
+      },
     });
     this.checkBoxLSSave.customSize = { w: 10, h: 10, fs: 10 };
     labelLSSave.append(this.checkBoxLSSave);
     this.painter_settings_box.append(labelLSSave);
+    // end - LS save checkbox
 
     this.change_mode = panelPaintBox.querySelector("#painter_change_mode");
     this.painter_shapes_box = panelPaintBox.querySelector(
@@ -315,6 +321,7 @@ class Painter {
     this.canvas.clear();
     this.canvas.backgroundColor = this.bgColor.value || "#000000";
     this.canvas.requestRenderAll();
+
     this.addToHistory();
     this.canvasSaveSettingsPainter();
   }
@@ -1218,7 +1225,13 @@ class Painter {
           this.canvas.bringToFront(this.canvas.getActiveObject());
 
         this.canvas.isDrawingMode = this.drawning;
-        if (!this.canvas.isDrawingMode) return;
+        if (!this.canvas.isDrawingMode) {
+          // New group when manipulated group mypaint
+          if (this.type === "BrushMyPaint") {
+            this.canvas.freeDrawingBrush?.newGroup();
+          }
+          return;
+        }
 
         if (
           ["Brush", "Erase", "BrushMyPaint", "BrushSymmetry"].includes(
