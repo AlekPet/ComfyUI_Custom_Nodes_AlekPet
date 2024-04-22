@@ -3,6 +3,9 @@ import os
 import json
 from server import PromptServer
 from aiohttp import web
+import base64
+from io import BytesIO
+import time
 from PIL import Image, ImageOps
 import torch
 import numpy as np
@@ -65,14 +68,68 @@ async def saveSettings(request):
 # create file json 
 create_settings_json()
 
+# Pipping image input
+PAINTER_DICT = {} # Painter nodes dict instances
+
+def toBase64ImgUrl(img):
+    bytesIO = BytesIO()
+    img.save(bytesIO, format="PNG")
+    img_types = bytesIO.getvalue()
+    img_base64 = base64.b64encode(img_types)
+    return f"data:image/png;base64,{img_base64.decode('utf-8')}"
+
+@PromptServer.instance.routes.post("/alekpet/check_canvas_changed")
+async def check_canvas_changed(request):
+    json_data = await request.json()
+    painter_id = json_data.get("painter_id", None)
+    is_ok = json_data.get("is_ok", False)
+    if "painter_id" in json_data and painter_id is not None and "is_ok" in json_data and is_ok == True:
+        PAINTER_DICT[painter_id].canvas_set = True
+        return web.json_response({"status": "Ok"})
+    
+    return web.json_response({"status": "Error"})
+
+@PromptServer.instance.routes.get("/alekpet/get_input_image/id={painter_id}&time={time}")
+def get_image(request):
+    painter_id = request.match_info["painter_id"]
+    if(painter_id):
+        return web.json_response({"get_input_image": PAINTER_DICT[painter_id].input_images,})
+    
+    return web.json_response({"get_input_image": [],})    
+
+
+def wait_canvas_change(unique_id, time_out = 40):
+    count_wait = time_out
+    while count_wait>0:
+        if hasattr(PAINTER_DICT[unique_id], 'canvas_set') and PAINTER_DICT[unique_id].canvas_set == True:
+            PAINTER_DICT[unique_id].canvas_set = False
+            return True
+        
+        time.sleep(0.1)
+        count_wait -= 1
+        
+    return False
+# end - Pipping image input
+
+
 class PainterNode(object):
+    
+    def __init__(self):
+        self.input_images = list()
+        self.canvas_set = False
+    
     @classmethod
     def INPUT_TYPES(self):
         work_dir = folder_paths.get_input_directory()
-        images = [img for img in os.listdir(work_dir) if os.path.isfile(os.path.join(work_dir, img))]
-        return {"required":
-                    {"image": (sorted(images), )},
-                }
+        imgs = [img for img in os.listdir(work_dir) if os.path.isfile(os.path.join(work_dir, img))]
+        return {
+            "required":
+                    {"image": (sorted(imgs), )},
+            "hidden": {
+            "unique_id":"UNIQUE_ID",
+            },
+            "optional": { "images": ("IMAGE",)}
+            }
 
 
     RETURN_TYPES = ("IMAGE", "MASK")
@@ -80,7 +137,32 @@ class PainterNode(object):
 
     CATEGORY = "AlekPet Nodes/image"
 
-    def painter_execute(self, image):
+    def painter_execute(self, image, unique_id, images=None):
+        # Pipping image input
+        if unique_id not in PAINTER_DICT:
+            PAINTER_DICT[unique_id] = self
+            
+        if images is not None:
+
+            PAINTER_DICT[unique_id].input_images = None
+            input_images = []
+
+            for imgs in images:
+                i = 255. * imgs.cpu().numpy()
+                i = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8)) 
+                input_images.append(toBase64ImgUrl(i))        
+
+
+            PAINTER_DICT[unique_id].input_images = input_images
+            PAINTER_DICT[unique_id].canvas_set = False     
+            
+            if not wait_canvas_change(unique_id):
+                print(f"Painter_{unique_id}: Failed to get image!")
+            else:
+                print(f"Painter_{unique_id}: Image received, canvas changed!")
+        # end - Pipping image input                
+      
+        
         image_path = folder_paths.get_annotated_filepath(image)
 
         i = Image.open(image_path)
@@ -96,15 +178,20 @@ class PainterNode(object):
         return (image, mask.unsqueeze(0))
 
     @classmethod
-    def IS_CHANGED(self, image):
+    def IS_CHANGED(self, image, unique_id, images=None):
+        if images is not None:  
+            PAINTER_DICT[unique_id].input_images = None
+        
         image_path = folder_paths.get_annotated_filepath(image)
         m = hashlib.sha256()
         with open(image_path, 'rb') as f:
             m.update(f.read())
-        return m.digest().hex()
+            
+        return (float("nan"))
+
 
     @classmethod
-    def VALIDATE_INPUTS(self, image):
+    def VALIDATE_INPUTS(self, image, unique_id, images=None):
         if not folder_paths.exists_annotated_filepath(image):
             return "Invalid image file: {}".format(image)
 

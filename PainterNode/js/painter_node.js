@@ -274,6 +274,27 @@ class Painter {
     this.painter_settings_box.append(labelLSSave);
     // end - LS save checkbox
 
+    // LS change size piping
+    const labelPipingChangeSize = makeElement("label", {
+      textContent: "Change size:",
+      style: "font-size: 10px; display: block;",
+      title: "Change size canvas piping image input",
+    });
+    this.pipingChangeSize = makeElement("input", {
+      type: "checkbox",
+      class: ["pipingChangeSize_checkbox"],
+      checked: LS_Painters[this.node.name].settings?.pipingChangeSize ?? false,
+      onchange: (e) => {
+        LS_Painters[this.node.name].settings.pipingChangeSize =
+          this.pipingChangeSize.checked;
+        LS_Save();
+      },
+    });
+    this.pipingChangeSize.customSize = { w: 10, h: 10, fs: 10 };
+    labelPipingChangeSize.append(this.pipingChangeSize);
+    this.painter_settings_box.append(labelPipingChangeSize);
+    // end - LS change size piping
+
     this.change_mode = panelPaintBox.querySelector("#painter_change_mode");
     this.painter_shapes_box = panelPaintBox.querySelector(
       ".painter_shapes_box"
@@ -700,6 +721,9 @@ class Painter {
     this.canvas.renderAll();
     app.graph.setDirtyCanvas(true, false);
     this.node.onResize();
+    LS_Painters[this.node.name].settings["currentCanvasSize"] =
+      this.currentCanvasSize;
+    LS_Save();
   }
 
   setDefaultValuesInputs() {
@@ -1400,8 +1424,6 @@ class Painter {
   }
 
   addToHistory() {
-    if (!this.checkBoxLSSave.checked) return;
-
     // Undo / rendo
     const objs = this.canvas.toJSON(["mypaintlib"]);
 
@@ -1420,6 +1442,8 @@ class Painter {
 
   // Save canvas data to localStorage or JSON
   canvasSaveSettingsPainter() {
+    if (!this.checkBoxLSSave.checked) return;
+
     try {
       const data = this.canvas.toJSON(["mypaintlib"]);
       if (LS_Painters && LS_Painters.hasOwnProperty(this.node.name)) {
@@ -1528,7 +1552,7 @@ class Painter {
     this.node.setSizeForImage?.();
   }
 
-  uploadPaintFile(fileName) {
+  async uploadPaintFile(fileName) {
     // Upload paint to temp folder ComfyUI
     let activeObj = null;
     if (!this.canvas.isDrawingMode) {
@@ -1545,49 +1569,52 @@ class Painter {
       }
     }
 
-    const uploadFile = async (blobFile) => {
-      try {
-        const resp = await fetch("/upload/image", {
-          method: "POST",
-          body: blobFile,
-        });
+    await new Promise((res) => {
+      const uploadFile = async (blobFile) => {
+        try {
+          const resp = await fetch("/upload/image", {
+            method: "POST",
+            body: blobFile,
+          });
 
-        if (resp.status === 200) {
-          const data = await resp.json();
+          if (resp.status === 200) {
+            const data = await resp.json();
 
-          if (!this.image.options.values.includes(data.name)) {
-            this.image.options.values.push(data.name);
+            if (!this.image.options.values.includes(data.name)) {
+              this.image.options.values.push(data.name);
+            }
+
+            this.image.value = data.name;
+            this.showImage(data.name);
+
+            if (activeObj && !this.drawning) {
+              activeObj.hasControls = true;
+              activeObj.hasBorders = true;
+
+              this.canvas.getActiveObjects().forEach((a_obs) => {
+                a_obs.hasControls = true;
+                a_obs.hasBorders = true;
+              });
+              this.canvas.renderAll();
+            }
+            this.canvasSaveSettingsPainter();
+            res(true);
+          } else {
+            alert(resp.status + " - " + resp.statusText);
           }
-
-          this.image.value = data.name;
-          this.showImage(data.name);
-
-          if (activeObj && !this.drawning) {
-            activeObj.hasControls = true;
-            activeObj.hasBorders = true;
-
-            this.canvas.getActiveObjects().forEach((a_obs) => {
-              a_obs.hasControls = true;
-              a_obs.hasBorders = true;
-            });
-            this.canvas.renderAll();
-          }
-          if (this.checkBoxLSSave.checked) this.canvasSaveSettingsPainter();
-        } else {
-          alert(resp.status + " - " + resp.statusText);
+        } catch (error) {
+          console.log(error);
         }
-      } catch (error) {
-        console.log(error);
-      }
-    };
+      };
 
-    this.canvas.lowerCanvasEl.toBlob(function (blob) {
-      let formData = new FormData();
-      formData.append("image", blob, fileName);
-      formData.append("overwrite", "true");
-      //formData.append("type", "temp");
-      uploadFile(formData);
-    }, "image/png");
+      this.canvas.lowerCanvasEl.toBlob(function (blob) {
+        let formData = new FormData();
+        formData.append("image", blob, fileName);
+        formData.append("overwrite", "true");
+        //formData.append("type", "temp");
+        uploadFile(formData);
+      }, "image/png");
+    });
 
     // - end
 
@@ -1791,6 +1818,101 @@ function PainterWidget(node, inputName, inputData, app) {
       node.painter.canvas.wrapperEl.hidden = true;
     }
   };
+
+  node.onConnectInput = () => console.log(1, node);
+
+  // Get piping image input, when node executing...
+  api.addEventListener("executing", async ({ detail }) => {
+    if (+detail === node.id && node.isInputConnected(0)) {
+      console.log("Executing...");
+      async function getImg() {
+        const data = await api.fetchApi(
+          `/alekpet/get_input_image/id=${node.id}&time=${Date.now()}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        const resimg = await data.json();
+
+        if (!resimg?.get_input_image) {
+          return await getImg();
+        }
+        return resimg;
+      }
+
+      let resimg = await getImg();
+      await new Promise((res) => {
+        const img = new Image();
+        img.onload = () => {
+          // Change size piping input image
+          const { naturalWidth: w, naturalHeight: h } = img;
+          if (
+            node.painter.pipingChangeSize.checked &&
+            (w !== node.painter.currentCanvasSize.width ||
+              h !== node.painter.currentCanvasSize.height)
+          ) {
+            node.painter.setCanvasSize(w, h);
+          }
+
+          const img_ = new fabric.Image(img, {
+            left: 0,
+            top: 0,
+            angle: 0,
+            strokeWidth: 1,
+          });
+          res(img_);
+        };
+        img.src = resimg.get_input_image[0];
+      })
+        .then(async (result) => {
+          await new Promise((res) => {
+            node.painter.canvas.setBackgroundImage(
+              result,
+              async () => {
+                node.painter.canvas.renderAll();
+                await node.painter.uploadPaintFile(node.name);
+                res(true);
+              },
+              {
+                scaleX: node.painter.canvas.width / result.width,
+                scaleY: node.painter.canvas.height / result.height,
+                strokeWidth: 0,
+              }
+            );
+          });
+        })
+        .then(() => {
+          api
+            .fetchApi("/alekpet/check_canvas_changed", {
+              method: "POST",
+              body: JSON.stringify({
+                painter_id: node.id.toString(),
+                is_ok: true,
+              }),
+            })
+            .then((res) => res.json())
+            .then((res) =>
+              res?.status === "Ok"
+                ? console.log(
+                    `%cChange canvas ${node.name}: ${res.status}`,
+                    "color: green; font-weight: 600;"
+                  )
+                : console.error(
+                    `Error change canvas ${node.name}: ${res.status}`
+                  )
+            )
+            .catch((err) =>
+              console.error(`Error change canvas ${node.name}: ${err}`)
+            );
+        })
+        .catch((err) =>
+          cconsole.error(`Error change canvas ${node.name}: ${err}`)
+        );
+    }
+  });
 
   app.canvas.onDrawBackground = function () {
     // Draw node isnt fired once the node is off the screen
