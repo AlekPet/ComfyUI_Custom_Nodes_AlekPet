@@ -68,7 +68,7 @@ async def saveSettings(request):
 # create file json 
 create_settings_json()
 
-# Pipping image input
+# Piping image
 PAINTER_DICT = {} # Painter nodes dict instances
 
 def toBase64ImgUrl(img):
@@ -83,7 +83,7 @@ async def check_canvas_changed(request):
     json_data = await request.json()
     painter_id = json_data.get("painter_id", None)
     is_ok = json_data.get("is_ok", False)
-    if "painter_id" in json_data and painter_id is not None and "is_ok" in json_data and is_ok == True:
+    if "painter_id" in json_data and painter_id is not None and painter_id in PAINTER_DICT and "is_ok" in json_data and is_ok == True:
         PAINTER_DICT[painter_id].canvas_set = True
         return web.json_response({"status": "Ok"})
     
@@ -92,24 +92,22 @@ async def check_canvas_changed(request):
 @PromptServer.instance.routes.get("/alekpet/get_input_image/id={painter_id}&time={time}")
 def get_image(request):
     painter_id = request.match_info["painter_id"]
-    if(painter_id):
+    if(painter_id is not None and painter_id in PAINTER_DICT):
         return web.json_response({"get_input_image": PAINTER_DICT[painter_id].input_images,})
     
     return web.json_response({"get_input_image": [],})    
 
 
 def wait_canvas_change(unique_id, time_out = 40):
-    count_wait = time_out
-    while count_wait>0:
+    for _ in range(time_out):
         if hasattr(PAINTER_DICT[unique_id], 'canvas_set') and PAINTER_DICT[unique_id].canvas_set == True:
             PAINTER_DICT[unique_id].canvas_set = False
             return True
         
         time.sleep(0.1)
-        count_wait -= 1
         
     return False
-# end - Pipping image input
+# end - Piping image
 
 
 class PainterNode(object):

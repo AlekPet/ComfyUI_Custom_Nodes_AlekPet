@@ -1,6 +1,6 @@
 # Title: ComfyUI Install Customs Nodes and javascript files
 # Author: AlekPet
-# Version: 2024.04.11
+# Version: 2024.04.23
 import os
 import importlib.util
 import subprocess
@@ -22,14 +22,18 @@ folder_comfyui_web_extensions = os.path.join(folder_web, "extensions")
 
 folder__web_lib = os.path.join(folder_web, 'lib')
 extension_dirs = ["web_alekpet_nodes",]
-#
+
+# Debug mode
 DEBUG = False
-NODE_CLASS_MAPPINGS = {}
-NODE_DISPLAY_NAME_MAPPINGS = {}
+
+# NODE_CLASS_MAPPINGS = dict()  # dynamic class nodes append in mappings
+# NODE_DISPLAY_NAME_MAPPINGS = dict()  # dynamic display names nodes append mappings names
+    
 humanReadableTextReg = re.compile('(?<=[a-z])([A-Z])|(?<=[A-Z])([A-Z][a-z]+)')
 module_name_cut_version = re.compile("[>=<]")
 
 installed_modules = list(m[1] for m in pkgutil.iter_modules(None))
+
 
 def log(*text):
     if DEBUG:
@@ -142,10 +146,49 @@ def installNodes():
             printColorInfo(f"Node -> {nodeElement} [Loading]")
 
             checkModules(nodeElement)
-            addComfyUINodesToMapping(nodeElement)
+            # addComfyUINodesToMapping(nodeElement) # dynamic class nodes append in mappings
             
     printColorInfo(f"### [END] ComfyUI AlekPet Nodes ###", "\033[1;35m")
 
+
+# Mount web directory
 WEB_DIRECTORY = f"./{extension_dirs[0]}"
 
+
+# Install nodes
 installNodes()
+
+
+# Import classes nodes and add in mappings
+from .ArgosTranslateNode.argos_translate_node import ArgosTranslateCLIPTextEncodeNode, ArgosTranslateTextNode
+from .DeepTranslatorNode.deep_translator_node import DeepTranslatorCLIPTextEncodeNode, DeepTranslatorTextNode
+from .ExtrasNode.extras_node import PreviewTextNode
+from .GoogleTranslateNode.google_translate_node import GoogleTranslateCLIPTextEncodeNode, GoogleTranslateTextNode
+from .PainterNode.painter_node import PainterNode
+from .PoseNode.pose_node import PoseNode
+
+
+NODE_CLASS_MAPPINGS = {
+    'ArgosTranslateCLIPTextEncodeNode': ArgosTranslateCLIPTextEncodeNode,
+    'ArgosTranslateTextNode': ArgosTranslateTextNode,
+    'DeepTranslatorCLIPTextEncodeNode': DeepTranslatorCLIPTextEncodeNode,
+    'DeepTranslatorTextNode': DeepTranslatorTextNode,
+    'PreviewTextNode': PreviewTextNode,
+    'GoogleTranslateCLIPTextEncodeNode': GoogleTranslateCLIPTextEncodeNode,
+    'GoogleTranslateTextNode': GoogleTranslateTextNode,
+    'PainterNode': PainterNode,
+    'PoseNode': PoseNode
+}
+
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    'ArgosTranslateCLIPTextEncodeNode': 'Argos Translate CLIP Text Encode Node',
+    'ArgosTranslateTextNode': 'Argos Translate Text Node',
+    'DeepTranslatorCLIPTextEncodeNode': 'Deep Translator CLIP Text Encode Node',
+    'DeepTranslatorTextNode': 'Deep Translator Text Node',
+    'PreviewTextNode': 'Preview Text Node',
+    'GoogleTranslateCLIPTextEncodeNode': 'Google Translate CLIP Text Encode Node',
+    'GoogleTranslateTextNode': 'Google Translate Text Node',
+    'PainterNode': 'Painter Node',
+    'PoseNode': 'Pose Node'
+}

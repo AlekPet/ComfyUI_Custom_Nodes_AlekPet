@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2024.04.16
+ * Version: 2024.04.23
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -294,6 +294,17 @@ class Painter {
     labelPipingChangeSize.append(this.pipingChangeSize);
     this.painter_settings_box.append(labelPipingChangeSize);
     // end - LS change size piping
+
+    // Settings piping button
+    this.painter_settings_box.append(
+      makeElement("button", {
+        style: "background: transparent;",
+        textContent: "🛠️",
+        onclick: (e) => {
+          console.log("development", this.node.name);
+        },
+      })
+    );
 
     this.change_mode = panelPaintBox.querySelector("#painter_change_mode");
     this.painter_shapes_box = panelPaintBox.querySelector(
@@ -710,19 +721,31 @@ class Painter {
     app.graph.setDirtyCanvas(true, false);
   }
 
-  setCanvasSize(new_width, new_height) {
+  setCanvasSize(new_width, new_height, confirmChange = false) {
+    if (
+      confirmChange &&
+      this.node.isInputConnected(0) &&
+      this.pipingChangeSize.checked &&
+      (new_width !== this.currentCanvasSize.width ||
+        new_height !== this.currentCanvasSize.height)
+    ) {
+      if (confirm("Disable change size piping?")) {
+        this.pipingChangeSize.checked = false;
+      }
+    }
+
     this.canvas.setDimensions({
       width: new_width,
       height: new_height,
     });
 
     this.currentCanvasSize = { width: new_width, height: new_height };
+    LS_Painters[this.node.name].settings["currentCanvasSize"] =
+      this.currentCanvasSize;
     this.node.title = `${this.node.type} - ${new_width}x${new_height}`;
     this.canvas.renderAll();
     app.graph.setDirtyCanvas(true, false);
     this.node.onResize();
-    LS_Painters[this.node.name].settings["currentCanvasSize"] =
-      this.currentCanvasSize;
     LS_Save();
   }
 
@@ -1045,7 +1068,7 @@ class Painter {
           case "img_load":
             this.bgImageFile.func = (img) => {
               if (confirm("Change canvas size equal image?")) {
-                this.setCanvasSize(img.width, img.height);
+                this.setCanvasSize(img.width, img.height, true);
               }
 
               this.canvas.setBackgroundImage(
@@ -1092,7 +1115,7 @@ class Painter {
       let width = checkSized("width", this.currentCanvasSize.width),
         height = checkSized("height", this.currentCanvasSize.height);
 
-      this.setCanvasSize(width, height);
+      this.setCanvasSize(width, height, true);
       this.uploadPaintFile(this.node.name);
     });
 
