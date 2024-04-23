@@ -11,7 +11,12 @@ import { fabric } from "./lib/painternode/fabric.js";
 import "./lib/painternode/mybrush.js";
 import { svgSymmetryButtons } from "./lib/painternode/brushes.js";
 import { toRGBA, getColorHEX } from "./lib/painternode/helpers.js";
-import { showHide, makeElement, makeModal } from "./utils.js";
+import {
+  showHide,
+  makeElement,
+  makeModal,
+  animateTransitionProps,
+} from "./utils.js";
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
@@ -259,6 +264,7 @@ class Painter {
       style: "font-size: 10px; display: block;",
       title: "LocalStorage save canvas",
     });
+
     this.checkBoxLSSave = makeElement("input", {
       type: "checkbox",
       class: ["lsSave_checkbox"],
@@ -269,6 +275,7 @@ class Painter {
         LS_Save();
       },
     });
+
     this.checkBoxLSSave.customSize = { w: 10, h: 10, fs: 10 };
     labelLSSave.append(this.checkBoxLSSave);
     this.painter_settings_box.append(labelLSSave);
@@ -280,29 +287,130 @@ class Painter {
       style: "font-size: 10px; display: block;",
       title: "Change size canvas piping image input",
     });
+
     this.pipingChangeSize = makeElement("input", {
       type: "checkbox",
       class: ["pipingChangeSize_checkbox"],
-      checked: LS_Painters[this.node.name].settings?.pipingChangeSize ?? false,
+      checked: LS_Painters[this.node.name].settings?.pipingChangeSize ?? true,
       onchange: (e) => {
         LS_Painters[this.node.name].settings.pipingChangeSize =
           this.pipingChangeSize.checked;
         LS_Save();
       },
     });
+
     this.pipingChangeSize.customSize = { w: 10, h: 10, fs: 10 };
     labelPipingChangeSize.append(this.pipingChangeSize);
-    this.painter_settings_box.append(labelPipingChangeSize);
     // end - LS change size piping
+
+    // Settings box
+    this.painter_wrapper_settings = makeElement("div", {
+      class: ["painter_wrapper_settings"],
+      style:
+        "display: none; position: absolute;left: 50%; top: 50%; transform: translate(-50%, -50%); opacity:0; transition: all .8s; min-width: 220px;",
+    });
+    const painter_box__settings = makeElement("div", {
+      class: ["close__box", "box__kistey_settings"],
+      style: "border: 2px solid #13e9c5ad; box-shadow: 2px 2px 4px #13e9c5ad;",
+    });
+
+    const close__box__button = makeElement("div", {
+      class: ["close__box__button", "close__box__button__box__kistey_settings"],
+      textContent: "✖",
+      style: "background: #13e9c5ad;",
+    });
+    close__box__button.addEventListener("click", () =>
+      animateTransitionProps(this.painter_wrapper_settings, {
+        opacity: 0,
+      }).then(() => {
+        showHide({ elements: [this.painter_wrapper_settings] });
+      })
+    );
+
+    const titleSettings = makeElement("div", {
+      class: ["titleSettings"],
+      textContent: "Settings",
+    });
+
+    const painter_settings_body = makeElement("div", {
+      class: ["kistey_settings_body"],
+      style: "align-items: flex-start;",
+    });
+
+    const radios = [
+      {
+        title: "Past as background",
+        toast: "Set piping input image as backgound canvas",
+        value: "background",
+      },
+      {
+        title: "Past as image",
+        toast: "Set piping input image as image to the backend",
+        value: "image",
+      },
+    ];
+
+    if (!LS_Painters[this.node.name].settings?.pipingSettings) {
+      LS_Painters[this.node.name].settings.pipingSettings = {
+        action: "background",
+      };
+    }
+
+    radios.forEach((radio, idx) => {
+      const { title, toast, value } = radio;
+      const radioBox = makeElement("div", {
+        class: ["painter_radio_piping_box"],
+      });
+
+      const labelRadio = makeElement("label", {
+        class: ["painter_radio_piping_label"],
+        textContent: title,
+      });
+      labelRadio.setAttribute("for", `painter_radio_${value}`);
+
+      const radEl = makeElement("input", {
+        type: "radio",
+        name: "painter_radio_piping",
+        title: toast,
+        id: `painter_radio_${value}`,
+        value: value,
+        onclick: (e) => {
+          LS_Painters[this.node.name].settings.pipingSettings.action =
+            e.currentTarget.value;
+          LS_Save();
+        },
+      });
+
+      if (
+        LS_Painters[this.node.name].settings.pipingSettings.action === value
+      ) {
+        radEl.checked = true;
+      }
+
+      radioBox.append(radEl, labelRadio);
+      painter_settings_body.append(radioBox);
+    });
+
+    painter_settings_body.append(labelPipingChangeSize);
+    painter_box__settings.append(titleSettings, painter_settings_body);
+
+    this.painter_wrapper_settings.append(
+      close__box__button,
+      painter_box__settings
+    );
+
+    this.canvas.wrapperEl.append(this.painter_wrapper_settings);
+    // end - Settings box
 
     // Settings piping button
     this.painter_settings_box.append(
       makeElement("button", {
         style: "background: transparent;",
         textContent: "🛠️",
-        onclick: (e) => {
-          console.log("development", this.node.name);
-        },
+        onclick: (e) =>
+          animateTransitionProps(this.painter_wrapper_settings, {
+            opacity: 0.9,
+          }),
       })
     );
 
@@ -1848,6 +1956,7 @@ function PainterWidget(node, inputName, inputData, app) {
   api.addEventListener("executing", async ({ detail }) => {
     if (+detail === node.id && node.isInputConnected(0)) {
       console.log("Executing...");
+
       async function getImg() {
         const data = await api.fetchApi(
           `/alekpet/get_input_image/id=${node.id}&time=${Date.now()}`,
@@ -1866,7 +1975,8 @@ function PainterWidget(node, inputName, inputData, app) {
         return resimg;
       }
 
-      let resimg = await getImg();
+      const resimg = await getImg();
+
       await new Promise((res) => {
         const img = new Image();
         img.onload = () => {
@@ -1891,21 +2001,34 @@ function PainterWidget(node, inputName, inputData, app) {
         img.src = resimg.get_input_image[0];
       })
         .then(async (result) => {
-          await new Promise((res) => {
-            node.painter.canvas.setBackgroundImage(
-              result,
-              async () => {
+          switch (LS_Painters[node.name].settings.pipingSettings.action) {
+            case "image":
+              await new Promise(async (res) => {
+                node.painter.canvas.add(result);
+                node.painter.canvas.sendToBack(result);
                 node.painter.canvas.renderAll();
                 await node.painter.uploadPaintFile(node.name);
                 res(true);
-              },
-              {
-                scaleX: node.painter.canvas.width / result.width,
-                scaleY: node.painter.canvas.height / result.height,
-                strokeWidth: 0,
-              }
-            );
-          });
+              });
+              break;
+            case "background":
+            default:
+              await new Promise((res) => {
+                node.painter.canvas.setBackgroundImage(
+                  result,
+                  async () => {
+                    node.painter.canvas.renderAll();
+                    await node.painter.uploadPaintFile(node.name);
+                    res(true);
+                  },
+                  {
+                    scaleX: node.painter.canvas.width / result.width,
+                    scaleY: node.painter.canvas.height / result.height,
+                    strokeWidth: 0,
+                  }
+                );
+              });
+          }
         })
         .then(() => {
           api
@@ -1923,17 +2046,11 @@ function PainterWidget(node, inputName, inputData, app) {
                     `%cChange canvas ${node.name}: ${res.status}`,
                     "color: green; font-weight: 600;"
                   )
-                : console.error(
-                    `Error change canvas ${node.name}: ${res.status}`
-                  )
+                : console.error(`Error change canvas: ${res.status}`)
             )
-            .catch((err) =>
-              console.error(`Error change canvas ${node.name}: ${err}`)
-            );
+            .catch((err) => console.error(`Error change canvas: ${err}`));
         })
-        .catch((err) =>
-          cconsole.error(`Error change canvas ${node.name}: ${err}`)
-        );
+        .catch((err) => console.error(`Error change canvas: ${err}`));
     }
   });
 
