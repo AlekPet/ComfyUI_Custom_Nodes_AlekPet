@@ -121,6 +121,13 @@ function animateTransitionProps(
   });
 }
 
+function animateClick(target, opacityVal = 0.9) {
+  const hide = +target.style.opacity === 0;
+  animateTransitionProps(target, {
+    opacity: hide ? opacityVal : 0,
+  }).then(() => showHide({ elements: [target], hide: !hide }));
+}
+
 function showHide({ elements = [], hide = null, displayProp = "block" }) {
   Array.from(elements).forEach((el) => {
     if (hide !== null) {
@@ -174,9 +181,90 @@ async function getDataJSON(url) {
   }
 }
 
+function createWindowModal({
+  title = "Message",
+  text = "Hello world!",
+  classesWrapper = [],
+  stylesWrapper = {},
+  classesClose = [],
+  stylesClose = [],
+  classesBox = [],
+  stylesBox = {},
+  classesBody = [],
+  stylesBody = {},
+}) {
+  const painter_wrapper_settings = makeElement("div", {
+    class: ["painter__wrapper__window", ...classesWrapper],
+  });
+  Object.assign(painter_wrapper_settings.style, {
+    display: "none",
+    opacity: 0,
+    minWidth: "220px",
+    ...stylesWrapper,
+  });
+
+  const painter_box__settings = makeElement("div", {
+    class: ["painter__window__box", ...classesBox],
+  });
+  Object.assign(painter_box__settings.style, {
+    ...stylesBox,
+  });
+
+  const close__box__button = makeElement("div", {
+    class: ["close__box__button", ...classesClose],
+    textContent: "✖",
+  });
+  Object.assign(close__box__button.style, {
+    ...stylesClose,
+  });
+
+  close__box__button.addEventListener("click", () =>
+    animateTransitionProps(painter_wrapper_settings, {
+      opacity: 0,
+    }).then(() => {
+      showHide({ elements: [painter_wrapper_settings] });
+    })
+  );
+
+  const titleSettings = makeElement("div", {
+    class: ["painter__window__title"],
+    textContent: title,
+  });
+
+  const painter_settings_body = makeElement("div", {
+    class: ["painter__window__body", ...classesBody],
+  });
+  Object.assign(painter_settings_body.style, {
+    ...stylesBody,
+  });
+
+  switch (typeof text) {
+    case "string":
+      if (/^\<*.\/?\>$/.test(text)) {
+        painter_settings_body.innerHTML(text);
+      } else {
+        painter_settings_body.textContent = text;
+      }
+      break;
+    case "object":
+    default:
+      if (Array.isArray(text)) {
+        text.forEach((element) => painter_settings_body.append(element));
+      } else if (text.nodeType === 1 || text.nodeType === 3)
+        painter_settings_body.append(text);
+  }
+
+  painter_box__settings.append(titleSettings, painter_settings_body);
+  painter_wrapper_settings.append(close__box__button, painter_box__settings);
+
+  return painter_wrapper_settings;
+}
+
 export {
   makeModal,
+  createWindowModal,
   animateTransitionProps,
+  animateClick,
   showHide,
   makeElement,
   getDataJSON,

@@ -1,5 +1,13 @@
 import { rgbToHsv, rangeGradient, HsvToRgb } from "./helpers.js";
-import { getDataJSON, makeElement, showHide, makeModal } from "../../utils.js";
+import {
+  getDataJSON,
+  makeElement,
+  showHide,
+  makeModal,
+  createWindowModal,
+  animateTransitionProps,
+  animateClick,
+} from "../../utils.js";
 
 // Menu select brush in the menu
 class MenuBrushes {
@@ -66,19 +74,28 @@ class MenuBrushes {
   }
 
   createLayout() {
-    this.wrapper__kistey = makeElement("div", { class: ["wrapper__kistey"] });
-    this.wrapper__kistey.style.display = "none";
+    this.wrapper__kistey = makeElement("div", {
+      class: ["wrapper__kistey"],
+      style: "display: none; opacity: 0;",
+    });
 
     const box__kistey = makeElement("div", {
       class: ["box__kistey"],
+      style: "box-shadow: 2px 2px 4px #3aa108; border: 2px solid #3aa108;",
     });
 
     const close__box__button = makeElement("div", {
-      class: ["close__box__button", "close__box__button_box__kistey"],
+      class: ["close__box__button"],
+      style: "background: #3aa108;",
       textContent: "✖",
     });
+
     close__box__button.addEventListener("click", () =>
-      showHide({ elements: [this.wrapper__kistey] })
+      animateTransitionProps(this.wrapper__kistey, {
+        opacity: 0,
+      }).then(() => {
+        showHide({ elements: [this.wrapper__kistey] });
+      })
     );
 
     const kistey__title = makeElement("div", { class: ["kistey__title"] });
@@ -409,7 +426,7 @@ class MyPaintManager {
         this.menuBrushes.init();
       }
 
-      showHide({ elements: [this.menuBrushes.wrapper__kistey] });
+      animateClick(this.menuBrushes.wrapper__kistey);
     });
 
     // Settings brushes
@@ -420,7 +437,7 @@ class MyPaintManager {
     this.buttonMenuSettings.customSize = { w: 60, h: 25, fs: 10 };
 
     this.buttonMenuSettings.addEventListener("click", () =>
-      showHide({ elements: [this.kistey_wrapper_settings] })
+      animateClick(this.kistey_wrapper_settings)
     );
 
     this.boxButtonsBrushes.append(
@@ -457,35 +474,35 @@ class MyPaintManager {
   }
 
   createMenuSettings() {
-    this.kistey_wrapper_settings = makeElement("div", {
-      class: ["kistey_wrapper_settings"],
-      style: "display: none;",
-    });
-    const box__kistey_settings = makeElement("div", {
-      class: ["close__box", "box__kistey_settings"],
-    });
+    // this.kistey_wrapper_settings = makeElement("div", {
+    //   class: ["kistey_wrapper_settings"],
+    //   style: "display: none;",
+    // });
+    // const box__kistey_settings = makeElement("div", {
+    //   class: ["close__box", "box__kistey_settings"],
+    // });
 
-    const close__box__button = makeElement("div", {
-      class: ["close__box__button", "close__box__button__box__kistey_settings"],
-      textContent: "✖",
-    });
-    close__box__button.addEventListener("click", () =>
-      showHide({ elements: [this.kistey_wrapper_settings] })
-    );
+    // const close__box__button = makeElement("div", {
+    //   class: ["close__box__button", "close__box__button__box__kistey_settings"],
+    //   textContent: "✖",
+    // });
+    // close__box__button.addEventListener("click", () =>
+    //   showHide({ elements: [this.kistey_wrapper_settings] })
+    // );
 
-    const kistey_settings_body = makeElement("div", {
-      class: ["kistey_settings_body"],
-    });
-    const titleSettings = makeElement("div", {
-      class: ["titleSettings"],
-      textContent: "Settings",
-    });
+    // const kistey_settings_body = makeElement("div", {
+    //   class: ["kistey_settings_body"],
+    // });
+    // const titleSettings = makeElement("div", {
+    //   class: ["titleSettings"],
+    //   textContent: "Settings",
+    // });
 
-    box__kistey_settings.append(titleSettings, kistey_settings_body);
-    this.kistey_wrapper_settings.append(
-      close__box__button,
-      box__kistey_settings
-    );
+    // box__kistey_settings.append(titleSettings, kistey_settings_body);
+    // this.kistey_wrapper_settings.append(
+    //   close__box__button,
+    //   box__kistey_settings
+    // );
 
     // Range events
     const rangeInputEvent = (e) => {
@@ -627,6 +644,7 @@ class MyPaintManager {
       },
     };
 
+    const elementsDom = [];
     Object.keys(this.settings_brush).forEach((setting_key) => {
       let element, elementValue;
 
@@ -693,7 +711,26 @@ class MyPaintManager {
       });
 
       boxElement.append(textNode, element, elementValue);
-      kistey_settings_body.append(boxElement);
+      elementsDom.push(boxElement);
+    });
+
+    this.kistey_wrapper_settings = createWindowModal({
+      title: "Settings",
+      text: elementsDom,
+      stylesWrapper: {
+        position: "relative",
+        top: "auto",
+        left: "auto",
+        transform: "none",
+        maxWidth: "250px",
+      },
+      stylesBox: {
+        boxShadow: "2px 2px 4px #4313e9ad",
+        borderColor: "#4313e9ad",
+      },
+      stylesClose: { background: "#4313e9ad" },
+      stylesBody: { alignItems: "flex-end" },
+      classesBody: ["kistey_settings_body"],
     });
 
     this.viewMenuBrushes.append(this.kistey_wrapper_settings);

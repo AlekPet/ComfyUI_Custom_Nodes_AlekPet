@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2024.04.23
+ * Version: 2024.04.29
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -15,7 +15,8 @@ import {
   showHide,
   makeElement,
   makeModal,
-  animateTransitionProps,
+  animateClick,
+  createWindowModal,
 } from "./utils.js";
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
@@ -367,62 +368,7 @@ class Painter {
     labelPipingChangeSize.append(this.pipingChangeSize);
     // end - LS change size piping
 
-    // Settings box
-    this.painter_wrapper_settings = makeElement("div", {
-      class: ["painter_wrapper_settings"],
-      style:
-        "display: none; position: absolute;left: 50%; top: 50%; transform: translate(-50%, -50%); opacity:0; transition: all .8s; min-width: 220px;",
-    });
-
-    const painter_box__settings = makeElement("div", {
-      class: ["close__box", "box__kistey_settings"],
-      style: "border: 2px solid #13e9c5ad; box-shadow: 2px 2px 4px #13e9c5ad;",
-    });
-
-    const close__box__button = makeElement("div", {
-      class: ["close__box__button", "close__box__button__box__kistey_settings"],
-      textContent: "✖",
-      style: "background: #13e9c5ad;",
-    });
-
-    close__box__button.addEventListener("click", () =>
-      animateTransitionProps(this.painter_wrapper_settings, {
-        opacity: 0,
-      }).then(() => {
-        showHide({ elements: [this.painter_wrapper_settings] });
-      })
-    );
-
-    const titleSettings = makeElement("div", {
-      class: ["titleSettings"],
-      textContent: "Settings",
-    });
-
-    const painter_settings_body = makeElement("div", {
-      class: ["kistey_settings_body"],
-      style: "align-items: flex-start;",
-    });
-
-    const radio_name = `painter_radio_piping_${this.node.name.replace(
-      ".png",
-      ""
-    )}`;
-    const radios = [
-      {
-        title: "Past as background",
-        toast: "Set piping input image as backgound canvas",
-        value: "background",
-      },
-      {
-        title: "Past as image",
-        toast: "Set piping input image as image to the backend",
-        value: "image",
-      },
-    ];
-
-    const other_options_radio = makeElement("div", {
-      class: ["painter_other_options_radio"],
-    });
+    // === Settings box ===
 
     // Function click on the radio and show/hide custom settings
     function checkRadioOptionsSelect(currentTarget) {
@@ -464,7 +410,6 @@ class Painter {
     // Radios click
     function radiosClick(e) {
       const { currentTarget } = e;
-
       checkRadioOptionsSelect.call(this, currentTarget);
 
       LS_Painters[this.node.name].settings.pipingSettings.action.name =
@@ -472,6 +417,29 @@ class Painter {
       LS_Save();
     }
 
+    const radio_name = `painter_radio_piping_${this.node.name.replace(
+      ".png",
+      ""
+    )}`;
+
+    const radios = [
+      {
+        title: "Past as background",
+        toast: "Set piping input image as backgound canvas",
+        value: "background",
+      },
+      {
+        title: "Past as image",
+        toast: "Set piping input image as image to the backend",
+        value: "image",
+      },
+    ];
+
+    const other_options_radio = makeElement("div", {
+      class: ["painter_other_options_radio"],
+    });
+
+    const radiosElements = [];
     radios.forEach((radio, idx) => {
       const { title, toast, value } = radio;
       const radioBox = makeElement("div", {
@@ -493,7 +461,7 @@ class Painter {
 
       labelRadio.append(radEl, document.createTextNode(title));
       radioBox.append(labelRadio);
-      painter_settings_body.append(radioBox);
+      radiosElements.push(radioBox);
 
       if (
         LS_Painters[this.node.name].settings.pipingSettings.action.name ===
@@ -504,28 +472,28 @@ class Painter {
       }
     });
 
-    painter_settings_body.append(other_options_radio, labelPipingChangeSize);
-    painter_box__settings.append(titleSettings, painter_settings_body);
-
-    this.painter_wrapper_settings.append(
-      close__box__button,
-      painter_box__settings
-    );
+    this.painter_wrapper_settings = createWindowModal({
+      title: "Settings",
+      text: [...radiosElements, other_options_radio, labelPipingChangeSize],
+      stylesBox: {
+        borderColor: "#13e9c5ad",
+        boxShadow: "2px 2px 4px #13e9c5ad",
+      },
+      stylesClose: { background: "#13e9c5ad" },
+      stylesBody: { alignItems: "flex-start" },
+    });
 
     this.canvas.wrapperEl.append(this.painter_wrapper_settings);
-    // end - Settings box
 
     // Settings piping button
     this.painter_settings_box.append(
       makeElement("button", {
         style: "background: transparent;",
         textContent: "🛠️",
-        onclick: (e) =>
-          animateTransitionProps(this.painter_wrapper_settings, {
-            opacity: 0.9,
-          }),
+        onclick: (e) => animateClick(this.painter_wrapper_settings),
       })
     );
+    // === end - Settings box ===
   }
 
   clearCanvas() {
@@ -2473,25 +2441,6 @@ app.registerExtension({
   }
 
   /* -- Styles Kistey */
-  .close__box__button {
-    position: absolute;
-    top: -10px;
-    right: -10px;
-    background: #3aa108;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 0.8rem;    
-  }
-
-  .close__box__button:hover {
-    opacity: 0.8;
-  }
-
   .viewMenuBrushes {
     position: absolute;
     opacity: 0.9;
@@ -2506,28 +2455,9 @@ app.registerExtension({
   .wrapper__kistey {
     max-width: 300px;
     position: relative;
-  }
-  
-  .box__kistey, .box__kistey_settings {
-    display: flex;
-    flex-direction: column;
-    background: #0e0e0e;
-    padding: 10px;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    text-align: center;
-    border-radius: 6px;
-    color: white;
-    border: 2px solid #00ff00ab;
-    font-family: monospace;
-    box-shadow: 2px 2px 4px #00ff00ab;
+    transition: all .8s;
   }
 
-  .close__box__button_box__kistey {
-    background: #3aa108;
-  }
-  
   .kistey__title {
     display: flex;
     gap: 5px;
@@ -2547,6 +2477,7 @@ app.registerExtension({
     overflow-y: auto;
     min-width: 250px;  
   }
+
   .kistey__img {
     width: 50px;
   }
@@ -2646,29 +2577,6 @@ app.registerExtension({
   /* -- end Styles Kistey -- */
   
   /* -- Styles Settigs Kistey -- */
-  .kistey_wrapper_settings {
-    max-width: 250px;
-    position: relative;
-  }
-  
-  .box__kistey_settings {
-    gap: 5px;
-    transition: 0.5s opacity;
-    border: 2px solid #4313e9ad;
-    box-shadow: 2px 2px 4px #4313e9ad;
-  }
-
-  .close__box__button__box__kistey_settings {
-    background: #4313e9ad;
-  }
-  
-  .kistey_settings_body {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 5px;
-  }
-
   .kistey_setting__item {
     display: flex;
     align-items: center;
@@ -2677,6 +2585,7 @@ app.registerExtension({
   .kistey_settings_body input[type="range"] {
     width: 100px;
   }
+
   .kistey_settings_body input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
@@ -2714,6 +2623,60 @@ app.registerExtension({
   .kistey_settings_body input[type="range"]::-webkit-slider-thumb:hover {
     background-color: rgb(49 49 49);
   }
+
+  /* Modal */
+  .painter__wrapper__window {
+    display: none;
+    position: absolute;
+    left: 50%; 
+    top: 50%; 
+    transform: translate(-50%, -50%); 
+    opacity: 0; transition: all .8s;
+    min-width: 200px;
+  }
+
+  .painter__window__box, .box__kistey {
+    display: flex;
+    flex-direction: column;
+    background: #0e0e0e;
+    padding: 10px;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    border-radius: 6px;
+    color: white;
+    border: 2px solid silver;
+    font-family: monospace;
+    box-shadow: 2px 2px 4px silver;
+  }
+
+  .close__box__button {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: silver;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.8rem;    
+  }
+
+  .close__box__button:hover {
+    opacity: 0.8;
+  }
+
+  .painter__window__body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+  }
+
   /* -- end Styles Settigs Kistey -- */  
 `;
     document.head.append(style);
