@@ -2,10 +2,8 @@ import { rgbToHsv, rangeGradient, HsvToRgb } from "./helpers.js";
 import {
   getDataJSON,
   makeElement,
-  showHide,
   makeModal,
   createWindowModal,
-  animateTransitionProps,
   animateClick,
 } from "../../utils.js";
 
@@ -74,32 +72,6 @@ class MenuBrushes {
   }
 
   createLayout() {
-    this.wrapper__kistey = makeElement("div", {
-      class: ["wrapper__kistey"],
-      style: "display: none; opacity: 0;",
-    });
-
-    const box__kistey = makeElement("div", {
-      class: ["box__kistey"],
-      style: "box-shadow: 2px 2px 4px #3aa108; border: 2px solid #3aa108;",
-    });
-
-    const close__box__button = makeElement("div", {
-      class: ["close__box__button"],
-      style: "background: #3aa108;",
-      textContent: "✖",
-    });
-
-    close__box__button.addEventListener("click", () =>
-      animateTransitionProps(this.wrapper__kistey, {
-        opacity: 0,
-      }).then(() => {
-        showHide({ elements: [this.wrapper__kistey] });
-      })
-    );
-
-    const kistey__title = makeElement("div", { class: ["kistey__title"] });
-
     const kistey__left = makeElement("div", {
       class: ["kistey__arrow", "kistey__left"],
       textContent: "◀",
@@ -115,22 +87,35 @@ class MenuBrushes {
     const kistey_directory_slider = makeElement("div", {
       class: ["kistey_directory_slider"],
     });
-    const kistey__body = makeElement("div", {
-      class: ["kistey__body"],
-      textContent: "Loading...",
-    });
 
     const kistey__brushes__info = makeElement("button", {
       class: ["kistey__brushes__info"],
       textContent: "INFORMATION",
+      style: "width: 150px",
     });
-    kistey__brushes__info.customSize = { w: 138, h: 17, fs: 10 };
+    kistey__brushes__info.customSize = { w: 150, h: 17, fs: 10 };
 
     kistey_dir__name_wrapper.append(kistey_directory_slider);
-    kistey__title.append(kistey__left, kistey_dir__name_wrapper, kistey__right);
-    box__kistey.append(kistey__title, kistey__body, kistey__brushes__info);
 
-    this.wrapper__kistey.append(close__box__button, box__kistey);
+    this.wrapper__kistey = createWindowModal({
+      stylesWrapper: {
+        maxWidth: "300px",
+        position: "relative",
+        top: "auto",
+        left: "auto",
+        transform: "none",
+      },
+      textTitle: [kistey__left, kistey_dir__name_wrapper, kistey__right],
+      classesTitle: ["kistey__title"],
+      stylesBox: {
+        boxShadow: "2px 2px 4px #3aa108",
+        border: "2px solid #3aa108",
+      },
+      stylesClose: { background: "#3aa108" },
+      classesBody: ["kistey__body"],
+      textBody: "Loading...",
+      textFooter: [kistey__brushes__info],
+    });
 
     this.managerMyPaint.viewMenuBrushes.append(this.wrapper__kistey);
   }
@@ -287,7 +272,7 @@ class MenuBrushes {
     });
 
     this.wrapper__kistey
-      .querySelector(".box__kistey")
+      .querySelector(".painter__window__box")
       .addEventListener("click", (e) => {
         let target = e.target;
 
@@ -474,36 +459,6 @@ class MyPaintManager {
   }
 
   createMenuSettings() {
-    // this.kistey_wrapper_settings = makeElement("div", {
-    //   class: ["kistey_wrapper_settings"],
-    //   style: "display: none;",
-    // });
-    // const box__kistey_settings = makeElement("div", {
-    //   class: ["close__box", "box__kistey_settings"],
-    // });
-
-    // const close__box__button = makeElement("div", {
-    //   class: ["close__box__button", "close__box__button__box__kistey_settings"],
-    //   textContent: "✖",
-    // });
-    // close__box__button.addEventListener("click", () =>
-    //   showHide({ elements: [this.kistey_wrapper_settings] })
-    // );
-
-    // const kistey_settings_body = makeElement("div", {
-    //   class: ["kistey_settings_body"],
-    // });
-    // const titleSettings = makeElement("div", {
-    //   class: ["titleSettings"],
-    //   textContent: "Settings",
-    // });
-
-    // box__kistey_settings.append(titleSettings, kistey_settings_body);
-    // this.kistey_wrapper_settings.append(
-    //   close__box__button,
-    //   box__kistey_settings
-    // );
-
     // Range events
     const rangeInputEvent = (e) => {
       e.currentTarget.nextSibling.textContent = (+e.currentTarget
@@ -715,8 +670,8 @@ class MyPaintManager {
     });
 
     this.kistey_wrapper_settings = createWindowModal({
-      title: "Settings",
-      text: elementsDom,
+      textTitle: "Settings",
+      textBody: elementsDom,
       stylesWrapper: {
         position: "relative",
         top: "auto",

@@ -182,20 +182,48 @@ async function getDataJSON(url) {
 }
 
 function createWindowModal({
-  title = "Message",
-  text = "Hello world!",
+  textTitle = "Message",
+  textBody = "Hello world!",
+  textFooter = null,
   classesWrapper = [],
   stylesWrapper = {},
-  classesClose = [],
-  stylesClose = [],
   classesBox = [],
   stylesBox = {},
+  classesTitle = [],
+  stylesTitle = {},
   classesBody = [],
   stylesBody = {},
+  classesClose = [],
+  stylesClose = {},
+  classesFooter = [],
+  stylesFooter = {},
 }) {
+  // Function past text(html)
+  function addText(text, parent) {
+    if (!parent) return;
+
+    switch (typeof text) {
+      case "string":
+        if (/^\<*.\/?\>$/.test(text)) {
+          parent.innerHTML(text);
+        } else {
+          parent.textContent = text;
+        }
+        break;
+      case "object":
+      default:
+        if (Array.isArray(text)) {
+          text.forEach((element) => parent.append(element));
+        } else if (text.nodeType === 1 || text.nodeType === 3)
+          parent.append(text);
+    }
+  }
+
+  // Wrapper
   const painter_wrapper_settings = makeElement("div", {
     class: ["painter__wrapper__window", ...classesWrapper],
   });
+
   Object.assign(painter_wrapper_settings.style, {
     display: "none",
     opacity: 0,
@@ -203,6 +231,7 @@ function createWindowModal({
     ...stylesWrapper,
   });
 
+  // Box
   const painter_box__settings = makeElement("div", {
     class: ["painter__window__box", ...classesBox],
   });
@@ -210,6 +239,27 @@ function createWindowModal({
     ...stylesBox,
   });
 
+  // Title
+  const painter_box_settings_title = makeElement("div", {
+    class: ["painter__window__title", , ...classesTitle],
+  });
+  Object.assign(painter_box_settings_title.style, {
+    ...stylesTitle,
+  });
+  // Add text (html) to title
+  addText(textTitle, painter_box_settings_title);
+
+  // Body
+  const painter_box_settings_body = makeElement("div", {
+    class: ["painter__window__body", ...classesBody],
+  });
+  Object.assign(painter_box_settings_body.style, {
+    ...stylesBody,
+  });
+  // Add text (html) to body
+  addText(textBody, painter_box_settings_body);
+
+  // Close button
   const close__box__button = makeElement("div", {
     class: ["close__box__button", ...classesClose],
     textContent: "✖",
@@ -226,35 +276,26 @@ function createWindowModal({
     })
   );
 
-  const titleSettings = makeElement("div", {
-    class: ["painter__window__title"],
-    textContent: title,
-  });
+  painter_box__settings.append(
+    painter_box_settings_title,
+    painter_box_settings_body
+  );
 
-  const painter_settings_body = makeElement("div", {
-    class: ["painter__window__body", ...classesBody],
-  });
-  Object.assign(painter_settings_body.style, {
-    ...stylesBody,
-  });
+  // Footer
+  if (textFooter) {
+    const painter_box_settings_footer = makeElement("div", {
+      class: [...classesFooter],
+    });
+    Object.assign(painter_box_settings_footer.style, {
+      ...stylesFooter,
+    });
 
-  switch (typeof text) {
-    case "string":
-      if (/^\<*.\/?\>$/.test(text)) {
-        painter_settings_body.innerHTML(text);
-      } else {
-        painter_settings_body.textContent = text;
-      }
-      break;
-    case "object":
-    default:
-      if (Array.isArray(text)) {
-        text.forEach((element) => painter_settings_body.append(element));
-      } else if (text.nodeType === 1 || text.nodeType === 3)
-        painter_settings_body.append(text);
+    // Add text (html) to body
+    addText(textFooter, painter_box_settings_footer);
+
+    painter_box__settings.append(painter_box_settings_footer);
   }
 
-  painter_box__settings.append(titleSettings, painter_settings_body);
   painter_wrapper_settings.append(close__box__button, painter_box__settings);
 
   return painter_wrapper_settings;

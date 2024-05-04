@@ -473,8 +473,8 @@ class Painter {
     });
 
     this.painter_wrapper_settings = createWindowModal({
-      title: "Settings",
-      text: [...radiosElements, other_options_radio, labelPipingChangeSize],
+      textTitle: "Settings",
+      textBody: [...radiosElements, other_options_radio, labelPipingChangeSize],
       stylesBox: {
         borderColor: "#13e9c5ad",
         boxShadow: "2px 2px 4px #13e9c5ad",
@@ -2452,12 +2452,6 @@ app.registerExtension({
     left: 101%;
   }
 
-  .wrapper__kistey {
-    max-width: 300px;
-    position: relative;
-    transition: all .8s;
-  }
-
   .kistey__title {
     display: flex;
     gap: 5px;
@@ -2635,7 +2629,7 @@ app.registerExtension({
     min-width: 200px;
   }
 
-  .painter__window__box, .box__kistey {
+  .painter__window__box {
     display: flex;
     flex-direction: column;
     background: #0e0e0e;
