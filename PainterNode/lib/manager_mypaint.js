@@ -272,7 +272,7 @@ class MenuBrushes {
     });
 
     this.wrapper__kistey
-      .querySelector(".painter__window__box")
+      .querySelector(".alekpet__window__box")
       .addEventListener("click", (e) => {
         let target = e.target;
 

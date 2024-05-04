@@ -5,7 +5,7 @@ function makeModal({
   type = "info",
   parent = null,
   stylePos = "fixed",
-}) {
+} = {}) {
   const overlay = document.createElement("div");
   Object.assign(overlay.style, {
     display: "none",
@@ -128,7 +128,7 @@ function animateClick(target, opacityVal = 0.9) {
   }).then(() => showHide({ elements: [target], hide: !hide }));
 }
 
-function showHide({ elements = [], hide = null, displayProp = "block" }) {
+function showHide({ elements = [], hide = null, displayProp = "block" } = {}) {
   Array.from(elements).forEach((el) => {
     if (hide !== null) {
       el.style.display = !hide ? displayProp : "none";
@@ -197,7 +197,7 @@ function createWindowModal({
   stylesClose = {},
   classesFooter = [],
   stylesFooter = {},
-}) {
+} = {}) {
   // Function past text(html)
   function addText(text, parent) {
     if (!parent) return;
@@ -220,44 +220,67 @@ function createWindowModal({
   }
 
   // Wrapper
-  const painter_wrapper_settings = makeElement("div", {
-    class: ["painter__wrapper__window", ...classesWrapper],
+  const wrapper_settings = makeElement("div", {
+    class: ["alekpet__wrapper__window", ...classesWrapper],
   });
 
-  Object.assign(painter_wrapper_settings.style, {
+  Object.assign(wrapper_settings.style, {
     display: "none",
     opacity: 0,
     minWidth: "220px",
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    transform: "translate(-50%, -50%)",
+    opacity: 0,
+    transition: "all .8s",
     ...stylesWrapper,
   });
 
   // Box
-  const painter_box__settings = makeElement("div", {
-    class: ["painter__window__box", ...classesBox],
+  const box__settings = makeElement("div", {
+    class: ["alekpet__window__box", ...classesBox],
   });
-  Object.assign(painter_box__settings.style, {
+  Object.assign(box__settings.style, {
+    display: "flex",
+    flexDirection: "column",
+    background: "#0e0e0e",
+    padding: "10px",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "10px",
+    textAlign: "center",
+    borderRadius: "6px",
+    color: "white",
+    border: "2px solid silver",
+    fontFamily: "monospace",
+    boxShadow: "2px 2px 4px silver",
     ...stylesBox,
   });
 
   // Title
-  const painter_box_settings_title = makeElement("div", {
-    class: ["painter__window__title", , ...classesTitle],
+  const box_settings_title = makeElement("div", {
+    class: ["alekpet__window__title", , ...classesTitle],
   });
-  Object.assign(painter_box_settings_title.style, {
+  Object.assign(box_settings_title.style, {
     ...stylesTitle,
   });
   // Add text (html) to title
-  addText(textTitle, painter_box_settings_title);
+  addText(textTitle, box_settings_title);
 
   // Body
-  const painter_box_settings_body = makeElement("div", {
-    class: ["painter__window__body", ...classesBody],
+  const box_settings_body = makeElement("div", {
+    class: ["alekpet__window__body", ...classesBody],
   });
-  Object.assign(painter_box_settings_body.style, {
+  Object.assign(box_settings_body.style, {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-end",
+    gap: "5px",
     ...stylesBody,
   });
   // Add text (html) to body
-  addText(textBody, painter_box_settings_body);
+  addText(textBody, box_settings_body);
 
   // Close button
   const close__box__button = makeElement("div", {
@@ -265,40 +288,57 @@ function createWindowModal({
     textContent: "✖",
   });
   Object.assign(close__box__button.style, {
+    position: "absolute",
+    top: "-10px",
+    right: "-10px",
+    background: "silver",
+    borderRadius: "50%",
+    width: "20px",
+    height: "20px",
+    cursor: "pointer",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    fontSize: "0.8rem",
     ...stylesClose,
   });
 
   close__box__button.addEventListener("click", () =>
-    animateTransitionProps(painter_wrapper_settings, {
+    animateTransitionProps(wrapper_settings, {
       opacity: 0,
     }).then(() => {
-      showHide({ elements: [painter_wrapper_settings] });
+      showHide({ elements: [wrapper_settings] });
     })
   );
 
-  painter_box__settings.append(
-    painter_box_settings_title,
-    painter_box_settings_body
-  );
+  close__box__button.onmouseenter = () => {
+    close__box__button.style.opacity = 0.8;
+  };
+
+  close__box__button.onmouseleave = () => {
+    close__box__button.style.opacity = 1;
+  };
+
+  box__settings.append(box_settings_title, box_settings_body);
 
   // Footer
   if (textFooter) {
-    const painter_box_settings_footer = makeElement("div", {
+    const box_settings_footer = makeElement("div", {
       class: [...classesFooter],
     });
-    Object.assign(painter_box_settings_footer.style, {
+    Object.assign(box_settings_footer.style, {
       ...stylesFooter,
     });
 
     // Add text (html) to body
-    addText(textFooter, painter_box_settings_footer);
+    addText(textFooter, box_settings_footer);
 
-    painter_box__settings.append(painter_box_settings_footer);
+    box__settings.append(box_settings_footer);
   }
 
-  painter_wrapper_settings.append(close__box__button, painter_box__settings);
+  wrapper_settings.append(close__box__button, box__settings);
 
-  return painter_wrapper_settings;
+  return wrapper_settings;
 }
 
 export {

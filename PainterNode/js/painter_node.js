@@ -2617,60 +2617,6 @@ app.registerExtension({
   .kistey_settings_body input[type="range"]::-webkit-slider-thumb:hover {
     background-color: rgb(49 49 49);
   }
-
-  /* Modal */
-  .painter__wrapper__window {
-    display: none;
-    position: absolute;
-    left: 50%; 
-    top: 50%; 
-    transform: translate(-50%, -50%); 
-    opacity: 0; transition: all .8s;
-    min-width: 200px;
-  }
-
-  .painter__window__box {
-    display: flex;
-    flex-direction: column;
-    background: #0e0e0e;
-    padding: 10px;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    text-align: center;
-    border-radius: 6px;
-    color: white;
-    border: 2px solid silver;
-    font-family: monospace;
-    box-shadow: 2px 2px 4px silver;
-  }
-
-  .close__box__button {
-    position: absolute;
-    top: -10px;
-    right: -10px;
-    background: silver;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 0.8rem;    
-  }
-
-  .close__box__button:hover {
-    opacity: 0.8;
-  }
-
-  .painter__window__body {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 5px;
-  }
-
   /* -- end Styles Settigs Kistey -- */  
 `;
     document.head.append(style);
