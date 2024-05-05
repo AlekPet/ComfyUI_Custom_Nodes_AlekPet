@@ -158,6 +158,26 @@ class Painter {
     return this.canvas;
   }
 
+  propertiesLS() {
+    const settingsNode = LS_Painters[this.node.name].settings;
+    // Save canvas to localStorage if not exists
+    if (typeof settingsNode?.lsSavePainter !== "boolean") {
+      settingsNode.lsSavePainter = true;
+    }
+
+    // Piping settings localStorage if not exists
+    if (!settingsNode?.pipingSettings) {
+      settingsNode.pipingSettings = {
+        action: {
+          name: "background",
+          options: {},
+        },
+        pipingChangeSize: true,
+        pipingUpdateImage: true,
+      };
+    }
+  }
+
   makeElements() {
     const panelPaintBox = document.createElement("div");
     panelPaintBox.innerHTML = `<div class="painter_manipulation_box" f_name="Locks" style="display:none;">
@@ -334,21 +354,11 @@ class Painter {
   }
 
   mainSettingsPiping() {
-    if (!LS_Painters[this.node.name].settings?.pipingSettings) {
-      LS_Painters[this.node.name].settings.pipingSettings = {
-        action: {
-          name: "background",
-          options: {},
-        },
-        pipingChangeSize: true,
-      };
-    }
-
     // LS change size piping
     const labelPipingChangeSize = makeElement("label", {
       textContent: "Change size:",
       style: "font-size: 10px; display: block;",
-      title: "Change size canvas piping image input",
+      title: "Change the canvas size equal to the input image",
     });
 
     this.pipingChangeSize = makeElement("input", {
@@ -367,6 +377,31 @@ class Painter {
     this.pipingChangeSize.customSize = { w: 10, h: 10, fs: 10 };
     labelPipingChangeSize.append(this.pipingChangeSize);
     // end - LS change size piping
+
+    // Piping update image
+    const labelPipingUpdateImage = makeElement("label", {
+      textContent: "Update image:",
+      style: "font-size: 10px; display: block;",
+      title:
+        "Update the image when generating (needed to avoid updating the mask)",
+    });
+
+    this.pipingUpdateImageCheckbox = makeElement("input", {
+      type: "checkbox",
+      class: ["pipingUpdateImage_checkbox"],
+      checked:
+        LS_Painters[this.node.name].settings?.pipingSettings
+          ?.pipingUpdateImage ?? true,
+      onchange: (e) => {
+        LS_Painters[this.node.name].settings.pipingSettings.pipingUpdateImage =
+          this.pipingUpdateImageCheckbox.checked;
+        LS_Save();
+      },
+    });
+
+    this.pipingUpdateImageCheckbox.customSize = { w: 10, h: 10, fs: 10 };
+    labelPipingUpdateImage.append(this.pipingUpdateImageCheckbox);
+    // end - Piping update image
 
     // === Settings box ===
 
@@ -474,7 +509,12 @@ class Painter {
 
     this.painter_wrapper_settings = createWindowModal({
       textTitle: "Settings",
-      textBody: [...radiosElements, other_options_radio, labelPipingChangeSize],
+      textBody: [
+        ...radiosElements,
+        other_options_radio,
+        labelPipingChangeSize,
+        labelPipingUpdateImage,
+      ],
       stylesBox: {
         borderColor: "#13e9c5ad",
         boxShadow: "2px 2px 4px #13e9c5ad",
@@ -1909,6 +1949,7 @@ function PainterWidget(node, inputName, inputData, app) {
   widget.painter_wrap = node.painter.canvas.wrapperEl;
   widget.parent = node;
 
+  node.painter.propertiesLS();
   node.painter.makeElements();
 
   document.body.appendChild(widget.painter_wrap);
@@ -1993,7 +2034,11 @@ function PainterWidget(node, inputName, inputData, app) {
 
   // Get piping image input, when node executing...
   api.addEventListener("executing", async ({ detail }) => {
-    if (+detail === node.id && node.isInputConnected(0)) {
+    if (
+      +detail === node.id &&
+      node.isInputConnected(0) &&
+      node.painter.pipingUpdateImageCheckbox.checked
+    ) {
       console.log(`Executing ${node.name}...`);
 
       function fetchData(url, options, timeout = 100) {
@@ -2066,7 +2111,6 @@ function PainterWidget(node, inputName, inputData, app) {
                 let { scale } =
                   LS_Painters[node.name].settings.pipingSettings.action.options;
 
-                console.log(scale);
                 if (typeof scale === "number") result.scale(scale);
 
                 node.painter.canvas.add(result);
@@ -2678,7 +2722,17 @@ app.registerExtension({
             undo_history: [],
             redo_history: [],
             canvas_settings: { background: "#000000" },
-            settings: {},
+            settings: {
+              lsSavePainter: true,
+              pipingSettings: {
+                action: {
+                  name: "background",
+                  options: {},
+                },
+                pipingChangeSize: true,
+                pipingUpdateImage: true,
+              },
+            },
           };
           LS_Save();
         }

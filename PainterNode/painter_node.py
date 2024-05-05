@@ -5,7 +5,7 @@ from server import PromptServer
 from aiohttp import web
 import base64
 from io import BytesIO
-import time
+import asyncio
 from PIL import Image, ImageOps
 import torch
 import numpy as np
@@ -90,7 +90,7 @@ async def check_canvas_changed(request):
     return web.json_response({"status": "Error"})
 
 @PromptServer.instance.routes.get("/alekpet/get_input_image/id={painter_id}&time={time}")
-def get_image(request):
+async def get_image(request):
     painter_id = request.match_info["painter_id"]
     if(painter_id is not None and painter_id in PAINTER_DICT):
         return web.json_response({"get_input_image": PAINTER_DICT[painter_id].input_images,})
@@ -98,13 +98,13 @@ def get_image(request):
     return web.json_response({"get_input_image": [],})    
 
 
-def wait_canvas_change(unique_id, time_out = 40):
+async def wait_canvas_change(unique_id, time_out = 40):
     for _ in range(time_out):
         if hasattr(PAINTER_DICT[unique_id], 'canvas_set') and PAINTER_DICT[unique_id].canvas_set == True:
             PAINTER_DICT[unique_id].canvas_set = False
             return True
         
-        time.sleep(0.1)
+        await asyncio.sleep(0.1)
         
     return False
 # end - Piping image
@@ -154,7 +154,7 @@ class PainterNode(object):
             PAINTER_DICT[unique_id].input_images = input_images
             PAINTER_DICT[unique_id].canvas_set = False     
             
-            if not wait_canvas_change(unique_id):
+            if not asyncio.run(wait_canvas_change(unique_id)):
                 print(f"Painter_{unique_id}: Failed to get image!")
             else:
                 print(f"Painter_{unique_id}: Image received, canvas changed!")
@@ -185,7 +185,7 @@ class PainterNode(object):
         with open(image_path, 'rb') as f:
             m.update(f.read())
             
-        return (float("nan"))
+        return float("nan")
 
 
     @classmethod
