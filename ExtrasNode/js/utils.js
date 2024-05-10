@@ -113,8 +113,17 @@ function animateTransitionProps(
   return new Promise((res) => {
     setTimeout(() => {
       Object.assign(el.style, props);
+
+      const transstart = () => (el.isAnimating = true);
+      const transchancel = () => (el.isAnimating = false);
+      el.addEventListener("transitionstart", transstart);
+      el.addEventListener("transitioncancel", transchancel);
+
       el.addEventListener("transitionend", function transend() {
+        el.isAnimating = false;
         el.removeEventListener("transitionend", transend);
+        el.removeEventListener("transitionend", transchancel);
+        el.removeEventListener("transitionend", transstart);
         res(el);
       });
     }, 100);
@@ -122,6 +131,8 @@ function animateTransitionProps(
 }
 
 function animateClick(target, opacityVal = 0.9) {
+  if (target?.isAnimating) return;
+
   const hide = +target.style.opacity === 0;
   animateTransitionProps(target, {
     opacity: hide ? opacityVal : 0,

@@ -111,22 +111,19 @@ async def wait_canvas_change(unique_id, time_out = 40):
 
 
 class PainterNode(object):
-    
-    def __init__(self):
-        self.input_images = list()
-        self.canvas_set = False
-    
+
     @classmethod
     def INPUT_TYPES(self):
+        self.input_images = list()
+        self.canvas_set = False
+
         work_dir = folder_paths.get_input_directory()
         imgs = [img for img in os.listdir(work_dir) if os.path.isfile(os.path.join(work_dir, img))]
+
         return {
-            "required":
-                    {"image": (sorted(imgs), )},
-            "hidden": {
-            "unique_id":"UNIQUE_ID",
-            },
-            "optional": { "images": ("IMAGE",)}
+            "required": { "image": (sorted(imgs), )},
+            "hidden": { "unique_id":"UNIQUE_ID", },
+            "optional": { "images": ("IMAGE",) }
             }
 
 
@@ -136,7 +133,7 @@ class PainterNode(object):
     CATEGORY = "AlekPet Nodes/image"
 
     def painter_execute(self, image, unique_id, images=None):
-        # Pipping image input
+        # Piping image input
         if unique_id not in PAINTER_DICT:
             PAINTER_DICT[unique_id] = self
             
@@ -158,7 +155,7 @@ class PainterNode(object):
                 print(f"Painter_{unique_id}: Failed to get image!")
             else:
                 print(f"Painter_{unique_id}: Image received, canvas changed!")
-        # end - Pipping image input                
+        # end - Piping image input                
       
         
         image_path = folder_paths.get_annotated_filepath(image)

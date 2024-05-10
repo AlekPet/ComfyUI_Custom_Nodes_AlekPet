@@ -283,31 +283,8 @@ class Painter {
       this.painter_settings_box,
     ] = this.painter_drawning_elements.children;
 
-    // LS save checkbox
-    const labelLSSave = makeElement("label", {
-      textContent: "LS Save:",
-      style: "font-size: 10px; display: block;",
-      title: "LocalStorage save canvas",
-    });
-
-    const checkBoxLSSave = makeElement("input", {
-      type: "checkbox",
-      class: ["lsSave_checkbox"],
-      checked: LS_Painters[this.node.name].settings?.lsSavePainter ?? true,
-      onchange: (e) => {
-        LS_Painters[this.node.name].settings.lsSavePainter =
-          checkBoxLSSave.checked;
-        LS_Save();
-      },
-    });
-
-    checkBoxLSSave.customSize = { w: 10, h: 10, fs: 10 };
-    labelLSSave.append(checkBoxLSSave);
-    this.painter_settings_box.append(labelLSSave);
-    // end - LS save checkbox
-
     // Setting pipping modal window
-    this.mainSettingsPiping();
+    this.mainSettings();
 
     this.change_mode = panelPaintBox.querySelector("#painter_change_mode");
     this.painter_shapes_box = panelPaintBox.querySelector(
@@ -353,11 +330,18 @@ class Painter {
     this.bindEvents();
   }
 
-  mainSettingsPiping() {
+  mainSettings() {
+    // Piping fieldset
+    const pipingSettingsBox = makeElement("fieldset", {
+      style:
+        "display: flex; flex-direction: column; gap: 5px; text-align: left; border-color: #0f84cd; border-radius: 4px;",
+      class: ["pipingSettingsBox"],
+    });
+
     // LS change size piping
     const labelPipingChangeSize = makeElement("label", {
       textContent: "Change size:",
-      style: "font-size: 10px; display: block;",
+      style: "font-size: 10px; display: block; text-align: right;",
       title: "Change the canvas size equal to the input image",
     });
 
@@ -381,7 +365,7 @@ class Painter {
     // Piping update image
     const labelPipingUpdateImage = makeElement("label", {
       textContent: "Update image:",
-      style: "font-size: 10px; display: block;",
+      style: "font-size: 10px; display: block; text-align: right;",
       title:
         "Update the image when generating (needed to avoid updating the mask)",
     });
@@ -413,16 +397,18 @@ class Painter {
         if (!other_options_radio.querySelector(".custom_options_piping_box")) {
           const custom_options_piping_box = makeElement("div", {
             class: ["custom_options_piping_box"],
-            style: "border: 1px solid lime; padding: 3px;",
+            style:
+              "border: 1px solid #0069ff; padding: 6px; display: flex; flex-direction: column; gap: 3px; justify-content: center; align-items: flex-end; text-align: right; border-radius: 6px;",
           });
 
+          // Scale option image
           const scale = makeElement("input", {
             type: "number",
             value:
               LS_Painters[this.node.name].settings.pipingSettings.action.options
                 .scale ?? 1.0,
             min: 0,
-            step: 0.1,
+            step: 0.01,
             style: "width: 30%;",
             onchange: (e) => {
               LS_Painters[
@@ -433,9 +419,33 @@ class Painter {
             },
           });
 
-          const scaleLabel = makeElement("label", { textContent: "Scale: " });
+          const scaleLabel = makeElement("label", {
+            textContent: "Scale: ",
+            title: "Change image size (default: 1)",
+          });
           scaleLabel.append(scale);
-          custom_options_piping_box.append(scaleLabel);
+
+          // sendToBack image canvas
+          const backwardsImage = makeElement("input", {
+            type: "checkbox",
+            checked:
+              LS_Painters[this.node.name].settings.pipingSettings.action.options
+                .sendToBack ?? true,
+            onchange: (e) => {
+              LS_Painters[
+                this.node.name
+              ].settings.pipingSettings.action.options.sendToBack =
+                e.currentTarget.checked;
+              LS_Save();
+            },
+          });
+          const sendToBackLabel = makeElement("label", {
+            textContent: "Send to back: ",
+            title: "Sending to back image on the canvas (default: true)",
+          });
+          sendToBackLabel.append(backwardsImage);
+
+          custom_options_piping_box.append(scaleLabel, sendToBackLabel);
 
           other_options_radio.append(custom_options_piping_box);
         }
@@ -507,32 +517,74 @@ class Painter {
       }
     });
 
+    pipingSettingsBox.append(
+      makeElement("legend", {
+        textContent: "Piping",
+        style: "color: rgb(15, 132, 205);",
+      }),
+      ...radiosElements,
+      other_options_radio,
+      labelPipingChangeSize,
+      labelPipingUpdateImage
+    );
+
+    // LocalStorage fieldset
+    const lSettingsBoxSettingsBox = makeElement("fieldset", {
+      style:
+        "display: flex; flex-direction: column; gap: 5px; text-align: left; border-color: #ffb710; border-radius: 4px;",
+      class: ["lSettingsBoxSettingsBox"],
+    });
+
+    const labelLSSave = makeElement("label", {
+      textContent: "Save canvas:",
+      style: "font-size: 10px; display: block; text-align: right;",
+      title: "Save canvas to local storage",
+    });
+
+    const checkBoxLSSave = makeElement("input", {
+      type: "checkbox",
+      class: ["lsSave_checkbox"],
+      checked: LS_Painters[this.node.name].settings?.lsSavePainter ?? true,
+      onchange: (e) => {
+        LS_Painters[this.node.name].settings.lsSavePainter =
+          checkBoxLSSave.checked;
+        LS_Save();
+      },
+      customSize: { w: 10, h: 10, fs: 10 },
+    });
+
+    labelLSSave.append(checkBoxLSSave);
+    lSettingsBoxSettingsBox.append(
+      makeElement("legend", {
+        textContent: "Local Storage",
+        style: "color: #ffb710;",
+      }),
+      labelLSSave
+    );
+    // end - LocalStorage fieldset
+
     this.painter_wrapper_settings = createWindowModal({
       textTitle: "Settings",
-      textBody: [
-        ...radiosElements,
-        other_options_radio,
-        labelPipingChangeSize,
-        labelPipingUpdateImage,
-      ],
+      textBody: [pipingSettingsBox, lSettingsBoxSettingsBox],
       stylesBox: {
         borderColor: "#13e9c5ad",
         boxShadow: "2px 2px 4px #13e9c5ad",
       },
       stylesClose: { background: "#13e9c5ad" },
-      stylesBody: { alignItems: "flex-start" },
+      stylesBody: { width: "100%", alignItems: "auto" },
     });
 
     this.canvas.wrapperEl.append(this.painter_wrapper_settings);
 
     // Settings piping button
-    this.painter_settings_box.append(
-      makeElement("button", {
-        style: "background: transparent;",
-        textContent: "🛠️",
-        onclick: (e) => animateClick(this.painter_wrapper_settings),
-      })
-    );
+    const mainSettingsNode = makeElement("button", {
+      style: "background: var(--comfy-input-bg);",
+      textContent: "Settings 🛠️",
+      title: "Show main settings model window",
+      onclick: (e) => animateClick(this.painter_wrapper_settings),
+      customSize: { w: 70, h: 25, fs: 10 },
+    });
+    this.painter_settings_box.append(mainSettingsNode);
     // === end - Settings box ===
   }
 
@@ -2108,13 +2160,13 @@ function PainterWidget(node, inputName, inputData, app) {
           switch (LS_Painters[node.name].settings.pipingSettings.action.name) {
             case "image":
               await new Promise(async (res) => {
-                let { scale } =
+                let { scale, sendToBack = true } =
                   LS_Painters[node.name].settings.pipingSettings.action.options;
 
                 if (typeof scale === "number") result.scale(scale);
 
                 node.painter.canvas.add(result);
-                node.painter.canvas.sendToBack(result);
+                sendToBack && node.painter.canvas.sendToBack(result);
                 node.painter.canvas.renderAll();
                 await node.painter.uploadPaintFile(node.name);
                 res(true);
