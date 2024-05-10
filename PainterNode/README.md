@@ -4,6 +4,8 @@
 
 ## Changelog:
 
+> 2024.05.10 - Implement piping in an image ([issue in an image](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/24)) ([example Piping in an image](#piping))
+
 > 2024.04.11 - Implement **MyPaint** brush tool ([issue MyPaint Brush make](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/36))
 
 > 2024.02.05 - Add Symmetry Brush and change structures toolbar options ([examle Symmetry Brush](#symmetry-brush))
@@ -93,3 +95,21 @@ npm run brushes
 ```
 
 ### Read more in file txt inside folder packs_brushes
+
+# Piping
+
+### Implemented the ability to connect an image to the PainterNode input, thereby creating piping in image.
+
+#### There are options to configure piping (button Settings):
+
+- Add as background
+- Add as image
+  - Size adjustment
+  - Send to back canvas
+
+### There are also options:
+
+- Change size (change the canvas size in accordance with piping in image at the input)
+- Update image (not update the images of the node with piping in image (**Note:** you must enable this option so that the mask does not change))
+
+![Screenshot Piping](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/PainterNode/pipingImage.jpg)
