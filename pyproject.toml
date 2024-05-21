@@ -1,0 +1,13 @@
+[project]
+name = "comfyui_custom_nodes_alekpet"
+description = "Nodes: PoseNode, PainterNode, TranslateTextNode, TranslateCLIPTextEncodeNode, DeepTranslatorTextNode, DeepTranslatorCLIPTextEncodeNode, ArgosTranslateTextNode, ArgosTranslateCLIPTextEncodeNode, PreviewTextNode."
+version = "1.0.0"
+license = "LICENSE"
+
+[project.urls]
+Repository = "https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet"
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "ComfyUI_Custom_Nodes_AlekPet"
+Icon = ""
