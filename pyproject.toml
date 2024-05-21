@@ -1,6 +1,6 @@
 [project]
 name = "comfyui_custom_nodes_alekpet"
-description = ""
+description = "Nodes: PoseNode, PainterNode, TranslateTextNode, TranslateCLIPTextEncodeNode, DeepTranslatorTextNode, DeepTranslatorCLIPTextEncodeNode, ArgosTranslateTextNode, ArgosTranslateCLIPTextEncodeNode, PreviewTextNode."
 version = "1.0.0"
 license = "LICENSE"
 
@@ -11,4 +11,3 @@ Repository = "https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet"
 PublisherId = ""
 DisplayName = "ComfyUI_Custom_Nodes_AlekPet"
 Icon = ""
-Models = [{location = "/checkpoints/model.safetensor", model_url = "https://example.com/model.zip"}]
