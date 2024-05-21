@@ -8,6 +8,6 @@ license = "LICENSE"
 Repository = "https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet"
 
 [tool.comfy]
-PublisherId = ""
+PublisherId = "alekpet"
 DisplayName = "ComfyUI_Custom_Nodes_AlekPet"
 Icon = ""
