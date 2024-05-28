@@ -182,7 +182,7 @@ class PainterNode(object):
         with open(image_path, 'rb') as f:
             m.update(f.read())
             
-        return float("nan")
+        return m.digest().hex()
 
 
     @classmethod

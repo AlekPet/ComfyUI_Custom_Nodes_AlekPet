@@ -101,7 +101,7 @@ else:
             if prop == "services":
                 services_prop = deep_config
                 CONFIG_SERVICES = deep_config
-            if prop == "proxyes":
+            if prop == "proxies":
                 CONFIG_PROXYES = deep_config          
             if prop == "settings":
                 CONFIG_SETTINGS = deep_config 
@@ -336,7 +336,7 @@ def deep_translator_function(from_translate, to_translate, add_proxies, proxies,
             if text:          
                 print(f"[Deep Translator] Service: \"{service}\"")                
                 # Proxy prop        
-                if add_proxies == "enable":
+                if add_proxies:
                     if isinstance(proxies, (str,)) and proxies.strip() != "":
                          prop_data.update(makeDictText("proxies", proxies, key_val_proxy_reg))
                          
@@ -366,10 +366,9 @@ def deep_translator_function(from_translate, to_translate, add_proxies, proxies,
                     print(f"Deep Translator] Service detect language disabled! Services support: {', '.join(tServices)}.\nThe selected service has its own way of detecting the language.\nProperty \"detect_lang_api_key\" in Authorization data is empty or incorrect!")
                         
                 log(f"[{service}] => Data: {prop_data}")
-                
-
+  
                 text_tranlsated = service_translate(service, text, from_translate, to_translate, prop_data)
-                        
+                  
                 if not text_tranlsated or text_tranlsated is None:
                     text_tranlsated = ""
                 elif isinstance(text_tranlsated, (tuple, list)):
@@ -385,8 +384,8 @@ def makeRequiredFields(langs_support=[]):
     params = {
             "from_translate": (['auto']+langs_support, {"default": "auto"}),
             "to_translate": (langs_support, {"default": "english"} ),
-            "add_proxies": (["enable", "disable"], {"default": "disable"} ),
-            "proxies": ("STRING", {"multiline": True, "placeholder": "Proxies list (http=proxy), example:\nhttps=34.195.196.27:8080\nhttp=34.195.196.27:8080"},),
+            "add_proxies": (([True, False],), {"default": False} ),
+            "proxies": ("STRING", {"multiline": True, "placeholder": "Proxies list (http=proxy), example:\nhttps=34.195.196.27:8080\nhttp=34.195.196.27:8080", "default": "" if len(CONFIG_PROXYES.values()) == 0 else "\n".join([f"{k.lower()}={p}" for k, p in CONFIG_PROXYES.items() if k.lower() in ("http", "https") and check_proxy_reg.search(p)])},),
             "auth_data":("STRING", {"multiline": True, "placeholder": "Authorization data...\nExample:\napi_key=your_api_key\ndetect_lang_api_key=your_api_key\nclient_id=your_client_id\nsecret_key=your_secret_key\nappid=your-appid\nappkey=your-appkey"},),
             "service": (),
             "text": ("STRING", {"multiline": True, "placeholder": "Input text"}),  
