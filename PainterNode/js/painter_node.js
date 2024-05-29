@@ -379,6 +379,12 @@ class Painter {
       onchange: (e) => {
         LS_Painters[this.node.name].settings.pipingSettings.pipingUpdateImage =
           this.pipingUpdateImageCheckbox.checked;
+
+        // Get hidden widget update_node
+        const update_node_widget = this.node.widgets.find(
+          (w) => w.name === "update_node"
+        );
+        update_node_widget.value = this.pipingUpdateImageCheckbox.checked;
         LS_Save();
       },
     });
@@ -2085,133 +2091,104 @@ function PainterWidget(node, inputName, inputData, app) {
   node.onConnectInput = () => console.log(`Connected input ${node.name}`);
 
   // Get piping image input, when node executing...
-  api.addEventListener("executing", async ({ detail }) => {
+  api.addEventListener("alekpet_get_image", async ({ detail }) => {
+    const { images, unique_id } = detail;
+
     if (
-      +detail === node.id &&
-      node.isInputConnected(0) &&
-      node.painter.pipingUpdateImageCheckbox.checked
+      !images.length ||
+      !node.painter.pipingUpdateImageCheckbox.checked ||
+      +unique_id !== node.id
     ) {
-      console.log(`Executing ${node.name}...`);
-
-      function fetchData(url, options, timeout = 100) {
-        return new Promise((resolve) => {
-          setTimeout(async () => {
-            const data = await fetch(url, { ...options });
-            resolve(await data.json());
-          }, timeout);
-        });
-      }
-
-      let resimg;
-      while (true) {
-        const dataJson = await new Promise(async (res) => {
-          const json = await fetchData(
-            `/alekpet/get_input_image/id=${node.id}&time=${Date.now()}`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (json?.get_input_image) {
-            res(json);
-          } else {
-            res(null);
-          }
-        });
-
-        if (dataJson?.get_input_image) {
-          resimg = dataJson;
-          break;
-        }
-      }
-
-      if (!resimg) {
-        console.error(`Error get input image ${node.name}!`);
-        return;
-      }
-
-      await new Promise((res) => {
-        const img = new Image();
-        img.onload = () => {
-          // Change size piping input image
-          const { naturalWidth: w, naturalHeight: h } = img;
-          if (
-            node.painter.pipingChangeSize.checked &&
-            (w !== node.painter.currentCanvasSize.width ||
-              h !== node.painter.currentCanvasSize.height)
-          ) {
-            node.painter.setCanvasSize(w, h);
-          }
-
-          const img_ = new fabric.Image(img, {
-            left: 0,
-            top: 0,
-            angle: 0,
-            strokeWidth: 1,
-          });
-          res(img_);
-        };
-        img.src = resimg.get_input_image[0];
-      })
-        .then(async (result) => {
-          switch (LS_Painters[node.name].settings.pipingSettings.action.name) {
-            case "image":
-              await new Promise(async (res) => {
-                let { scale, sendToBack = true } =
-                  LS_Painters[node.name].settings.pipingSettings.action.options;
-
-                if (typeof scale === "number") result.scale(scale);
-
-                node.painter.canvas.add(result);
-                sendToBack && node.painter.canvas.sendToBack(result);
-                node.painter.canvas.renderAll();
-                await node.painter.uploadPaintFile(node.name);
-                res(true);
-              });
-              break;
-            case "background":
-            default:
-              await new Promise((res) => {
-                node.painter.canvas.setBackgroundImage(
-                  result,
-                  async () => {
-                    node.painter.canvas.renderAll();
-                    await node.painter.uploadPaintFile(node.name);
-                    res(true);
-                  },
-                  {
-                    scaleX: node.painter.canvas.width / result.width,
-                    scaleY: node.painter.canvas.height / result.height,
-                    strokeWidth: 0,
-                  }
-                );
-              });
-          }
-        })
-        .then(() => {
-          api
-            .fetchApi("/alekpet/check_canvas_changed", {
-              method: "POST",
-              body: JSON.stringify({
-                painter_id: node.id.toString(),
-                is_ok: true,
-              }),
-            })
-            .then((res) => res.json())
-            .then((res) =>
-              res?.status === "Ok"
-                ? console.log(
-                    `%cChange canvas ${node.name}: ${res.status}`,
-                    "color: green; font-weight: 600;"
-                  )
-                : console.error(`Error change canvas: ${res.status}`)
-            )
-            .catch((err) => console.error(`Error change canvas: ${err}`));
-        });
+      return;
     }
+
+    await new Promise((res) => {
+      const img = new Image();
+      img.onload = () => {
+        // Change size piping input image
+        const { naturalWidth: w, naturalHeight: h } = img;
+        if (
+          node.painter.pipingChangeSize.checked &&
+          (w !== node.painter.currentCanvasSize.width ||
+            h !== node.painter.currentCanvasSize.height)
+        ) {
+          node.painter.setCanvasSize(w, h);
+        } else {
+          node.title = `${node.type} - ${node.painter.currentCanvasSize.width}x${node.painter.currentCanvasSize.height}`;
+        }
+
+        const img_ = new fabric.Image(img, {
+          left: 0,
+          top: 0,
+          angle: 0,
+          strokeWidth: 1,
+        });
+        res(img_);
+      };
+      img.src = images[0];
+    })
+      .then(async (result) => {
+        switch (LS_Painters[node.name].settings.pipingSettings.action.name) {
+          case "image":
+            await new Promise(async (res) => {
+              let { scale, sendToBack = true } =
+                LS_Painters[node.name].settings.pipingSettings.action.options;
+
+              if (typeof scale === "number") result.scale(scale);
+
+              node.painter.canvas.add(result);
+              sendToBack && node.painter.canvas.sendToBack(result);
+              node.painter.canvas.renderAll();
+
+              if (node.painter.mode) {
+                node.painter.viewListObjects(
+                  node.painter.list_objects_panel__items
+                );
+              }
+
+              await node.painter.uploadPaintFile(node.name);
+              res(true);
+            });
+            break;
+          case "background":
+          default:
+            await new Promise((res) => {
+              node.painter.canvas.setBackgroundImage(
+                result,
+                async () => {
+                  node.painter.canvas.renderAll();
+                  await node.painter.uploadPaintFile(node.name);
+                  res(true);
+                },
+                {
+                  scaleX: node.painter.canvas.width / result.width,
+                  scaleY: node.painter.canvas.height / result.height,
+                  strokeWidth: 0,
+                }
+              );
+            });
+        }
+      })
+      .then(() => {
+        api
+          .fetchApi("/alekpet/check_canvas_changed", {
+            method: "POST",
+            body: JSON.stringify({
+              unique_id: node.id.toString(),
+              is_ok: true,
+            }),
+          })
+          .then((res) => res.json())
+          .then((res) =>
+            res?.status === "Ok"
+              ? console.log(
+                  `%cChange canvas ${node.name}: ${res.status}`,
+                  "color: green; font-weight: 600;"
+                )
+              : console.error(`Error change canvas: ${res.status}`)
+          )
+          .catch((err) => console.error(`Error change canvas: ${err}`));
+      });
   });
 
   app.canvas.onDrawBackground = function () {
@@ -2761,11 +2738,14 @@ app.registerExtension({
           ? onNodeCreated.apply(this, arguments)
           : undefined;
 
-        let PainerNode = app.graph._nodes.filter(
-            (wi) => wi.type == "PainterNode"
-          ),
-          nodeName = `Paint_${PainerNode.length}`,
-          nodeNamePNG = `${nodeName}.png`;
+        // const node_title = await this.getTitle();
+        // const node_id = this.id; // used node id as image name,instead of PainterNode's quantity
+
+        const PainerNode = app.graph._nodes.filter(
+          (wi) => wi.type == "PainterNode"
+        );
+        const nodeName = `Paint_${PainerNode.length}`;
+        const nodeNamePNG = `${nodeName}.png`;
 
         console.log(`Create PainterNode: ${nodeName}`);
 
@@ -2787,6 +2767,23 @@ app.registerExtension({
             },
           };
           LS_Save();
+        }
+
+        // Wind widget update_node and hide him
+        for (const w of this.widgets) {
+          if (w.name === "update_node") {
+            w.type = "converted-widget";
+            w.value =
+              LS_Painters[
+                nodeNamePNG
+              ].settings.pipingSettings.pipingUpdateImage;
+            w.computeSize = () => [0, -4];
+            if (!w.linkedWidgets) continue;
+            for (const l of w.linkedWidgets) {
+              l.type = "converted-widget";
+              l.computeSize = () => [0, -4];
+            }
+          }
         }
 
         PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);

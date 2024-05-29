@@ -78,24 +78,18 @@ def toBase64ImgUrl(img):
     img_base64 = base64.b64encode(img_types)
     return f"data:image/png;base64,{img_base64.decode('utf-8')}"
 
+
 @PromptServer.instance.routes.post("/alekpet/check_canvas_changed")
 async def check_canvas_changed(request):
     json_data = await request.json()
-    painter_id = json_data.get("painter_id", None)
+    unique_id = json_data.get("unique_id", None)
     is_ok = json_data.get("is_ok", False)
-    if "painter_id" in json_data and painter_id is not None and painter_id in PAINTER_DICT and "is_ok" in json_data and is_ok == True:
-        PAINTER_DICT[painter_id].canvas_set = True
+
+    if unique_id is not None and unique_id in PAINTER_DICT and is_ok == True:
+        PAINTER_DICT[unique_id].canvas_set = True
         return web.json_response({"status": "Ok"})
     
     return web.json_response({"status": "Error"})
-
-@PromptServer.instance.routes.get("/alekpet/get_input_image/id={painter_id}&time={time}")
-async def get_image(request):
-    painter_id = request.match_info["painter_id"]
-    if(painter_id is not None and painter_id in PAINTER_DICT):
-        return web.json_response({"get_input_image": PAINTER_DICT[painter_id].input_images,})
-    
-    return web.json_response({"get_input_image": [],})    
 
 
 async def wait_canvas_change(unique_id, time_out = 40):
@@ -114,7 +108,6 @@ class PainterNode(object):
 
     @classmethod
     def INPUT_TYPES(self):
-        self.input_images = list()
         self.canvas_set = False
 
         work_dir = folder_paths.get_input_directory()
@@ -122,8 +115,8 @@ class PainterNode(object):
 
         return {
             "required": { "image": (sorted(imgs), )},
-            "hidden": { "unique_id":"UNIQUE_ID", },
-            "optional": { "images": ("IMAGE",) }
+            "hidden": { "unique_id": "UNIQUE_ID" },
+            "optional": { "images": ("IMAGE",), "update_node": (([True, False],))  }
             }
 
 
@@ -132,14 +125,13 @@ class PainterNode(object):
 
     CATEGORY = "AlekPet Nodes/image"
 
-    def painter_execute(self, image, unique_id, images=None):
+    def painter_execute(self, image, unique_id, update_node=True, images=None):
         # Piping image input
         if unique_id not in PAINTER_DICT:
             PAINTER_DICT[unique_id] = self
             
-        if images is not None:
+        if update_node == True and images is not None:
 
-            PAINTER_DICT[unique_id].input_images = None
             input_images = []
 
             for imgs in images:
@@ -147,10 +139,9 @@ class PainterNode(object):
                 i = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8)) 
                 input_images.append(toBase64ImgUrl(i))        
 
+            PAINTER_DICT[unique_id].canvas_set = False
 
-            PAINTER_DICT[unique_id].input_images = input_images
-            PAINTER_DICT[unique_id].canvas_set = False     
-            
+            PromptServer.instance.send_sync("alekpet_get_image", {"unique_id": unique_id, "images": input_images})
             if not asyncio.run(wait_canvas_change(unique_id)):
                 print(f"Painter_{unique_id}: Failed to get image!")
             else:
@@ -173,10 +164,7 @@ class PainterNode(object):
         return (image, mask.unsqueeze(0))
 
     @classmethod
-    def IS_CHANGED(self, image, unique_id, images=None):
-        if images is not None:  
-            PAINTER_DICT[unique_id].input_images = None
-        
+    def IS_CHANGED(self, image, unique_id, update_node=True, images=None):        
         image_path = folder_paths.get_annotated_filepath(image)
         m = hashlib.sha256()
         with open(image_path, 'rb') as f:
@@ -186,7 +174,7 @@ class PainterNode(object):
 
 
     @classmethod
-    def VALIDATE_INPUTS(self, image, unique_id, images=None):
+    def VALIDATE_INPUTS(self, image, unique_id, update_node=True, images=None):
         if not folder_paths.exists_annotated_filepath(image):
             return "Invalid image file: {}".format(image)
 
