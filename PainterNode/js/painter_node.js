@@ -2774,9 +2774,8 @@ app.registerExtension({
           if (w.name === "update_node") {
             w.type = "converted-widget";
             w.value =
-              LS_Painters[
-                nodeNamePNG
-              ].settings.pipingSettings.pipingUpdateImage;
+              LS_Painters[nodeNamePNG].settings?.pipingSettings
+                ?.pipingUpdateImage ?? true;
             w.computeSize = () => [0, -4];
             if (!w.linkedWidgets) continue;
             for (const l of w.linkedWidgets) {
