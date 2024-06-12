@@ -5,8 +5,8 @@
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
-import { app } from "/scripts/app.js";
-import { api } from "/scripts/api.js";
+import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
 import { fabric } from "./lib/painternode/fabric.js";
 import "./lib/painternode/mybrush.js";
 import { svgSymmetryButtons } from "./lib/painternode/brushes.js";

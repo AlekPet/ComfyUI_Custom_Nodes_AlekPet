@@ -1,5 +1,5 @@
-import { app } from "/scripts/app.js";
-import { api } from "/scripts/api.js";
+import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
 
 const findWidget = (node, name, attr = "name") =>
   node.widgets.find((w) => w[attr] === name);

@@ -1,5 +1,5 @@
-import { app } from "/scripts/app.js";
-import { api } from "/scripts/api.js";
+import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
 
 const properties_widget = {};
 const findWidget = (node, name, attr = "name", func = "find") =>
