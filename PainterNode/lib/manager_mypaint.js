@@ -542,28 +542,23 @@ class MyPaintManager {
       DefaultSize: {
         name: "default size",
         checked:
-          window.LS_Painters[this.painterNode.node.name].settings
-            ?.mypaint_settings?.preset_brush_size ?? true,
+          this.painterNode.node.LS_Painters.settings?.mypaint_settings
+            ?.preset_brush_size ?? true,
         type: "checkbox",
         title: "Apply size from brush settings",
         events: {
           change: (e) => {
-            const lsPainter =
-              window.LS_Painters[this.painterNode.node.name].settings;
+            const lsPainter = this.painterNode.node.LS_Painters.settings;
             if (!lsPainter.hasOwnProperty("mypaint_settings"))
-              window.LS_Painters[
-                this.painterNode.node.name
-              ].settings.mypaint_settings = {};
+              lsPainter.mypaint_settings = {};
 
-            window.LS_Painters[
-              this.painterNode.node.name
-            ].settings.mypaint_settings.preset_brush_size =
+            lsPainter.mypaint_settings.preset_brush_size =
               this.checkbox_brush_default_size.checked;
 
             // Save to localStorage
             localStorage.setItem(
-              "ComfyUI_Painter",
-              JSON.stringify(window.LS_Painters)
+              this.painterNode.node.name,
+              JSON.stringify(this.painterNode.node.LS_Painters)
             );
           },
         },
@@ -571,28 +566,23 @@ class MyPaintManager {
       DefaultColor: {
         name: "default color",
         checked:
-          window.LS_Painters[this.painterNode.node.name].settings
-            ?.mypaint_settings?.preset_brush_color ?? false,
+          this.painterNode.node.LS_Painters.settings?.mypaint_settings
+            ?.preset_brush_color ?? false,
         type: "checkbox",
         title: "Apply color from brush settings",
         events: {
           change: (e) => {
-            const lsPainter =
-              window.LS_Painters[this.painterNode.node.name].settings;
+            const lsPainter = this.painterNode.node.LS_Painters.settings;
             if (!lsPainter.hasOwnProperty("mypaint_settings"))
-              window.LS_Painters[
-                this.painterNode.node.name
-              ].settings.mypaint_settings = {};
+              lsPainter.mypaint_settings = {};
 
-            window.LS_Painters[
-              this.painterNode.node.name
-            ].settings.mypaint_settings.preset_brush_color =
+            lsPainter.mypaint_settings.preset_brush_color =
               this.checkbox_brush_default_color.checked;
 
             // Save to localStorage
             localStorage.setItem(
-              "ComfyUI_Painter",
-              JSON.stringify(window.LS_Painters)
+              this.painterNode.node.name,
+              JSON.stringify(this.painterNode.node.LS_Painters)
             );
           },
         },

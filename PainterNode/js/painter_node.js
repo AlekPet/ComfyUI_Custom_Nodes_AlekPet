@@ -17,6 +17,7 @@ import {
   makeModal,
   animateClick,
   createWindowModal,
+  isEmptyObject,
 } from "./utils.js";
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
@@ -47,13 +48,12 @@ function removeObject(eventData, transform) {
   this.viewListObjects(this.list_objects_panel__items);
 }
 
-window.LS_Painters = {};
-function LS_Save() {
+function LS_Save(name, obj) {
   try {
     if (painters_settings_json) {
       saveData();
     } else {
-      localStorage.setItem("ComfyUI_Painter", JSON.stringify(LS_Painters));
+      localStorage.setItem(name, JSON.stringify(obj));
     }
   } catch (error) {
     console.error("LS Save: ", error);
@@ -85,8 +85,8 @@ class Painter {
     this.undo_history = [];
     this.redo_history = [];
 
-    // this.undo_history = LS_Painters[node.name].undo_history || [];
-    // this.redo_history = LS_Painters[node.name].redo_history || [];
+    // this.undo_history = this.node.LS_Painters.undo_history || [];
+    // this.redo_history = this.node.LS_Painters.redo_history || [];
 
     this.fonts = {
       Arial: "arial",
@@ -159,7 +159,7 @@ class Painter {
   }
 
   propertiesLS() {
-    const settingsNode = LS_Painters[this.node.name].settings;
+    const settingsNode = this.node.LS_Painters.settings;
     // Save canvas to localStorage if not exists
     if (typeof settingsNode?.lsSavePainter !== "boolean") {
       settingsNode.lsSavePainter = true;
@@ -349,12 +349,12 @@ class Painter {
       type: "checkbox",
       class: ["pipingChangeSize_checkbox"],
       checked:
-        LS_Painters[this.node.name].settings?.pipingSettings
-          ?.pipingChangeSize ?? true,
+        this.node.LS_Painters.settings?.pipingSettings?.pipingChangeSize ??
+        true,
       onchange: (e) => {
-        LS_Painters[this.node.name].settings.pipingSettings.pipingChangeSize =
+        this.node.LS_Painters.settings.pipingSettings.pipingChangeSize =
           this.pipingChangeSize.checked;
-        LS_Save();
+        LS_Save(this.node.name, this.node.LS_Painters);
       },
     });
 
@@ -374,10 +374,10 @@ class Painter {
       type: "checkbox",
       class: ["pipingUpdateImage_checkbox"],
       checked:
-        LS_Painters[this.node.name].settings?.pipingSettings
-          ?.pipingUpdateImage ?? true,
+        this.node.LS_Painters.settings?.pipingSettings?.pipingUpdateImage ??
+        true,
       onchange: (e) => {
-        LS_Painters[this.node.name].settings.pipingSettings.pipingUpdateImage =
+        this.node.LS_Painters.settings.pipingSettings.pipingUpdateImage =
           this.pipingUpdateImageCheckbox.checked;
 
         // Get hidden widget update_node
@@ -385,7 +385,7 @@ class Painter {
           (w) => w.name === "update_node"
         );
         update_node_widget.value = this.pipingUpdateImageCheckbox.checked;
-        LS_Save();
+        LS_Save(this.node.name, this.node.LS_Painters);
       },
     });
 
@@ -411,17 +411,15 @@ class Painter {
           const scale = makeElement("input", {
             type: "number",
             value:
-              LS_Painters[this.node.name].settings.pipingSettings.action.options
+              this.node.LS_Painters.settings.pipingSettings.action.options
                 .scale ?? 1.0,
             min: 0,
             step: 0.01,
             style: "width: 30%;",
             onchange: (e) => {
-              LS_Painters[
-                this.node.name
-              ].settings.pipingSettings.action.options.scale =
+              this.node.LS_Painters.settings.pipingSettings.action.options.scale =
                 +e.currentTarget.value;
-              LS_Save();
+              LS_Save(this.node.name, this.node.LS_Painters);
             },
           });
 
@@ -435,14 +433,12 @@ class Painter {
           const backwardsImage = makeElement("input", {
             type: "checkbox",
             checked:
-              LS_Painters[this.node.name].settings.pipingSettings.action.options
+              this.node.LS_Painters.settings.pipingSettings.action.options
                 .sendToBack ?? true,
             onchange: (e) => {
-              LS_Painters[
-                this.node.name
-              ].settings.pipingSettings.action.options.sendToBack =
+              this.node.LS_Painters.settings.pipingSettings.action.options.sendToBack =
                 e.currentTarget.checked;
-              LS_Save();
+              LS_Save(this.node.name, this.node.LS_Painters);
             },
           });
           const sendToBackLabel = makeElement("label", {
@@ -463,9 +459,9 @@ class Painter {
       const { currentTarget } = e;
       checkRadioOptionsSelect.call(this, currentTarget);
 
-      LS_Painters[this.node.name].settings.pipingSettings.action.name =
+      this.node.LS_Painters.settings.pipingSettings.action.name =
         currentTarget.value;
-      LS_Save();
+      LS_Save(this.node.name, this.node.LS_Painters);
     }
 
     const radio_name = `painter_radio_piping_${this.node.name.replace(
@@ -514,10 +510,7 @@ class Painter {
       radioBox.append(labelRadio);
       radiosElements.push(radioBox);
 
-      if (
-        LS_Painters[this.node.name].settings.pipingSettings.action.name ===
-        value
-      ) {
+      if (this.node.LS_Painters.settings.pipingSettings.action.name === value) {
         radEl.checked = true;
         checkRadioOptionsSelect.call(this, radEl);
       }
@@ -550,11 +543,10 @@ class Painter {
     const checkBoxLSSave = makeElement("input", {
       type: "checkbox",
       class: ["lsSave_checkbox"],
-      checked: LS_Painters[this.node.name].settings?.lsSavePainter ?? true,
+      checked: this.node.LS_Painters.settings?.lsSavePainter ?? true,
       onchange: (e) => {
-        LS_Painters[this.node.name].settings.lsSavePainter =
-          checkBoxLSSave.checked;
-        LS_Save();
+        this.node.LS_Painters.settings.lsSavePainter = checkBoxLSSave.checked;
+        LS_Save(this.node.name, this.node.LS_Painters);
       },
       customSize: { w: 10, h: 10, fs: 10 },
     });
@@ -985,13 +977,13 @@ class Painter {
     });
 
     this.currentCanvasSize = { width: new_width, height: new_height };
-    LS_Painters[this.node.name].settings["currentCanvasSize"] =
+    this.node.LS_Painters.settings["currentCanvasSize"] =
       this.currentCanvasSize;
     this.node.title = `${this.node.type} - ${new_width}x${new_height}`;
     this.canvas.renderAll();
     app.graph.setDirtyCanvas(true, false);
     this.node.onResize();
-    LS_Save();
+    LS_Save(this.node.name, this.node.LS_Painters);
   }
 
   setDefaultValuesInputs() {
@@ -1710,19 +1702,19 @@ class Painter {
 
   // Save canvas data to localStorage or JSON
   canvasSaveSettingsPainter() {
-    if (!LS_Painters[this.node.name].settings.lsSavePainter) return;
+    if (!this.node.LS_Painters.settings.lsSavePainter) return;
 
     try {
       const data = this.canvas.toJSON(["mypaintlib"]);
-      if (LS_Painters && LS_Painters.hasOwnProperty(this.node.name)) {
-        LS_Painters[this.node.name].canvas_settings = painters_settings_json
+      if (this.node.LS_Painters && !isEmptyObject(this.node.LS_Painters)) {
+        this.node.LS_Painters.canvas_settings = painters_settings_json
           ? data
           : JSON.stringify(data);
 
-        LS_Painters[this.node.name].settings["currentCanvasSize"] =
+        this.node.LS_Painters.settings["currentCanvasSize"] =
           this.currentCanvasSize;
 
-        LS_Save();
+        LS_Save(this.node.name, this.node.LS_Painters);
       }
     } catch (e) {
       console.error(e);
@@ -1755,15 +1747,14 @@ class Painter {
   canvasLoadSettingPainter() {
     try {
       if (
-        LS_Painters &&
-        LS_Painters.hasOwnProperty(this.node.name) &&
-        LS_Painters[this.node.name].hasOwnProperty("canvas_settings")
+        this.node.LS_Painters &&
+        this.node.LS_Painters.hasOwnProperty("canvas_settings")
       ) {
         const data =
-          typeof LS_Painters[this.node.name] === "string" ||
-          LS_Painters[this.node.name] instanceof String
-            ? JSON.parse(LS_Painters[this.node.name])
-            : LS_Painters[this.node.name];
+          typeof this.node.LS_Painters === "string" ||
+          this.node.LS_Painters instanceof String
+            ? JSON.parse(this.node.LS_Painters)
+            : this.node.LS_Painters;
         this.setCanvasLoadData(data);
         this.addToHistory();
       }
@@ -2021,9 +2012,9 @@ function PainterWidget(node, inputName, inputData, app) {
   node.addCustomWidget(widget);
 
   node.onRemoved = () => {
-    if (Object.hasOwn(LS_Painters, node.name)) {
-      delete LS_Painters[node.name];
-      LS_Save();
+    if (this.LS_Painters && !isEmptyObject(this.LS_Painters)) {
+      localStorage.removeItem(this.name);
+      console.log(`Removed PainterNode: ${this.name}`);
     }
 
     // When removing this node we need to remove the input from the DOM
@@ -2128,11 +2119,11 @@ function PainterWidget(node, inputName, inputData, app) {
       img.src = images[0];
     })
       .then(async (result) => {
-        switch (LS_Painters[node.name].settings.pipingSettings.action.name) {
+        switch (this.LS_Painters.settings.pipingSettings.action.name) {
           case "image":
             await new Promise(async (res) => {
               let { scale, sendToBack = true } =
-                LS_Painters[node.name].settings.pipingSettings.action.options;
+                this.LS_Painters.settings.pipingSettings.action.options;
 
               if (typeof scale === "number") result.scale(scale);
 
@@ -2220,7 +2211,7 @@ async function saveData() {
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(LS_Painters),
+      body: JSON.stringify(this.LS_Painters),
     });
     if (rawResponse.status !== 200)
       throw new Error(`Error painter save settings: ${rawResponse.statusText}`);
@@ -2700,9 +2691,14 @@ app.registerExtension({
     if (PainerNode.length) {
       PainerNode.map((n) => {
         console.log(`Setup PainterNode: ${n.name}`);
-        let widgetImage = n.widgets.find((w) => w.name == "image");
-        if (widgetImage && Object.hasOwn(LS_Painters, n.name)) {
-          const painter_ls = LS_Painters[n.name];
+        const widgetImage = n.widgets.find((w) => w.name == "image");
+        let painter_ls = localStorage.getItem(n.name);
+
+        if (painter_ls && typeof lsData === "string") {
+          painter_ls = JSON.parse(painter_ls);
+        }
+
+        if (widgetImage && painter_ls && !isEmptyObject(painter_ls)) {
           painter_ls.hasOwnProperty("objects_canvas") &&
             delete painter_ls.objects_canvas; // remove old property
           n.painter.canvasLoadSettingPainter();
@@ -2712,25 +2708,6 @@ app.registerExtension({
   },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === "PainterNode") {
-      // Get settings node
-      if (painters_settings_json) {
-        const message = createMessage(
-          "Loading",
-          "Please wait, <span style='font-weight: bold; color: orange'>Painter node</span> settings are loading. Loading times may take a long time if large images have been added to the canvas!"
-        );
-        LS_Painters = await loadData();
-        document.body.removeChild(message);
-      } else {
-        LS_Painters =
-          localStorage.getItem("ComfyUI_Painter") &&
-          JSON.parse(localStorage.getItem("ComfyUI_Painter"));
-
-        if (!LS_Painters || LS_Painters === undefined) {
-          localStorage.setItem("ComfyUI_Painter", JSON.stringify({}));
-          LS_Painters = JSON.parse(localStorage.getItem("ComfyUI_Painter"));
-        }
-      }
-
       // Create node
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = async function () {
@@ -2749,8 +2726,27 @@ app.registerExtension({
 
         console.log(`Create PainterNode: ${nodeName}`);
 
-        if (LS_Painters && !Object.hasOwn(LS_Painters, nodeNamePNG)) {
-          LS_Painters[nodeNamePNG] = {
+        // Get settings node
+        if (painters_settings_json) {
+          const message = createMessage(
+            "Loading",
+            "Please wait, <span style='font-weight: bold; color: orange'>Painter node</span> settings are loading. Loading times may take a long time if large images have been added to the canvas!"
+          );
+          this.LS_Painters = await loadData();
+          document.body.removeChild(message);
+        } else {
+          this.LS_Painters =
+            localStorage.getItem(nodeNamePNG) &&
+            JSON.parse(localStorage.getItem(nodeNamePNG));
+
+          if (!this.LS_Painters) {
+            localStorage.setItem(nodeNamePNG, JSON.stringify({}));
+            this.LS_Painters = JSON.parse(localStorage.getItem(nodeNamePNG));
+          }
+        }
+
+        if (this.LS_Painters && isEmptyObject(this.LS_Painters)) {
+          this.LS_Painters = {
             undo_history: [],
             redo_history: [],
             canvas_settings: { background: "#000000" },
@@ -2766,7 +2762,7 @@ app.registerExtension({
               },
             },
           };
-          LS_Save();
+          LS_Save(nodeNamePNG, this.LS_Painters);
         }
 
         // Wind widget update_node and hide him
@@ -2774,8 +2770,8 @@ app.registerExtension({
           if (w.name === "update_node") {
             w.type = "converted-widget";
             w.value =
-              LS_Painters[nodeNamePNG].settings?.pipingSettings
-                ?.pipingUpdateImage ?? true;
+              this.LS_Painters.settings?.pipingSettings?.pipingUpdateImage ??
+              true;
             w.computeSize = () => [0, -4];
             if (!w.linkedWidgets) continue;
             for (const l of w.linkedWidgets) {
@@ -2788,11 +2784,11 @@ app.registerExtension({
         PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
         setTimeout(() => {
           if (
-            LS_Painters.hasOwnProperty(nodeNamePNG) &&
-            LS_Painters[nodeNamePNG]?.settings?.currentCanvasSize
+            this.LS_Painters &&
+            this.LS_Painters?.settings?.currentCanvasSize
           ) {
             this.painter.currentCanvasSize =
-              LS_Painters[nodeNamePNG].settings.currentCanvasSize;
+              this.LS_Painters.settings.currentCanvasSize;
 
             this.painter.setCanvasSize(
               this.painter.currentCanvasSize.width,

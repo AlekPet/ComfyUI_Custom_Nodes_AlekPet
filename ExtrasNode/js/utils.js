@@ -150,6 +150,11 @@ function showHide({ elements = [], hide = null, displayProp = "block" } = {}) {
   });
 }
 
+function isEmptyObject(obj) {
+  if (!obj) return true;
+  return Object.keys(obj).length === 0 && obj.constructor === Object;
+}
+
 function makeElement(tag, attrs = {}) {
   if (!tag) tag = "div";
   const element = document.createElement(tag);
@@ -360,4 +365,5 @@ export {
   showHide,
   makeElement,
   getDataJSON,
+  isEmptyObject,
 };
