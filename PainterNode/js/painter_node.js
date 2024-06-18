@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2024.05.10
+ * Version: 2024.06.18
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -18,11 +18,12 @@ import {
   animateClick,
   createWindowModal,
   isEmptyObject,
+  animateTransitionProps,
 } from "./utils.js";
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
-const painters_settings_json = false; // save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
+const painters_settings_json = !false; // save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
 const removeIcon =
   "data:image/svg+xml,%3Csvg version='1.1' id='Ebene_1' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3C/defs%3E%3Crect x='125.3' y='264.6' width='350.378' height='349.569' style='fill: rgb(237, 0, 0); stroke: rgb(197, 2, 2);' rx='58.194' ry='58.194'%3E%3C/rect%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18' rx='32.772' ry='32.772'%3E%3C/rect%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179' rx='32.772' ry='32.772'%3E%3C/rect%3E%3C/g%3E%3C/svg%3E";
 
@@ -2008,6 +2009,8 @@ function PainterWidget(node, inputName, inputData, app) {
   widget.painter_wrap = node.painter.canvas.wrapperEl;
   widget.parent = node;
 
+  node.painter.image.value = node.name;
+
   node.painter.propertiesLS();
   node.painter.makeElements();
 
@@ -2022,11 +2025,7 @@ function PainterWidget(node, inputName, inputData, app) {
   node.addCustomWidget(widget);
 
   node.onRemoved = () => {
-    if (this.LS_Painters && !isEmptyObject(this.LS_Painters)) {
-      localStorage.removeItem(this.name);
-      console.log(`Removed PainterNode: ${this.name}`);
-    }
-
+    this.LS_Cls.removeData();
     // When removing this node we need to remove the input from the DOM
     for (let y in node.widgets) {
       if (node.widgets[y].painter_wrap) {
@@ -2208,44 +2207,14 @@ function PainterWidget(node, inputName, inputData, app) {
     }
   };
 
+  app.graph.setDirtyCanvas(true, false);
+  node.onResize();
+
   return { widget: widget };
 }
 // ================= END CREATE PAINTER WIDGET ============
 
 // ================= CREATE EXTENSION ================
-async function saveData(data) {
-  try {
-    const rawResponse = await fetch("/alekpet/save_node_settings", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-    if (rawResponse.status !== 200)
-      throw new Error(`Error painter save settings: ${rawResponse.statusText}`);
-  } catch (e) {
-    console.log(`Error painter save settings: ${e}`);
-  }
-}
-
-async function loadData() {
-  try {
-    const rawResponse = await api.fetchApi("/alekpet/loading_node_settings");
-    if (rawResponse.status !== 200)
-      throw new Error(`Error painter save settings: ${rawResponse.statusText}`);
-
-    const data = await rawResponse?.json();
-    if (!data) return {};
-
-    return data.settings_nodes;
-  } catch (e) {
-    console.log(`Error painter load settings: ${e}`);
-    return {};
-  }
-}
-
 function createMessage(title, decriptions, parent, func) {
   const message = document.createElement("div");
   message.className = "show_message_info";
@@ -2266,9 +2235,11 @@ box-shadow: 3px 3px 6px #141414;
 border: 1px solid #f91b1b;
 color: white; 
 padding: 6px;
-opacity: .8;
+opacity: 1;
 font-family: sans-serif;
-line-height: 1.5`;
+line-height: 1.5;
+transition: all 1s;`;
+
   message.innerHTML = `<div style="background: #8f210f; padding: 5px; border-radius: 6px; margin-bottom: 5px;">${title}</div><div>${decriptions}</div>`;
   parent && parent?.nodeType && parent.nodeType === 1
     ? parent.appendChild(message)
@@ -2296,19 +2267,29 @@ class LS_Class {
     return this.LS_Painters;
   }
 
-  async LS_Init() {
+  async LS_Init(context = null) {
     // Get settings node
     if (painters_settings_json) {
+      const parent = context.painter.canvas.wrapperEl;
       const message = createMessage(
         "Loading",
-        "Please wait, <span style='font-weight: bold; color: orange'>Painter node</span> settings are loading. Loading times may take a long time if large images have been added to the canvas!"
+        "Please wait, <span style='font-weight: bold; color: orange'>Painter node</span> settings are loading. Loading times may take a long time if large images have been added to the canvas!",
+        parent
       );
-      this.LS_Painters = await loadData();
-      document.body.removeChild(message);
+
+      this.LS_Painters = await this.loadData();
+      setTimeout(
+        () =>
+          animateTransitionProps(
+            message,
+            { opacity: 0 },
+            { display: "flex" }
+          ).then(() => parent.removeChild(message)),
+        500
+      );
     } else {
-      this.LS_Painters =
-        localStorage.getItem(this.name) &&
-        JSON.parse(localStorage.getItem(this.name));
+      const lsPainter = localStorage.getItem(this.name);
+      this.LS_Painters = lsPainter && JSON.parse(lsPainter);
 
       if (!this.LS_Painters) {
         localStorage.setItem(this.name, JSON.stringify({}));
@@ -2340,12 +2321,87 @@ class LS_Class {
   LS_Save() {
     try {
       if (painters_settings_json) {
-        saveData(this.LS_Painters);
+        this.saveData();
       } else {
         localStorage.setItem(this.name, JSON.stringify(this.LS_Painters));
       }
     } catch (error) {
       console.error("LS Save: ", error);
+    }
+  }
+
+  // Write settings in the file json
+  async saveData() {
+    try {
+      const formData = new FormData();
+      formData.append("name", this.name);
+      formData.append(
+        "data",
+        new Blob([JSON.stringify(this.LS_Painters)], {
+          type: "application/json",
+        })
+      );
+
+      const rawResponse = await fetch("/alekpet/save_node_settings", {
+        method: "POST",
+        body: formData,
+      });
+      if (rawResponse.status !== 200) {
+        throw new Error(
+          `Error painter save file settings ${rawResponse.statusText}`
+        );
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  // Load settings from json file
+  async loadData() {
+    try {
+      const rawResponse = await api.fetchApi(
+        `/alekpet/loading_node_settings/${this.name}`
+      );
+      if (rawResponse.status !== 200)
+        throw new Error(
+          `Error painter load file settings: ${rawResponse.statusText}`
+        );
+
+      const data = await rawResponse?.json();
+      if (!data) return {};
+
+      return data.settings_nodes;
+    } catch (e) {
+      console.log(e);
+      return {};
+    }
+  }
+
+  // Remove settings from json file
+  async removeData() {
+    try {
+      if (painters_settings_json) {
+        const rawResponse = await fetch("/alekpet/remove_node_settings", {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name: this.name }),
+        });
+
+        if (rawResponse.status !== 200)
+          throw new Error(
+            `Error painter remove file settings: ${rawResponse.statusText}`
+          );
+      } else {
+        if (this.LS_Painters && !isEmptyObject(this.LS_Painters)) {
+          localStorage.removeItem(this.name);
+        }
+      }
+      console.log(`Removed PainterNode: ${this.name}`);
+    } catch (e) {
+      console.log(e);
     }
   }
 }
@@ -2768,10 +2824,11 @@ app.registerExtension({
     let PainerNode = app.graph._nodes.filter((wi) => wi.type == "PainterNode");
 
     if (PainerNode.length) {
-      PainerNode.map((n) => {
+      PainerNode.map(async (n) => {
         console.log(`Setup PainterNode: ${n.name}`);
         const widgetImage = n.widgets.find((w) => w.name == "image");
-        let painter_ls = localStorage.getItem(n.name);
+        await n.LS_Cls.LS_Init(n);
+        let painter_ls = n.LS_Cls.LS_Painters;
 
         if (painter_ls && typeof lsData === "string") {
           painter_ls = JSON.parse(painter_ls);
@@ -2780,7 +2837,17 @@ app.registerExtension({
         if (widgetImage && painter_ls && !isEmptyObject(painter_ls)) {
           painter_ls.hasOwnProperty("objects_canvas") &&
             delete painter_ls.objects_canvas; // remove old property
+
+          if (painter_ls?.settings?.currentCanvasSize) {
+            n.painter.currentCanvasSize = painter_ls.settings.currentCanvasSize;
+
+            n.painter.setCanvasSize(
+              n.painter.currentCanvasSize.width,
+              n.painter.currentCanvasSize.height
+            );
+          }
           n.painter.canvasLoadSettingPainter();
+          n.painter.uploadPaintFile(n.name);
         }
       });
     }
@@ -2807,7 +2874,6 @@ app.registerExtension({
         console.log(`Create PainterNode: ${nodeName}`);
 
         this.LS_Cls = new LS_Class(nodeNamePNG);
-        await this.LS_Cls.LS_Init();
 
         // Wind widget update_node and hide him
         for (const w of this.widgets) {
@@ -2826,18 +2892,6 @@ app.registerExtension({
         }
 
         PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
-        // setTimeout(() => {
-        if (this.LS_Painters && this.LS_Painters?.settings?.currentCanvasSize) {
-          this.painter.currentCanvasSize =
-            this.LS_Painters.settings.currentCanvasSize;
-
-          this.painter.setCanvasSize(
-            this.painter.currentCanvasSize.width,
-            this.painter.currentCanvasSize.height
-          );
-        }
-        this.painter.uploadPaintFile(nodeNamePNG);
-        // }, 1);
 
         return r;
       };

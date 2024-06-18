@@ -15,18 +15,45 @@ import folder_paths
 CHUNK_SIZE = 1024
 dir_painter_node = os.path.dirname(__file__)
 extension_path = os.path.join(os.path.abspath(dir_painter_node))
-file_settings_path = os.path.join(extension_path,"settings_nodes.json")
+nodes_settings_path = os.path.join(extension_path,"settings_nodes")
+
+
+# Create directory settings_nodes if not exists
+if not os.path.exists(nodes_settings_path):
+    os.mkdir(nodes_settings_path)
+
+    tipsfile = os.path.join(nodes_settings_path, "Stores painter nodes settings.txt")
+    with open(tipsfile, "w+", encoding="utf-8") as tipsfile:
+        tipsfile.write("Painter node saved settings!")
+
 
 # Function create file json file
-def create_settings_json(filename="settings_nodes.json"):
-    json_file = os.path.join(extension_path, filename)
-    if not os.path.exists(json_file):
-        print("File settings_nodes.json is not found! Create file!")
-        with open(json_file, "w") as f:
-            json.dump({}, f)
- 
-def get_settings_json(filename="settings_nodes.json", notExistCreate=True):
-    json_file = os.path.join(extension_path, filename)
+PREFIX = "_setting.json"
+
+def isFileName(filename):
+    if not filename and filename is not None and (type(filename) == str and filename.strip() == ""):
+        print("Filename is incorrect")
+        return False
+    return True
+
+
+def create_settings_json(filename):
+    try:        
+        json_file = os.path.join(nodes_settings_path, filename)
+        if not os.path.isfile(json_file):
+            print(f"File settings for '{filename}' is not found! Create file!")
+            with open(json_file, "w") as f:
+                json.dump({}, f)
+
+    except Exception as e:
+        print(f"Error: ${e}")
+
+
+def get_settings_json(filename, notExistCreate=True):
+    if not isFileName(filename):
+        return {}
+    
+    json_file = os.path.join(nodes_settings_path, filename)
     if os.path.isfile(json_file):
         f = open(json_file, "rb")
         try:
@@ -37,36 +64,83 @@ def get_settings_json(filename="settings_nodes.json", notExistCreate=True):
             if notExistCreate:
                 f.close()
                 os.remove(json_file)
-                create_settings_json()
+                create_settings_json(filename)
         finally:
             f.close()
+    else:
+        create_settings_json(filename)
             
     return {}    
 
+
 # Load json file       
-@PromptServer.instance.routes.get("/alekpet/loading_node_settings")
+@PromptServer.instance.routes.get("/alekpet/loading_node_settings/{nodeName}")
 async def loadingSettings(request):
-    load_data = get_settings_json()                           
+    filename = request.match_info.get("nodeName", None)
+    if not isFileName(filename):
+        load_data = {}
+    else:
+        load_data = get_settings_json(filename + PREFIX)
+
     return web.json_response({"settings_nodes": load_data})
+
 
 # Save data to json file 
 @PromptServer.instance.routes.post("/alekpet/save_node_settings")
 async def saveSettings(request):
     try:
-        with open(file_settings_path, "wb") as f:
-            while True:
-                chunk = await request.content.read(CHUNK_SIZE)
-                if not chunk:
-                    break
-                f.write(chunk)        
+        if not request.content_type.startswith('multipart/'):
+            return web.json_response({"error": "multipart/* content type expected"}, status=400)
         
-        return web.json_response({"message": "Painter data saved successfully"}, status=200)
+        reader = await request.multipart()
+        filename_reader = await reader.next()
+        filename = await filename_reader.text()
+
+        data_reader = await reader.next()
+
+        if isFileName(filename):
+            filename = filename + PREFIX
+            json_file = os.path.join(nodes_settings_path, filename)
+            
+            if os.path.isfile(json_file):
+                with open(json_file, "wb") as f:
+                    while True:
+                        chunk = await data_reader.read_chunk(size=CHUNK_SIZE)
+                        if not chunk:
+                            break
+                        f.write(chunk)        
+                
+                return web.json_response({"message": "Painter data saved successfully"}, status=200)
+        
+            else:
+                create_settings_json(filename)
+                return web.json_response({"message": "Painter file settings created!"}, status=200)
+                
+        else:
+           raise Exception("Filename is not found or incorrect!")
 
     except Exception as e:
         print("Error save json file: ", e)
-        
-# create file json 
-create_settings_json()
+        return web.json_response({"error": str(e)}, status=500)
+
+
+# Remove file settings painter node data
+@PromptServer.instance.routes.post("/alekpet/remove_node_settings")
+async def saveSettings(request):
+    try:
+        json_data = await request.json()
+        filename = json_data.get("name")
+
+        if isFileName(filename):
+            filename = filename + PREFIX
+            json_file = os.path.join(nodes_settings_path, filename)
+
+            os.remove(json_file)
+            return web.json_response({"message": "Painter data removed successfully"}, status=200)
+
+    except OSError as e:
+        return web.json_response({"error": "Error: %s - %s." % (e.filename, e.strerror)}, status=500)
+
 
 # Piping image
 PAINTER_DICT = {} # Painter nodes dict instances
@@ -162,6 +236,7 @@ class PainterNode(object):
         else:
             mask = torch.zeros((64,64), dtype=torch.float32, device="cpu")
         return (image, mask.unsqueeze(0))
+
 
     @classmethod
     def IS_CHANGED(self, image, unique_id, update_node=True, images=None):        
