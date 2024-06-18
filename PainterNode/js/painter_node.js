@@ -47,18 +47,6 @@ function removeObject(eventData, transform) {
   canvas.requestRenderAll();
   this.viewListObjects(this.list_objects_panel__items);
 }
-
-function LS_Save(name, obj) {
-  try {
-    if (painters_settings_json) {
-      saveData();
-    } else {
-      localStorage.setItem(name, JSON.stringify(obj));
-    }
-  } catch (error) {
-    console.error("LS Save: ", error);
-  }
-}
 // ================= END FUNCTIONS ================
 
 // ================= CLASS PAINTER ================
@@ -85,8 +73,8 @@ class Painter {
     this.undo_history = [];
     this.redo_history = [];
 
-    // this.undo_history = this.node.LS_Painters.undo_history || [];
-    // this.redo_history = this.node.LS_Painters.redo_history || [];
+    // this.undo_history = this.node.LS_Cls.LS_Painters.undo_history || [];
+    // this.redo_history = this.node.LS_Cls.LS_Painters.redo_history || [];
 
     this.fonts = {
       Arial: "arial",
@@ -159,7 +147,22 @@ class Painter {
   }
 
   propertiesLS() {
-    const settingsNode = this.node.LS_Painters.settings;
+    let settingsNode = this.node.LS_Cls.LS_Painters.settings;
+
+    if (!settingsNode) {
+      settingsNode = this.node.LS_Cls.LS_Painters.settings = {
+        lsSavePainter: true,
+        pipingSettings: {
+          action: {
+            name: "background",
+            options: {},
+          },
+          pipingChangeSize: true,
+          pipingUpdateImage: true,
+        },
+      };
+    }
+
     // Save canvas to localStorage if not exists
     if (typeof settingsNode?.lsSavePainter !== "boolean") {
       settingsNode.lsSavePainter = true;
@@ -349,12 +352,12 @@ class Painter {
       type: "checkbox",
       class: ["pipingChangeSize_checkbox"],
       checked:
-        this.node.LS_Painters.settings?.pipingSettings?.pipingChangeSize ??
-        true,
+        this.node.LS_Cls.LS_Painters.settings?.pipingSettings
+          ?.pipingChangeSize ?? true,
       onchange: (e) => {
-        this.node.LS_Painters.settings.pipingSettings.pipingChangeSize =
+        this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingChangeSize =
           this.pipingChangeSize.checked;
-        LS_Save(this.node.name, this.node.LS_Painters);
+        this.node.LS_Cls.LS_Save();
       },
     });
 
@@ -374,10 +377,10 @@ class Painter {
       type: "checkbox",
       class: ["pipingUpdateImage_checkbox"],
       checked:
-        this.node.LS_Painters.settings?.pipingSettings?.pipingUpdateImage ??
-        true,
+        this.node.LS_Cls.LS_Painters.settings?.pipingSettings
+          ?.pipingUpdateImage ?? true,
       onchange: (e) => {
-        this.node.LS_Painters.settings.pipingSettings.pipingUpdateImage =
+        this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingUpdateImage =
           this.pipingUpdateImageCheckbox.checked;
 
         // Get hidden widget update_node
@@ -385,7 +388,7 @@ class Painter {
           (w) => w.name === "update_node"
         );
         update_node_widget.value = this.pipingUpdateImageCheckbox.checked;
-        LS_Save(this.node.name, this.node.LS_Painters);
+        this.node.LS_Cls.LS_Save();
       },
     });
 
@@ -411,15 +414,15 @@ class Painter {
           const scale = makeElement("input", {
             type: "number",
             value:
-              this.node.LS_Painters.settings.pipingSettings.action.options
-                .scale ?? 1.0,
+              this.node.LS_Cls.LS_Painters.settings.pipingSettings.action
+                .options.scale ?? 1.0,
             min: 0,
             step: 0.01,
             style: "width: 30%;",
             onchange: (e) => {
-              this.node.LS_Painters.settings.pipingSettings.action.options.scale =
+              this.node.LS_Cls.LS_Painters.settings.pipingSettings.action.options.scale =
                 +e.currentTarget.value;
-              LS_Save(this.node.name, this.node.LS_Painters);
+              this.node.LS_Cls.LS_Save();
             },
           });
 
@@ -433,12 +436,12 @@ class Painter {
           const backwardsImage = makeElement("input", {
             type: "checkbox",
             checked:
-              this.node.LS_Painters.settings.pipingSettings.action.options
-                .sendToBack ?? true,
+              this.node.LS_Cls.LS_Painters.settings.pipingSettings.action
+                .options.sendToBack ?? true,
             onchange: (e) => {
-              this.node.LS_Painters.settings.pipingSettings.action.options.sendToBack =
+              this.node.LS_Cls.LS_Painters.settings.pipingSettings.action.options.sendToBack =
                 e.currentTarget.checked;
-              LS_Save(this.node.name, this.node.LS_Painters);
+              this.node.LS_Cls.LS_Save();
             },
           });
           const sendToBackLabel = makeElement("label", {
@@ -459,9 +462,9 @@ class Painter {
       const { currentTarget } = e;
       checkRadioOptionsSelect.call(this, currentTarget);
 
-      this.node.LS_Painters.settings.pipingSettings.action.name =
+      this.node.LS_Cls.LS_Painters.settings.pipingSettings.action.name =
         currentTarget.value;
-      LS_Save(this.node.name, this.node.LS_Painters);
+      this.node.LS_Cls.LS_Save();
     }
 
     const radio_name = `painter_radio_piping_${this.node.name.replace(
@@ -510,7 +513,10 @@ class Painter {
       radioBox.append(labelRadio);
       radiosElements.push(radioBox);
 
-      if (this.node.LS_Painters.settings.pipingSettings.action.name === value) {
+      if (
+        this.node.LS_Cls.LS_Painters.settings.pipingSettings.action.name ===
+        value
+      ) {
         radEl.checked = true;
         checkRadioOptionsSelect.call(this, radEl);
       }
@@ -543,10 +549,11 @@ class Painter {
     const checkBoxLSSave = makeElement("input", {
       type: "checkbox",
       class: ["lsSave_checkbox"],
-      checked: this.node.LS_Painters.settings?.lsSavePainter ?? true,
+      checked: this.node.LS_Cls.LS_Painters.settings?.lsSavePainter ?? true,
       onchange: (e) => {
-        this.node.LS_Painters.settings.lsSavePainter = checkBoxLSSave.checked;
-        LS_Save(this.node.name, this.node.LS_Painters);
+        this.node.LS_Cls.LS_Painters.settings.lsSavePainter =
+          checkBoxLSSave.checked;
+        this.node.LS_Cls.LS_Save();
       },
       customSize: { w: 10, h: 10, fs: 10 },
     });
@@ -977,13 +984,13 @@ class Painter {
     });
 
     this.currentCanvasSize = { width: new_width, height: new_height };
-    this.node.LS_Painters.settings["currentCanvasSize"] =
+    this.node.LS_Cls.LS_Painters.settings["currentCanvasSize"] =
       this.currentCanvasSize;
     this.node.title = `${this.node.type} - ${new_width}x${new_height}`;
     this.canvas.renderAll();
     app.graph.setDirtyCanvas(true, false);
     this.node.onResize();
-    LS_Save(this.node.name, this.node.LS_Painters);
+    this.node.LS_Cls.LS_Save();
   }
 
   setDefaultValuesInputs() {
@@ -1702,19 +1709,22 @@ class Painter {
 
   // Save canvas data to localStorage or JSON
   canvasSaveSettingsPainter() {
-    if (!this.node.LS_Painters.settings.lsSavePainter) return;
+    if (!this.node.LS_Cls.LS_Painters.settings.lsSavePainter) return;
 
     try {
       const data = this.canvas.toJSON(["mypaintlib"]);
-      if (this.node.LS_Painters && !isEmptyObject(this.node.LS_Painters)) {
-        this.node.LS_Painters.canvas_settings = painters_settings_json
+      if (
+        this.node.LS_Cls.LS_Painters &&
+        !isEmptyObject(this.node.LS_Cls.LS_Painters)
+      ) {
+        this.node.LS_Cls.LS_Painters.canvas_settings = painters_settings_json
           ? data
           : JSON.stringify(data);
 
-        this.node.LS_Painters.settings["currentCanvasSize"] =
+        this.node.LS_Cls.LS_Painters.settings["currentCanvasSize"] =
           this.currentCanvasSize;
 
-        LS_Save(this.node.name, this.node.LS_Painters);
+        this.node.LS_Cls.LS_Save();
       }
     } catch (e) {
       console.error(e);
@@ -1747,14 +1757,14 @@ class Painter {
   canvasLoadSettingPainter() {
     try {
       if (
-        this.node.LS_Painters &&
-        this.node.LS_Painters.hasOwnProperty("canvas_settings")
+        this.node.LS_Cls.LS_Painters &&
+        this.node.LS_Cls.LS_Painters.hasOwnProperty("canvas_settings")
       ) {
         const data =
-          typeof this.node.LS_Painters === "string" ||
-          this.node.LS_Painters instanceof String
-            ? JSON.parse(this.node.LS_Painters)
-            : this.node.LS_Painters;
+          typeof this.node.LS_Cls.LS_Painters === "string" ||
+          this.node.LS_Cls.LS_Painters instanceof String
+            ? JSON.parse(this.node.LS_Cls.LS_Painters)
+            : this.node.LS_Cls.LS_Painters;
         this.setCanvasLoadData(data);
         this.addToHistory();
       }
@@ -2203,7 +2213,7 @@ function PainterWidget(node, inputName, inputData, app) {
 // ================= END CREATE PAINTER WIDGET ============
 
 // ================= CREATE EXTENSION ================
-async function saveData() {
+async function saveData(data) {
   try {
     const rawResponse = await fetch("/alekpet/save_node_settings", {
       method: "POST",
@@ -2211,7 +2221,7 @@ async function saveData() {
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(this.LS_Painters),
+      body: JSON.stringify(data),
     });
     if (rawResponse.status !== 200)
       throw new Error(`Error painter save settings: ${rawResponse.statusText}`);
@@ -2269,6 +2279,75 @@ line-height: 1.5`;
   }
 
   return message;
+}
+
+// LocalStorage Init
+class LS_Class {
+  constructor(nodeName) {
+    if (!nodeName || typeof nodeName !== "string" || nodeName.trim() === "") {
+      throw new Error("Incorrect painter name!");
+    }
+
+    this.name = nodeName;
+    this.LS_Painters = {};
+  }
+
+  getLS() {
+    return this.LS_Painters;
+  }
+
+  async LS_Init() {
+    // Get settings node
+    if (painters_settings_json) {
+      const message = createMessage(
+        "Loading",
+        "Please wait, <span style='font-weight: bold; color: orange'>Painter node</span> settings are loading. Loading times may take a long time if large images have been added to the canvas!"
+      );
+      this.LS_Painters = await loadData();
+      document.body.removeChild(message);
+    } else {
+      this.LS_Painters =
+        localStorage.getItem(this.name) &&
+        JSON.parse(localStorage.getItem(this.name));
+
+      if (!this.LS_Painters) {
+        localStorage.setItem(this.name, JSON.stringify({}));
+        this.LS_Painters = JSON.parse(localStorage.getItem(this.name));
+      }
+    }
+
+    if (this.LS_Painters && isEmptyObject(this.LS_Painters)) {
+      this.LS_Painters = {
+        undo_history: [],
+        redo_history: [],
+        canvas_settings: { background: "#000000" },
+        settings: {
+          lsSavePainter: true,
+          pipingSettings: {
+            action: {
+              name: "background",
+              options: {},
+            },
+            pipingChangeSize: true,
+            pipingUpdateImage: true,
+          },
+        },
+      };
+      this.LS_Save();
+    }
+  }
+
+  LS_Save() {
+    try {
+      if (painters_settings_json) {
+        saveData(this.LS_Painters);
+      } else {
+        localStorage.setItem(this.name, JSON.stringify(this.LS_Painters));
+      }
+    } catch (error) {
+      console.error("LS Save: ", error);
+    }
+  }
 }
 
 app.registerExtension({
@@ -2715,63 +2794,28 @@ app.registerExtension({
           ? onNodeCreated.apply(this, arguments)
           : undefined;
 
-        // const node_title = await this.getTitle();
-        // const node_id = this.id; // used node id as image name,instead of PainterNode's quantity
+        const node_title = await this.getTitle();
+        const node_id = this.id; // used node id as image name,instead of PainterNode's quantity
 
-        const PainerNode = app.graph._nodes.filter(
-          (wi) => wi.type == "PainterNode"
-        );
-        const nodeName = `Paint_${PainerNode.length}`;
+        // const PainerNode = app.graph._nodes.filter(
+        //   (wi) => wi.type == "PainterNode"
+        // );
+
+        const nodeName = `Paint_${node_id}`;
         const nodeNamePNG = `${nodeName}.png`;
 
         console.log(`Create PainterNode: ${nodeName}`);
 
-        // Get settings node
-        if (painters_settings_json) {
-          const message = createMessage(
-            "Loading",
-            "Please wait, <span style='font-weight: bold; color: orange'>Painter node</span> settings are loading. Loading times may take a long time if large images have been added to the canvas!"
-          );
-          this.LS_Painters = await loadData();
-          document.body.removeChild(message);
-        } else {
-          this.LS_Painters =
-            localStorage.getItem(nodeNamePNG) &&
-            JSON.parse(localStorage.getItem(nodeNamePNG));
-
-          if (!this.LS_Painters) {
-            localStorage.setItem(nodeNamePNG, JSON.stringify({}));
-            this.LS_Painters = JSON.parse(localStorage.getItem(nodeNamePNG));
-          }
-        }
-
-        if (this.LS_Painters && isEmptyObject(this.LS_Painters)) {
-          this.LS_Painters = {
-            undo_history: [],
-            redo_history: [],
-            canvas_settings: { background: "#000000" },
-            settings: {
-              lsSavePainter: true,
-              pipingSettings: {
-                action: {
-                  name: "background",
-                  options: {},
-                },
-                pipingChangeSize: true,
-                pipingUpdateImage: true,
-              },
-            },
-          };
-          LS_Save(nodeNamePNG, this.LS_Painters);
-        }
+        this.LS_Cls = new LS_Class(nodeNamePNG);
+        await this.LS_Cls.LS_Init();
 
         // Wind widget update_node and hide him
         for (const w of this.widgets) {
           if (w.name === "update_node") {
             w.type = "converted-widget";
             w.value =
-              this.LS_Painters.settings?.pipingSettings?.pipingUpdateImage ??
-              true;
+              this.LS_Cls.LS_Painters.settings?.pipingSettings
+                ?.pipingUpdateImage ?? true;
             w.computeSize = () => [0, -4];
             if (!w.linkedWidgets) continue;
             for (const l of w.linkedWidgets) {
@@ -2782,21 +2826,18 @@ app.registerExtension({
         }
 
         PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
-        setTimeout(() => {
-          if (
-            this.LS_Painters &&
-            this.LS_Painters?.settings?.currentCanvasSize
-          ) {
-            this.painter.currentCanvasSize =
-              this.LS_Painters.settings.currentCanvasSize;
+        // setTimeout(() => {
+        if (this.LS_Painters && this.LS_Painters?.settings?.currentCanvasSize) {
+          this.painter.currentCanvasSize =
+            this.LS_Painters.settings.currentCanvasSize;
 
-            this.painter.setCanvasSize(
-              this.painter.currentCanvasSize.width,
-              this.painter.currentCanvasSize.height
-            );
-          }
-          this.painter.uploadPaintFile(nodeNamePNG);
-        }, 1);
+          this.painter.setCanvasSize(
+            this.painter.currentCanvasSize.width,
+            this.painter.currentCanvasSize.height
+          );
+        }
+        this.painter.uploadPaintFile(nodeNamePNG);
+        // }, 1);
 
         return r;
       };
