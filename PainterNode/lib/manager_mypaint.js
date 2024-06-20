@@ -556,10 +556,7 @@ class MyPaintManager {
               this.checkbox_brush_default_size.checked;
 
             // Save to localStorage
-            localStorage.setItem(
-              this.painterNode.node.name,
-              JSON.stringify(this.painterNode.node.LS_Cls.LS_Painters)
-            );
+            this.painterNode.node.LS_Cls.LS_Save();
           },
         },
       },
@@ -580,10 +577,7 @@ class MyPaintManager {
               this.checkbox_brush_default_color.checked;
 
             // Save to localStorage
-            localStorage.setItem(
-              this.painterNode.node.name,
-              JSON.stringify(this.painterNode.node.LS_Cls.LS_Painters)
-            );
+            this.painterNode.node.LS_Cls.LS_Save();
           },
         },
       },

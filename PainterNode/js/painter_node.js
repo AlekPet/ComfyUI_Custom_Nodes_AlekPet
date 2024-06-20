@@ -290,6 +290,16 @@ class Painter {
     // Setting pipping modal window
     this.mainSettings();
 
+    // Settings piping button
+    const mainSettingsNode = makeElement("button", {
+      style: "background: var(--comfy-input-bg);",
+      textContent: "Settings 🛠️",
+      title: "Show main settings model window",
+      onclick: (e) => animateClick(this.painter_wrapper_settings),
+      customSize: { w: 70, h: 25, fs: 10 },
+    });
+    this.painter_settings_box.append(mainSettingsNode);
+
     this.change_mode = panelPaintBox.querySelector("#painter_change_mode");
     this.painter_shapes_box = panelPaintBox.querySelector(
       ".painter_shapes_box"
@@ -332,6 +342,18 @@ class Painter {
     this.changePropertyBrush();
     this.createBrushesToolbar();
     this.bindEvents();
+  }
+
+  setValueElementsLS() {
+    this.pipingChangeSize.checked =
+      this.node.LS_Cls.LS_Painters.settings?.pipingSettings?.pipingChangeSize ??
+      true;
+    this.pipingUpdateImageCheckbox.checked =
+      this.node.LS_Cls.LS_Painters.settings?.pipingSettings
+        ?.pipingUpdateImage ?? true;
+
+    this.painter_wrapper_settings.remove();
+    this.mainSettings();
   }
 
   mainSettings() {
@@ -581,16 +603,6 @@ class Painter {
     });
 
     this.canvas.wrapperEl.append(this.painter_wrapper_settings);
-
-    // Settings piping button
-    const mainSettingsNode = makeElement("button", {
-      style: "background: var(--comfy-input-bg);",
-      textContent: "Settings 🛠️",
-      title: "Show main settings model window",
-      onclick: (e) => animateClick(this.painter_wrapper_settings),
-      customSize: { w: 70, h: 25, fs: 10 },
-    });
-    this.painter_settings_box.append(mainSettingsNode);
     // === end - Settings box ===
   }
 
@@ -2128,11 +2140,11 @@ function PainterWidget(node, inputName, inputData, app) {
       img.src = images[0];
     })
       .then(async (result) => {
-        switch (this.LS_Painters.settings.pipingSettings.action.name) {
+        switch (node.LS_Cls.LS_Painters.settings.pipingSettings.action.name) {
           case "image":
             await new Promise(async (res) => {
               let { scale, sendToBack = true } =
-                this.LS_Painters.settings.pipingSettings.action.options;
+                node.LS_Cls.LS_Painters.settings.pipingSettings.action.options;
 
               if (typeof scale === "number") result.scale(scale);
 
@@ -2835,6 +2847,9 @@ app.registerExtension({
         }
 
         if (widgetImage && painter_ls && !isEmptyObject(painter_ls)) {
+          // Load settings elements
+          n.painter.setValueElementsLS();
+
           painter_ls.hasOwnProperty("objects_canvas") &&
             delete painter_ls.objects_canvas; // remove old property
 
