@@ -15,6 +15,8 @@ Custom nodes that extend the capabilities of [ComfyUI](https://github.com/comfya
 | _ArgosTranslateTextNode_            |    The node translate promt uses module **Argos Translator** from other languages into english and return string     |     AlekPet Node/text     |
 | _ArgosTranslateCLIPTextEncodeNode_  | The node translate promt uses module **Argos Translator** from other languages into english, and return conditioning | AlekPet Node/conditioning |
 | _PreviewTextNode_                   |                                           The node displays the input text                                           |    AlekPet Node/extras    |
+| _ColorsCorrectNode_                 |                                         The node for correcting image colors                                         |    AlekPet Node/extras    |
+| _HexToHueNode_                      |                          The node convert HEX color to HUE (degrees and normal [-0.5, 0.5])                          |    AlekPet Node/extras    |
 
 # Installing
 

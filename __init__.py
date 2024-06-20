@@ -162,7 +162,7 @@ installNodes()
 # Import classes nodes and add in mappings
 from .ArgosTranslateNode.argos_translate_node import ArgosTranslateCLIPTextEncodeNode, ArgosTranslateTextNode
 from .DeepTranslatorNode.deep_translator_node import DeepTranslatorCLIPTextEncodeNode, DeepTranslatorTextNode
-from .ExtrasNode.extras_node import PreviewTextNode
+from .ExtrasNode.extras_node import PreviewTextNode, HexToHueNode, ColorsCorrectNode
 from .GoogleTranslateNode.google_translate_node import GoogleTranslateCLIPTextEncodeNode, GoogleTranslateTextNode
 from .PainterNode.painter_node import PainterNode
 from .PoseNode.pose_node import PoseNode
@@ -174,6 +174,8 @@ NODE_CLASS_MAPPINGS = {
     'DeepTranslatorCLIPTextEncodeNode': DeepTranslatorCLIPTextEncodeNode,
     'DeepTranslatorTextNode': DeepTranslatorTextNode,
     'PreviewTextNode': PreviewTextNode,
+    'HexToHueNode': HexToHueNode,
+    'ColorsCorrectNode': ColorsCorrectNode,
     'GoogleTranslateCLIPTextEncodeNode': GoogleTranslateCLIPTextEncodeNode,
     'GoogleTranslateTextNode': GoogleTranslateTextNode,
     'PainterNode': PainterNode,
@@ -187,6 +189,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'DeepTranslatorCLIPTextEncodeNode': 'Deep Translator CLIP Text Encode Node',
     'DeepTranslatorTextNode': 'Deep Translator Text Node',
     'PreviewTextNode': 'Preview Text Node',
+    'HexToHueNode': 'HEX to HUE Node',
+    'ColorsCorrectNode': 'Colors Correct Node',
     'GoogleTranslateCLIPTextEncodeNode': 'Google Translate CLIP Text Encode Node',
     'GoogleTranslateTextNode': 'Google Translate Text Node',
     'PainterNode': 'Painter Node',
