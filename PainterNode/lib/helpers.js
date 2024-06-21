@@ -1,4 +1,12 @@
+import { api } from "../../../../scripts/api.js";
 import { fabric } from "./fabric.js";
+import {
+  makeElement,
+  animateClick,
+  createWindowModal,
+  isEmptyObject,
+  animateTransitionProps,
+} from "../../utils.js";
 
 // RGB, HSV, and HSL color conversion algorithms in JavaScript https://gist.github.com/mjackson/5311256
 function rgbToHsv(r, g, b) {
@@ -87,4 +95,199 @@ function HsvToRgb(brush_settings) {
   return { red, green, blue };
 }
 
-export { rgbToHsv, toRGBA, getColorHEX, rangeGradient, HsvToRgb };
+// LocalStorage Init
+class LS_Class {
+  constructor(nodeName, painters_settings_json = false) {
+    if (!nodeName || typeof nodeName !== "string" || nodeName.trim() === "") {
+      throw new Error("Incorrect painter name!");
+    }
+    this.painters_settings_json = painters_settings_json;
+    this.name = nodeName;
+    this.LS_Painters = {};
+  }
+
+  getLS() {
+    return this.LS_Painters;
+  }
+
+  async LS_Init(context = null) {
+    // Get settings node
+    if (this.painters_settings_json) {
+      const parent = context.painter.canvas.wrapperEl;
+
+      const message = createWindowModal({
+        textTitle: "Loading",
+        stylesTitle: {
+          background: "#8f210f",
+          padding: "5px",
+          borderRadius: "6px",
+          marginBottom: "5px",
+          alignSelf: "stretch",
+        },
+        textBody: [
+          makeElement("div", {
+            innerHTML:
+              "Please wait, <span style='font-weight: bold; color: orange'>Painter node</span> settings are loading. Loading times may take a long time if large images have been added to the canvas!",
+          }),
+        ],
+        stylesBox: {
+          background: "auto",
+          color: "auto",
+          border: 0,
+          boxShadow: "none",
+          padding: 0,
+          fontFamily: "sans-serif",
+        },
+        stylesWrapper: {
+          display: "flex",
+          background: "#3b2222",
+          justifyContent: "center",
+          flexDirection: "column",
+          alignItems: "stretch",
+          textAlign: "center",
+          borderRadius: "6px",
+          boxShadow: "3px 3px 6px #141414",
+          border: "1px solid #f91b1b",
+          color: "white",
+          padding: "6px",
+          // opacity: 1,
+          fontFamily: "sans-serif",
+          lineHeight: 1.5,
+          minWidth: "300px",
+        },
+        stylesClose: { background: "#3b2222" },
+      });
+      parent.append(message);
+
+      animateClick(message);
+      this.LS_Painters = await this.loadData();
+
+      setTimeout(
+        () =>
+          animateTransitionProps(
+            message,
+            { opacity: 0 },
+            { display: "flex" }
+          ).then(() => parent.removeChild(message)),
+        500
+      );
+    } else {
+      const lsPainter = localStorage.getItem(this.name);
+      this.LS_Painters = lsPainter && JSON.parse(lsPainter);
+
+      if (!this.LS_Painters) {
+        localStorage.setItem(this.name, JSON.stringify({}));
+        this.LS_Painters = JSON.parse(localStorage.getItem(this.name));
+      }
+    }
+
+    if (this.LS_Painters && isEmptyObject(this.LS_Painters)) {
+      this.LS_Painters = {
+        undo_history: [],
+        redo_history: [],
+        canvas_settings: { background: "#000000" },
+        settings: {
+          lsSavePainter: true,
+          pipingSettings: {
+            action: {
+              name: "background",
+              options: {},
+            },
+            pipingChangeSize: true,
+            pipingUpdateImage: true,
+          },
+        },
+      };
+      this.LS_Save();
+    }
+  }
+
+  async LS_Save() {
+    try {
+      if (this.painters_settings_json) {
+        await this.saveData();
+      } else {
+        localStorage.setItem(this.name, JSON.stringify(this.LS_Painters));
+      }
+    } catch (error) {
+      console.error("LS Save: ", error);
+    }
+  }
+
+  // Write settings in the file json
+  async saveData() {
+    try {
+      const formData = new FormData();
+      formData.append("name", this.name);
+      formData.append(
+        "data",
+        new Blob([JSON.stringify(this.LS_Painters)], {
+          type: "application/json",
+        })
+      );
+
+      const rawResponse = await fetch("/alekpet/save_node_settings", {
+        method: "POST",
+        body: formData,
+      });
+      if (rawResponse.status !== 200) {
+        throw new Error(
+          `Error painter save file settings ${rawResponse.statusText}`
+        );
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  // Load settings from json file
+  async loadData() {
+    try {
+      const rawResponse = await api.fetchApi(
+        `/alekpet/loading_node_settings/${this.name}`
+      );
+      if (rawResponse.status !== 200)
+        throw new Error(
+          `Error painter load file settings: ${rawResponse.statusText}`
+        );
+
+      const data = await rawResponse?.json();
+      if (!data) return {};
+
+      return data.settings_nodes;
+    } catch (e) {
+      console.log(e);
+      return {};
+    }
+  }
+
+  // Remove settings from json file
+  async removeData() {
+    try {
+      if (this.painters_settings_json) {
+        const rawResponse = await fetch("/alekpet/remove_node_settings", {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name: this.name }),
+        });
+
+        if (rawResponse.status !== 200)
+          throw new Error(
+            `Error painter remove file settings: ${rawResponse.statusText}`
+          );
+      } else {
+        if (this.LS_Painters && !isEmptyObject(this.LS_Painters)) {
+          localStorage.removeItem(this.name);
+        }
+      }
+      console.log(`Removed PainterNode: ${this.name}`);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+}
+
+export { rgbToHsv, toRGBA, getColorHEX, rangeGradient, HsvToRgb, LS_Class };
