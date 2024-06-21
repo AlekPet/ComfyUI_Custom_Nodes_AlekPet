@@ -345,13 +345,6 @@ class Painter {
   }
 
   setValueElementsLS() {
-    this.pipingChangeSize.checked =
-      this.node.LS_Cls.LS_Painters.settings?.pipingSettings?.pipingChangeSize ??
-      true;
-    this.pipingUpdateImageCheckbox.checked =
-      this.node.LS_Cls.LS_Painters.settings?.pipingSettings
-        ?.pipingUpdateImage ?? true;
-
     this.painter_wrapper_settings.remove();
     this.mainSettings();
   }
@@ -371,7 +364,7 @@ class Painter {
       title: "Change the canvas size equal to the input image",
     });
 
-    this.pipingChangeSize = makeElement("input", {
+    const pipingChangeSize = makeElement("input", {
       type: "checkbox",
       class: ["pipingChangeSize_checkbox"],
       checked:
@@ -379,13 +372,13 @@ class Painter {
           ?.pipingChangeSize ?? true,
       onchange: (e) => {
         this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingChangeSize =
-          this.pipingChangeSize.checked;
+          pipingChangeSize.checked;
         this.node.LS_Cls.LS_Save();
       },
     });
 
-    this.pipingChangeSize.customSize = { w: 10, h: 10, fs: 10 };
-    labelPipingChangeSize.append(this.pipingChangeSize);
+    pipingChangeSize.customSize = { w: 10, h: 10, fs: 10 };
+    labelPipingChangeSize.append(pipingChangeSize);
     // end - LS change size piping
 
     // Piping update image
@@ -396,7 +389,7 @@ class Painter {
         "Update the image when generating (needed to avoid updating the mask)",
     });
 
-    this.pipingUpdateImageCheckbox = makeElement("input", {
+    const pipingUpdateImageCheckbox = makeElement("input", {
       type: "checkbox",
       class: ["pipingUpdateImage_checkbox"],
       checked:
@@ -404,19 +397,19 @@ class Painter {
           ?.pipingUpdateImage ?? true,
       onchange: (e) => {
         this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingUpdateImage =
-          this.pipingUpdateImageCheckbox.checked;
+          pipingUpdateImageCheckbox.checked;
 
         // Get hidden widget update_node
         const update_node_widget = this.node.widgets.find(
           (w) => w.name === "update_node"
         );
-        update_node_widget.value = this.pipingUpdateImageCheckbox.checked;
+        update_node_widget.value = pipingUpdateImageCheckbox.checked;
         this.node.LS_Cls.LS_Save();
       },
     });
 
-    this.pipingUpdateImageCheckbox.customSize = { w: 10, h: 10, fs: 10 };
-    labelPipingUpdateImage.append(this.pipingUpdateImageCheckbox);
+    pipingUpdateImageCheckbox.customSize = { w: 10, h: 10, fs: 10 };
+    labelPipingUpdateImage.append(pipingUpdateImageCheckbox);
     // end - Piping update image
 
     // === Settings box ===
@@ -982,12 +975,14 @@ class Painter {
     if (
       confirmChange &&
       this.node.isInputConnected(0) &&
-      this.pipingChangeSize.checked &&
+      this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingChangeSize &&
       (new_width !== this.currentCanvasSize.width ||
         new_height !== this.currentCanvasSize.height)
     ) {
       if (confirm("Disable change size piping?")) {
-        this.pipingChangeSize.checked = false;
+        this.canvas.wrapperEl.querySelector(
+          ".pipingChangeSize_checkbox"
+        ).checked = false;
       }
     }
 
@@ -2108,7 +2103,7 @@ function PainterWidget(node, inputName, inputData, app) {
 
     if (
       !images.length ||
-      !node.painter.pipingUpdateImageCheckbox.checked ||
+      !node.LS_Cls.LS_Painters.settings.pipingSettings.pipingUpdateImage ||
       +unique_id !== node.id
     ) {
       return;
@@ -2120,7 +2115,7 @@ function PainterWidget(node, inputName, inputData, app) {
         // Change size piping input image
         const { naturalWidth: w, naturalHeight: h } = img;
         if (
-          node.painter.pipingChangeSize.checked &&
+          node.LS_Cls.LS_Painters.settings.pipingSettings.pipingChangeSize &&
           (w !== node.painter.currentCanvasSize.width ||
             h !== node.painter.currentCanvasSize.height)
         ) {
