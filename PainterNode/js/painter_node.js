@@ -982,6 +982,8 @@ class Painter {
         this.canvas.wrapperEl.querySelector(
           ".pipingChangeSize_checkbox"
         ).checked = false;
+        this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingChangeSize = false;
+        this.node.LS_Cls.LS_Save();
       }
     }
 
@@ -1749,6 +1751,7 @@ class Painter {
 
     this.canvas.loadFromJSON(canvas_settings, () => {
       this.canvas.renderAll();
+      this.uploadPaintFile(this.node.name);
       this.bgColor.value = getColorHEX(data.background).color || "";
     });
   }
@@ -2666,7 +2669,6 @@ app.registerExtension({
             );
           }
           n.painter.canvasLoadSettingPainter();
-          n.painter.uploadPaintFile(n.name);
         }
       });
     }
