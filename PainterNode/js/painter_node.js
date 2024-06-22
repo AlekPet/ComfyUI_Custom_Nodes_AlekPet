@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2024.06.18
+ * Version: 2024.06.22
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -2410,12 +2410,12 @@ app.registerExtension({
     display: flex;
     gap: 4px;
     right: 0;
-    opacity: 0.8;
+    opacity: 0.5;
     flex-direction: row;
     width: fit-content;
   }
   .painter_history_panel > button {
-    background: transparent;
+    background: black;
   }
   .painter_history_panel > button:hover:enabled {
     opacity: 1;

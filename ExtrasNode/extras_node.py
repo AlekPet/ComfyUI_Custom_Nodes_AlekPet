@@ -1,7 +1,7 @@
 from PIL import Image, ImageEnhance, ImageColor, ImageOps
 import numpy as np
 import torch
-
+from server import PromptServer
 
 class PreviewTextNode:
     def __init__(self):
@@ -38,7 +38,8 @@ class HexToHueNode:
                     "STRING",
                     {"default": "#00FF33"},
                 ),
-            }
+            },
+            "hidden": { "unique_id": "UNIQUE_ID" },
         }
 
     RETURN_TYPES = ("STRING","FLOAT", "FLOAT", "STRING", "STRING")
@@ -47,9 +48,10 @@ class HexToHueNode:
     CATEGORY = "AlekPet Nodes/extras"
 
 
-    def to_hue(self, color_hex):
+    def to_hue(self, color_hex, unique_id):
         hue_degrees = ColorsCorrectNode.hex_to_hue(color_hex)
         hue_norm = ColorsCorrectNode.degrees_to_hue(hue_degrees)
+        PromptServer.instance.send_sync("alekpet_get_color_hex", {"color_hex": color_hex, "unique_id": unique_id})
         return (color_hex, hue_degrees, hue_norm, str(hue_degrees), str(hue_norm))
 
 
@@ -80,7 +82,7 @@ class ColorsCorrectNode:
                     "FLOAT",
                     {"default": 0.0, "min": 0.0, "max": 360.0, "step": 0.01},
                 ),
-                "use_color": ([True, False], {"default": True},),
+                "use_color": ("BOOLEAN", {"default": True},),
             },
             "optional": {
                 "hex_color": (
