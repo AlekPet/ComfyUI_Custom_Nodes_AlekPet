@@ -5,7 +5,7 @@ const findWidget = (node, name, attr = "name") =>
   node.widgets.find((w) => w[attr] === name);
 
 function get_support_langs() {
-  let node = this,
+  const node = this,
     // Widgets values
     widgets_values =
       node?.widgets_values?.length > 0 ? node.widgets_values : [],
@@ -26,8 +26,8 @@ function get_support_langs() {
     responseData = await responseData?.json();
 
     if (!responseData || responseData == undefined) {
-      console.log("Invalid language, select default: en");
-      responseData = await api.fetchApi(`/alekpet/argo_langs_support/en`, {
+      console.log("Invalid language, select default: english");
+      responseData = await api.fetchApi(`/alekpet/argo_langs_support/english`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -40,9 +40,17 @@ function get_support_langs() {
       const langs_support = responseData?.langs_support;
 
       if (langs_support && langs_support?.length) {
-        const defaultValue =
-          langs_support.find((f) => f.toLowerCase() == "en") || "en";
+        let defaultValue =
+          langs_support.find((f) => f.toLowerCase() == "english") || "english";
         // To translate
+
+        if (node?.widgets_values.length) {
+          const valueSerialized = node?.widgets_values[1];
+          defaultValue = langs_support.includes(valueSerialized)
+            ? valueSerialized
+            : langs_support[0];
+        }
+
         widget_to_translate.options.values = langs_support;
         widget_to_translate.value = defaultValue;
       }

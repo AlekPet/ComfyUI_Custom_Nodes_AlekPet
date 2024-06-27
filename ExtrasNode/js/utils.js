@@ -187,6 +187,29 @@ function makeElement(tag, attrs = {}) {
   return element;
 }
 
+function isValidStyle(opt, strColor) {
+  let op = new Option().style;
+  if (!op.hasOwnProperty(opt)) return false;
+  op[opt] = strColor;
+  return op[opt] !== "";
+}
+
+function rgbToHex(rgb) {
+  const regEx = new RegExp(/\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+  if (regEx.test(rgb)) {
+    let [, r, g, b] = regEx.exec(rgb);
+    r = parseInt(r).toString(16);
+    g = parseInt(g).toString(16);
+    b = parseInt(b).toString(16);
+
+    r = r.length === 1 ? r + "0" : r;
+    g = g.length === 1 ? g + "0" : g;
+    b = b.length === 1 ? b + "0" : b;
+
+    return `#${r}${g}${b}`;
+  }
+}
+
 async function getDataJSON(url) {
   try {
     const response = await fetch(url);
@@ -366,4 +389,6 @@ export {
   makeElement,
   getDataJSON,
   isEmptyObject,
+  isValidStyle,
+  rgbToHex,
 };

@@ -1,11 +1,12 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
+import { isValidStyle, rgbToHex } from "./utils.js";
 
 function makeColorWidget(node, inputName, inputData, widget) {
   const color_hex = document.createElement("input");
   color_hex.type = "color";
-  color_hex.value = inputData[1]?.default || "#ffffff";
+  color_hex.value = inputData[1]?.default || "#00ff33";
 
   const color_text = document.createElement("div");
   color_text.title = "Click to copy color to clipboard";
@@ -41,7 +42,15 @@ function makeColorWidget(node, inputName, inputData, widget) {
   });
 
   widget.callback = (v) => {
-    widget.value = v;
+    let color = isValidStyle("color", v) ? v : "#00ff33";
+    if (color.includes("#") && color.length === 4) {
+      const opt_color = new Option().style;
+      opt_color["color"] = color;
+      color = rgbToHex(opt_color["color"]);
+    }
+
+    color_hex.value = color;
+    widget.value = color;
   };
 
   color_hex.addEventListener("input", () => {
@@ -96,6 +105,10 @@ app.registerExtension({
             app
           );
           wi.widget.inputEl.readOnly = true;
+
+          this.setSize(this.computeSize(this.size));
+          app.graph.setDirtyCanvas(true, false);
+
           return ret;
         };
         // Function set value
@@ -185,11 +198,7 @@ app.registerExtension({
           api.addEventListener("alekpet_get_color_hex", async ({ detail }) => {
             const { color_hex, unique_id } = detail;
 
-            if (
-              !color_hex?.length &&
-              +unique_id !== this.id &&
-              !widgetColor?.widget
-            ) {
+            if (+unique_id !== this.id || !color_hex) {
               return;
             }
 

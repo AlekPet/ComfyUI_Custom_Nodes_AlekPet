@@ -3,19 +3,20 @@ import numpy as np
 import torch
 from server import PromptServer
 
+
 class PreviewTextNode:
     def __init__(self):
         pass
-    
+
     @classmethod
     def INPUT_TYPES(s):
 
         return {
-            "required": {        
-                "text": ("STRING", {"forceInput": True}),     
-                },
+            "required": {
+                "text": ("STRING", {"forceInput": True}),
+            },
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
-            }
+        }
 
     RETURN_TYPES = ("STRING",)
     OUTPUT_NODE = True
@@ -24,7 +25,14 @@ class PreviewTextNode:
     CATEGORY = "AlekPet Nodes/extras"
 
     def preview_text(self, text, prompt=None, extra_pnginfo=None):
-        return {"ui": {"string": [text,]}, "result": (text,)}
+        return {
+            "ui": {
+                "string": [
+                    text,
+                ]
+            },
+            "result": (text,),
+        }
 
 
 # Correction colors nodes
@@ -36,22 +44,29 @@ class HexToHueNode:
             "required": {
                 "color_hex": (
                     "STRING",
-                    {"default": "#00FF33"},
+                    {"default": "#00ff33"},
                 ),
             },
-            "hidden": { "unique_id": "UNIQUE_ID" },
+            "hidden": {"unique_id": "UNIQUE_ID"},
         }
 
-    RETURN_TYPES = ("STRING","FLOAT", "FLOAT", "STRING", "STRING")
-    RETURN_NAMES = ("string_hex", "float_hue_degrees", "float_hue_norm", "string_hue_degrees","string_hue_norm")
+    RETURN_TYPES = ("STRING", "FLOAT", "FLOAT", "STRING", "STRING")
+    RETURN_NAMES = (
+        "string_hex",
+        "float_hue_degrees",
+        "float_hue_norm",
+        "string_hue_degrees",
+        "string_hue_norm",
+    )
     FUNCTION = "to_hue"
     CATEGORY = "AlekPet Nodes/extras"
-
 
     def to_hue(self, color_hex, unique_id):
         hue_degrees = ColorsCorrectNode.hex_to_hue(color_hex)
         hue_norm = ColorsCorrectNode.degrees_to_hue(hue_degrees)
-        PromptServer.instance.send_sync("alekpet_get_color_hex", {"color_hex": color_hex, "unique_id": unique_id})
+        PromptServer.instance.send_sync(
+            "alekpet_get_color_hex", {"color_hex": color_hex, "unique_id": unique_id}
+        )
         return (color_hex, hue_degrees, hue_norm, str(hue_degrees), str(hue_norm))
 
 
@@ -82,25 +97,26 @@ class ColorsCorrectNode:
                     "FLOAT",
                     {"default": 0.0, "min": 0.0, "max": 360.0, "step": 0.01},
                 ),
-                "use_color": ("BOOLEAN", {"default": True},),
+                "use_color": (
+                    "BOOLEAN",
+                    {"default": True},
+                ),
             },
             "optional": {
                 "hex_color": (
                     "STRING",
                     {"default": "#00FF33"},
-                ),     
-            }
+                ),
+            },
         }
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "correct"
     CATEGORY = "AlekPet Nodes/extras"
 
-
     @staticmethod
     def hex_to_rgb(hex_color):
         return ImageColor.getcolor(hex_color, "RGB")
-
 
     @staticmethod
     def hex_to_hue(hex_color):
@@ -121,24 +137,20 @@ class ColorsCorrectNode:
 
         return h
 
-
     @staticmethod
     def adjust_brightness(image, factor):
         enhancer = ImageEnhance.Brightness(image)
         return enhancer.enhance(factor)
-
 
     @staticmethod
     def adjust_contrast(image, factor):
         enhancer = ImageEnhance.Contrast(image)
         return enhancer.enhance(factor)
 
-
     @staticmethod
     def adjust_saturation(image, factor):
         enhancer = ImageEnhance.Color(image)
         return enhancer.enhance(factor)
-
 
     @staticmethod
     def adjust_gamma(image, gamma):
@@ -146,7 +158,6 @@ class ColorsCorrectNode:
         lut = [pow(x / 255.0, inv_gamma) * 255 for x in range(256)]
         lut = np.array(lut * 3, dtype=np.uint8)
         return image.point(lut)
-
 
     @staticmethod
     def degrees_to_hue(degrees):
@@ -160,31 +171,38 @@ class ColorsCorrectNode:
 
         return hue
 
-
     @staticmethod
     def adjust_hue(image, hue):
         if not (-0.5 <= hue <= 0.5):
             raise ValueError("hue value is not in [-0.5, 0.5].")
- 
-        image_array = np.array(image.convert('RGB'), dtype=np.uint8)
-        
-        hsv_image = Image.fromarray(image_array).convert('HSV')
-        hsv_array = np.array(hsv_image)
-        
-        hsv_array[..., 0] = (hsv_array[..., 0].astype(int) + int(hue * 255)) % 256
-        
-        rgb_image = Image.fromarray(hsv_array, mode='HSV').convert('RGB')
-        return rgb_image
 
+        image_array = np.array(image.convert("RGB"), dtype=np.uint8)
+
+        hsv_image = Image.fromarray(image_array).convert("HSV")
+        hsv_array = np.array(hsv_image)
+
+        hsv_array[..., 0] = (hsv_array[..., 0].astype(int) + int(hue * 255)) % 256
+
+        rgb_image = Image.fromarray(hsv_array, mode="HSV").convert("RGB")
+        return rgb_image
 
     @staticmethod
     def tint_image(image, hex_color):
         return ImageOps.colorize(image.convert("L"), black="black", white=hex_color)
 
-
-    def correct(self, image, use_color=True, hex_color="#00FF33", brightness = 1.0, contrast = 1.0, saturation = 1.0, gamma = 1.0, hue_degrees = 0.0):
-        i = 255. * image[0].cpu().numpy()
-        image = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))       
+    def correct(
+        self,
+        image,
+        use_color=True,
+        hex_color="#00FF33",
+        brightness=1.0,
+        contrast=1.0,
+        saturation=1.0,
+        gamma=1.0,
+        hue_degrees=0.0,
+    ):
+        i = 255.0 * image[0].cpu().numpy()
+        image = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
 
         if use_color:
             image = ColorsCorrectNode.tint_image(image, hex_color)
