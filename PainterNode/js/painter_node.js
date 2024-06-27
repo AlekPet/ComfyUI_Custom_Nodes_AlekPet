@@ -47,6 +47,21 @@ function removeObject(eventData, transform) {
   canvas.requestRenderAll();
   this.viewListObjects(this.list_objects_panel__items);
 }
+
+function resizeCanvas(node, sizes) {
+  const { width, height } = sizes ?? node.painter.currentCanvasSize;
+
+  node.painter.canvas.setDimensions({
+    width: width,
+    height: height,
+  });
+
+  node.painter.canvas.getElement().width = width;
+  node.painter.canvas.getElement().height = height;
+
+  node.painter.canvas.renderAll();
+  app.graph.setDirtyCanvas(true, false);
+}
 // ================= END FUNCTIONS ================
 
 // ================= CLASS PAINTER ================
@@ -987,7 +1002,7 @@ class Painter {
       }
     }
 
-    this.canvas.setDimensions({
+    resizeCanvas(this.node, {
       width: new_width,
       height: new_height,
     });
@@ -2015,6 +2030,8 @@ function PainterWidget(node, inputName, inputData, app) {
   node.painter.canvas.setWidth(node.painter.currentCanvasSize.width);
   node.painter.canvas.setHeight(node.painter.currentCanvasSize.height);
 
+  resizeCanvas(node, node.painter.canvas);
+
   widget.painter_wrap = node.painter.canvas.wrapperEl;
   widget.parent = node;
 
@@ -2669,6 +2686,9 @@ app.registerExtension({
             );
           }
           n.painter.canvasLoadSettingPainter();
+
+          // Resize window
+          window.addEventListener("resize", (e) => resizeCanvas(n), false);
         }
       });
     }
@@ -2692,7 +2712,7 @@ app.registerExtension({
 
         this.LS_Cls = new LS_Class(nodeNamePNG, painters_settings_json);
 
-        // Wind widget update_node and hide him
+        // Find widget update_node and hide him
         for (const w of this.widgets) {
           if (w.name === "update_node") {
             w.type = "converted-widget";
