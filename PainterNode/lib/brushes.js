@@ -183,10 +183,15 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
 
   newGroup: function () {
     this.group = new fabric.Group();
+    const scaleFactor = window.devicePixelRatio;
     Object.assign(this.group, {
-      width: this.canvas.width,
-      height: this.canvas.height,
+      width: this.canvas.width * scaleFactor,
+      height: this.canvas.height * scaleFactor,
       strokeWidth: 0,
+      originX: "left",
+      originY: "top",
+      left: 0,
+      top: 0,
       mypaintlib: true,
     });
 
@@ -273,17 +278,20 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
 
     const canvasToImage = this.canvas.upperCanvasEl.toDataURL();
     fabric.Image.fromURL(canvasToImage, (myImg) => {
+      const scaleFactor = window.devicePixelRatio;
       const imageCanv = myImg.set({
-        left: this.group.left - this.group.width / 2,
-        top: this.group.top - this.group.height / 2,
+        left: this.group.left,
+        top: this.group.top,
         originX: "left",
         originY: "top",
-        width: myImg.width,
-        height: myImg.height,
+        scaleX: myImg.scaleX / scaleFactor,
+        scaleY: myImg.scaleY / scaleFactor,
         mypaintlib: true,
       });
+
       this.canvas.clearContext(this.ctx);
-      this.group.add(imageCanv);
+      this.group.addWithUpdate(imageCanv);
+      this.group.setCoords();
       this.canvas.add(new fabric.Image("")); // empty object, hook
       this.canvas.requestRenderAll();
     });
