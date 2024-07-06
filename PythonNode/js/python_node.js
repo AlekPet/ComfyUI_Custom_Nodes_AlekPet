@@ -1,10 +1,60 @@
 import { app } from "../../scripts/app.js";
-
 import "./lib/pythonnode/ace-builds/src-min-noconflict/ace.js";
 ace.config.set(
   "basePath",
   new URL("./lib/pythonnode/", import.meta.url).toString()
 );
+
+const LIST_THEMES = [
+  "ambiance",
+  "chaos",
+  "chrome",
+  "cloud9_day",
+  "cloud9_night",
+  "cloud9_night_low_color",
+  "clouds",
+  "clouds_midnight",
+  "cloud_editor",
+  "cloud_editor_dark",
+  "cobalt",
+  "crimson_editor",
+  "dawn",
+  "dracula",
+  "dreamweaver",
+  "eclipse",
+  "github",
+  "github_dark",
+  "github_light_default",
+  "gob",
+  "gruvbox",
+  "gruvbox_dark_hard",
+  "gruvbox_light_hard",
+  "idle_fingers",
+  "iplastic",
+  "katzenmilch",
+  "kr_theme",
+  "kuroir",
+  "merbivore",
+  "merbivore_soft",
+  "monokai",
+  "mono_industrial",
+  "nord_dark",
+  "one_dark",
+  "pastel_on_dark",
+  "solarized_dark",
+  "solarized_light",
+  "sqlserver",
+  "terminal",
+  "textmate",
+  "tomorrow",
+  "tomorrow_night",
+  "tomorrow_night_blue",
+  "tomorrow_night_bright",
+  "tomorrow_night_eighties",
+  "twilight",
+  "vibrant_ink",
+  "xcode",
+];
 
 function getPostition(ctx, w_width, y, n_height) {
   const MARGIN = 5;
@@ -31,7 +81,7 @@ function getPostition(ctx, w_width, y, n_height) {
 // Create editor code
 function codeEditor(node, inputName, inputData) {
   const widget = {
-    type: "PYCODE",
+    type: "pycode",
     name: inputName,
     value:
       inputData[1]?.default ||
@@ -52,7 +102,6 @@ result = str(my(23, 9))`,
   };
 
   widget.codeElement = document.createElement("pre");
-  widget.codeElement.id = "py_editor_code";
   widget.codeElement.innerHTML = widget.value;
 
   widget.editor = ace.edit(widget.codeElement);
@@ -67,7 +116,6 @@ result = str(my(23, 9))`,
 // Register extensions
 app.registerExtension({
   name: "Comfy.ExperimentalNodesAlekPet",
-  async setup(app) {},
   getCustomWidgets(app) {
     return {
       PYCODE: (node, inputName, inputData, app) => {
@@ -76,6 +124,19 @@ app.registerExtension({
         widget.editor.getSession().on("change", function (e) {
           widget.value = widget.editor.getValue();
         });
+
+        const themeList = node.addWidget(
+          "combo",
+          inputName + "_themes",
+          "monokai",
+          () => {
+            widget.editor.setTheme(`ace/theme/${themeList.value}`);
+          },
+          {
+            values: LIST_THEMES,
+            serialize: false,
+          }
+        );
 
         node.addCustomWidget(widget);
         return widget;
@@ -116,10 +177,19 @@ app.registerExtension({
       nodeType.prototype.onConfigure = function (w) {
         onConfigure?.apply(this, arguments);
         if (w?.widgets_values?.length) {
-          const widget_id = this?.widgets.findIndex((w) => w.type == "PYCODE");
-          const editor = this.widgets[widget_id]?.editor;
+          const widget_code_id = this?.widgets.findIndex(
+            (w) => w.type == "pycode"
+          );
+          const widget_theme_id = this?.widgets.findIndex(
+            (w) => w.type == "combo"
+          );
+          const editor = this.widgets[widget_code_id]?.editor;
+
           if (editor) {
-            editor.setValue(this.widgets_values[widget_id]);
+            editor.setValue(this.widgets_values[widget_code_id]);
+            editor.setTheme(
+              `ace/theme/${this.widgets_values[widget_theme_id]}`
+            );
             editor.clearSelection();
           }
         }
