@@ -2,10 +2,9 @@ import { api } from "../../../../scripts/api.js";
 import { fabric } from "./fabric.js";
 import {
   makeElement,
-  animateClick,
   createWindowModal,
   isEmptyObject,
-  animateTransitionProps,
+  THEMES_MODAL_WINDOW,
 } from "../../utils.js";
 
 // RGB, HSV, and HSL color conversion algorithms in JavaScript https://gist.github.com/mjackson/5311256
@@ -116,61 +115,29 @@ class LS_Class {
       const parent = context.painter.canvas.wrapperEl;
 
       const message = createWindowModal({
+        ...THEMES_MODAL_WINDOW.warning,
         textTitle: "Loading",
-        stylesTitle: {
-          background: "#8f210f",
-          padding: "5px",
-          borderRadius: "6px",
-          marginBottom: "5px",
-          alignSelf: "stretch",
-        },
         textBody: [
           makeElement("div", {
             innerHTML:
               "Please wait, <span style='font-weight: bold; color: orange'>Painter node</span> settings are loading. Loading times may take a long time if large images have been added to the canvas!",
           }),
         ],
-        stylesBox: {
-          background: "auto",
-          color: "auto",
-          border: 0,
-          boxShadow: "none",
-          padding: 0,
-          fontFamily: "sans-serif",
+        options: {
+          auto: {
+            autohide: true,
+            autoshow: true,
+            autoremove: true,
+            autoremove: true,
+            timewait: 500,
+            propStyles: { opacity: 0 },
+            propPreStyles: { display: "flex" },
+          },
+          parent,
         },
-        stylesWrapper: {
-          display: "flex",
-          background: "#3b2222",
-          justifyContent: "center",
-          flexDirection: "column",
-          alignItems: "stretch",
-          textAlign: "center",
-          borderRadius: "6px",
-          boxShadow: "3px 3px 6px #141414",
-          border: "1px solid #f91b1b",
-          color: "white",
-          padding: "6px",
-          // opacity: 1,
-          fontFamily: "sans-serif",
-          lineHeight: 1.5,
-          minWidth: "300px",
-        },
-        stylesClose: { background: "#3b2222" },
       });
-      parent.append(message);
 
-      animateClick(message);
       this.LS_Painters = await this.loadData();
-
-      setTimeout(
-        () =>
-          animateTransitionProps(
-            message,
-            { opacity: 0 },
-            { display: "flex" }
-          ).then(() => parent.removeChild(message)),
-        500
-      );
     } else {
       const lsPainter = localStorage.getItem(this.name);
       this.LS_Painters = lsPainter && JSON.parse(lsPainter);

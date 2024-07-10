@@ -118,12 +118,15 @@ app.registerExtension({
               (w) => w.type == "customtext"
             );
 
-            if (Array.isArray(texts))
+            if (Array.isArray(texts)) {
+              texts = texts.map((v) =>
+                typeof v === "object" ? JSON.stringify(v) : v.toString()
+              );
               texts = texts
                 .filter((word) => word.trim() !== "")
                 .map((word) => word.trim())
                 .join(" ");
-
+            }
             this.widgets[widget_id].value = texts;
             app.graph.setDirtyCanvas(true);
           }
@@ -238,12 +241,10 @@ app.registerExtension({
           this.onExecuted = function ({ images }) {
             res.innerHTML = "";
 
-            images.forEach((data, idx) => {
+            images.forEach((data) => {
               const image = new Image();
               image.onload = () => {
-                res.innerHTML = `<div style="border: solid 1px var(--border-color); border-radius: 4px; padding: 5px;">Image ${
-                  idx + 1
-                } size: ${image.naturalWidth}x${image.naturalHeight}</div>`;
+                res.innerHTML = `<div style="border: solid 1px var(--border-color); border-radius: 4px; padding: 5px;">Width: ${image.naturalWidth}, Height: ${image.naturalHeight}</div>`;
               };
               image.src = api.apiURL(
                 "/view?" +

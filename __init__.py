@@ -215,7 +215,7 @@ from .GoogleTranslateNode.google_translate_node import (
 )
 from .PainterNode.painter_node import PainterNode
 from .PoseNode.pose_node import PoseNode
-from .PythonNode.python_node import PythonNode
+from .IDENode.ide_node import IDENode
 
 
 NODE_CLASS_MAPPINGS = {
@@ -230,7 +230,7 @@ NODE_CLASS_MAPPINGS = {
     "GoogleTranslateTextNode": GoogleTranslateTextNode,
     "PainterNode": PainterNode,
     "PoseNode": PoseNode,
-    "PythonNode": PythonNode,
+    "IDENode": IDENode,
 }
 
 
@@ -246,5 +246,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "GoogleTranslateTextNode": "Google Translate Text Node",
     "PainterNode": "Painter Node",
     "PoseNode": "Pose Node",
-    "PythonNode": "Python Node",
+    "IDENode": "IDE Node",
 }
