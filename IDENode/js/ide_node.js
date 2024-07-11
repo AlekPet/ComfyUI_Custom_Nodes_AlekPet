@@ -71,13 +71,13 @@ const LIST_THEMES = [
 
 const DEFAULT_TEMPLATES = {
   js: `// !!! Attention, do not insert unverified code !!!
-  // ---- Example code ----
-  // Globals inputs variables: var1, var2, var3, user variables ...
-  const runCode = () => {
-      const date = new Date().toJSON().replace("T"," ");
-      return date.slice(0,date.indexOf("."))
-    }
-  result = runCode();`,
+// ---- Example code ----
+// Globals inputs variables: var1, var2, var3, user variables ...
+const runCode = () => {
+  const date = new Date().toJSON().replace("T"," ");
+  return date.slice(0,date.indexOf("."))
+}
+result = runCode();`,
   py: `# !!! Attention, do not insert unverified code !!!
 # ---- Example code ----
 # Globals inputs variables: var1, var2, var3, user variables ...
