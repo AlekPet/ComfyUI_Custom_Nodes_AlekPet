@@ -3,7 +3,6 @@ from aiohttp import web
 
 import argostranslate.package
 import argostranslate.translate
-import re
 
 # Find packages https://www.argosopentech.com/argospm/index/
 
@@ -119,40 +118,6 @@ async def argo_langs_support(request):
     return web.json_response({"langs_support": [], "lang_code": "en"})
 
 
-def textNoTranslateConvert(text, tagName):
-    if text.strip() == "" or tagName.strip() == "":
-        return text, []
-
-    tagNameEscape = re.escape(tagName)
-    reFindTags = rf"({tagNameEscape}.*?{tagNameEscape})"
-
-    originalText = text
-    findTags = re.findall(reFindTags, originalText)
-
-    for key, tag in enumerate(findTags):
-        originalText = originalText.replace(tag, f"{tagName}{key}{tagName}")
-
-    findTags = list(map(lambda x: x.replace(tagName, ""), findTags))
-
-    return originalText, findTags
-
-
-def textNoTranslateRestore(text, tagsOriginal, tagName):
-    if text.strip() == "" or tagName.strip() == "" or len(tagsOriginal) == 0:
-        return text
-
-    tagNameEscape = re.escape(tagName)
-    reFindTags = rf"({tagNameEscape}\d+{tagNameEscape})"
-
-    originalText = text
-    findTags = re.findall(reFindTags, originalText)
-
-    for key, tag in enumerate(findTags):
-        originalText = originalText.replace(tag, tagsOriginal[key])
-
-    return originalText
-
-
 def installPackages(srcTrans, toTrans="en"):
     argostranslate.package.update_package_index()
     available_packages = argostranslate.package.get_available_packages()
@@ -178,33 +143,19 @@ def preTranslate(prompt, srcTrans, toTrans):
     return translate_text_prompt if translate_text_prompt and not None else ""
 
 
-def translate(prompt, srcTrans=None, toTrans="english", tagName="@"):
+def translate(prompt, srcTrans=None, toTrans="english"):
     translate_text_prompt = ""
     try:
         srcTransCode = ALL_CODES[srcTrans]["code"] if srcTrans is not None else None
         toTransCode = ALL_CODES[toTrans]["code"]
         installPackages(srcTransCode, toTransCode)
-
-        translate_text_prompt, notranslateText = textNoTranslateConvert(prompt, tagName)
-
-        translate_text_prompt = preTranslate(
-            translate_text_prompt, srcTransCode, toTransCode
-        )
-
-        translate_text_prompt = textNoTranslateRestore(
-            translate_text_prompt, notranslateText, tagName
-        )
+        translate_text_prompt = preTranslate(prompt, srcTransCode, toTransCode)
 
     except Exception as e:
         print(e)
         return "[Error] No translate text!"
 
     return translate_text_prompt
-
-
-class STRINGFIX:
-    def __init__(self):
-        pass
 
 
 class ArgosTranslateCLIPTextEncodeNode:
@@ -217,8 +168,7 @@ class ArgosTranslateCLIPTextEncodeNode:
                 "to_translate": (self.langs_support, {"default": "english"}),
                 "text": ("STRING", {"multiline": True, "placeholder": "Input text"}),
                 "clip": ("CLIP",),
-            },
-            "optional": {"tag_no_trans": ("STRING", {"default": "@"})},
+            }
         }
 
     RETURN_TYPES = (
@@ -228,20 +178,15 @@ class ArgosTranslateCLIPTextEncodeNode:
     FUNCTION = "argos_translate_text"
     CATEGORY = "AlekPet Nodes/conditioning"
 
-    def argos_translate_text(
-        self, from_translate, to_translate, text, clip, tag_no_trans="@"
-    ):
+    def argos_translate_text(self, from_translate, to_translate, text, clip):
         self.langs_support = ALL_CODES[from_translate]["targets"]
-        text_tranlsated = translate(text, from_translate, to_translate, tag_no_trans)
-
-        tokens = clip.tokenize(text_tranlsated)
+        text = translate(text, from_translate, to_translate)
+        tokens = clip.tokenize(text)
         cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
-        return ([[cond, {"pooled_output": pooled}]], text_tranlsated)
+        return ([[cond, {"pooled_output": pooled}]], text)
 
     @classmethod
-    def VALIDATE_INPUTS(
-        cls, from_translate, to_translate, text, clip, tag_no_trans
-    ):
+    def VALIDATE_INPUTS(cls, from_translate, to_translate, text, clip):
         return True
 
 
@@ -258,16 +203,13 @@ class ArgosTranslateTextNode(ArgosTranslateCLIPTextEncodeNode):
 
     CATEGORY = "AlekPet Nodes/text"
 
-    def argos_translate_text(
-        self, from_translate, to_translate, text, tag_no_trans="@"
-    ):
+    def argos_translate_text(self, from_translate, to_translate, text):
         self.langs_support = ALL_CODES[from_translate]["targets"]
-        text_tranlsated = translate(text, from_translate, to_translate, tag_no_trans)
-
+        text_tranlsated = translate(text, from_translate, to_translate)
         return (text_tranlsated,)
 
     @classmethod
-    def VALIDATE_INPUTS(cls, from_translate, to_translate, text, tag_no_trans):
+    def VALIDATE_INPUTS(cls, from_translate, to_translate, text):
         return True
 
 
