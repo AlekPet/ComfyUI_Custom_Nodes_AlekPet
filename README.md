@@ -17,6 +17,7 @@ Custom nodes that extend the capabilities of [ComfyUI](https://github.com/comfya
 | _PreviewTextNode_                   |                                           The node displays the input text                                           |    AlekPet Node/extras    |
 | _ColorsCorrectNode_                 |                                         The node for correcting image colors                                         |    AlekPet Node/extras    |
 | _HexToHueNode_                      |                          The node convert HEX color to HUE (degrees and normal [-0.5, 0.5])                          |    AlekPet Node/extras    |
+| _IDENode_                           |          The node that allows you to run code written in **Python** or **Javascript** directly in the node           | AlekPet Node/experiments  |
 
 # Installing
 

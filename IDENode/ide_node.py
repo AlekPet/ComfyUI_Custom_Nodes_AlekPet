@@ -4,7 +4,7 @@ from aiohttp import web
 from asyncio import sleep, run
 import json
 
-
+# Hack: string type that is always equal in not equal comparisons, thanks pythongosssss
 class AnyType(str):
     def __ne__(self, __value: object) -> bool:
         return False
@@ -58,9 +58,6 @@ class IDENode:
 
         return {
             "optional": {
-                "var1": (PY_CODE, {"default": ""}),
-                "var2": (PY_CODE, {"default": ""}),
-                "var3": (PY_CODE, {"default": ""}),
             },
             "required": {
                 "language": (
@@ -118,7 +115,10 @@ result = runCode()"""
             pycode_ += pycode
 
             my_namespace = types.SimpleNamespace()
-            exec(pycode_, my_namespace.__dict__)
+            try:
+                exec(pycode_, my_namespace.__dict__)
+            except Exception as e:
+                my_namespace.result = f"Error in python code: {e}"
 
             return (my_namespace.result,)
 

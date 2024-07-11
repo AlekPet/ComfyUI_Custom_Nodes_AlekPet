@@ -4,6 +4,7 @@ import "./lib/idenode/ace-builds/src-min-noconflict/ace.js";
 import {
   createWindowModal,
   makeElement,
+  findWidget,
   THEMES_MODAL_WINDOW,
 } from "./utils.js";
 
@@ -133,9 +134,7 @@ result = str(my(23, 9))`,
     },
   };
 
-  widget.codeElement = document.createElement("pre");
-  widget.codeElement.innerHTML = widget.value;
-
+  widget.codeElement = makeElement("pre", { innerHTML: widget.value });
   widget.editor = ace.edit(widget.codeElement);
   widget.editor.setTheme("ace/theme/monokai");
   widget.editor.session.setMode("ace/mode/python");
@@ -159,7 +158,7 @@ app.registerExtension({
 
         const themeList = node.addWidget(
           "combo",
-          "themes",
+          "theme_highlight",
           "monokai",
           (v) => {
             widget.editor.setTheme(`ace/theme/${themeList.value}`);
@@ -170,10 +169,7 @@ app.registerExtension({
           }
         );
 
-        const widgetLang_id = node?.widgets.findIndex(
-          (w) => w.name == "language"
-        );
-
+        const widgetLang_id = findWidget(node, "language", "name", "findIndex");
         if (widgetLang_id !== -1) {
           node.widgets[widgetLang_id].callback = (v) => {
             widget.editor.setTheme(`ace/theme/${themeList.value}`);
@@ -186,7 +182,10 @@ app.registerExtension({
                 defaultCode = DEFAULT_TEMPLATES.py;
               }
 
-              defaultCode && widget.editor.setValue(defaultCode);
+              if (defaultCode) {
+                widget.editor.setValue(defaultCode);
+                widget.editor.clearSelection();
+              }
             }
 
             widget.editor.session.setMode(`ace/mode/${v}`);
@@ -194,10 +193,10 @@ app.registerExtension({
         }
 
         node.addWidget("button", "Add Variable", "add_variable", () => {
-          const varName = prompt(
-            "Enter variable name:",
-            node?.inputs.length ? `var${node.inputs.length + 1}` : "var1"
-          );
+          const nameInput = node?.inputs?.length
+            ? `var${node.inputs.length + 1}`
+            : "var1";
+          const varName = prompt("Enter variable name:", nameInput);
 
           if (
             !varName ||
@@ -235,59 +234,13 @@ app.registerExtension({
           widget.editor.setValue("");
         });
 
-        node.addCustomWidget(widget);
-
-        // JS run
-        api.addEventListener("alekpet_js_result", async ({ detail }) => {
-          const { vars, unique_id } = detail;
-          if ((vars && !Object.keys(vars).length) || +unique_id !== node.id) {
-            return;
+        node.onRemoved = function () {
+          for (const w of node?.widgets) {
+            if (w?.codeElement) w.codeElement.remove();
           }
+        };
 
-          await new Promise((res) => {
-            const edit_vars = JSON.parse(vars);
-            let code_run = `\nlet result = null;\n`;
-            for (let [k, v] of Object.entries(edit_vars)) {
-              // Check type
-              if (v instanceof String || typeof v === "string") {
-                v = `"${v}"`;
-              } else if (v instanceof Object || typeof v === "object") {
-                v = JSON.stringify(v);
-              }
-              code_run += `let ${k} = ${v};\n`;
-            }
-
-            code_run += `${widget.editor.getValue()}\nreturn result\n`;
-            let result_run_code = null;
-            try {
-              result_run_code = eval(`(function(){${code_run}}())`);
-            } catch (e) {
-              result_run_code = `Error in javascript code: ${e}`;
-              console.error(`<${node.name}> ${result_run_code}`);
-            }
-
-            res(result_run_code);
-          }).then((result_code) => {
-            api
-              .fetchApi("/alekpet/check_js_complete", {
-                method: "POST",
-                body: JSON.stringify({
-                  unique_id: node.id.toString(),
-                  result_code: JSON.stringify(result_code),
-                }),
-              })
-              .then((res) => res.json())
-              .then((res) =>
-                res?.status === "Ok"
-                  ? console.log(
-                      `%cJS complete ok: ${node.name}: ${res.status}`,
-                      "color: green; font-weight: 600;"
-                    )
-                  : console.error(`Error JS complete: ${res.status}`)
-              )
-              .catch((err) => console.error(`Error JS complete: ${err}`));
-          });
-        });
+        node.addCustomWidget(widget);
 
         return widget;
       },
@@ -304,17 +257,73 @@ app.registerExtension({
           ? onNodeCreated.apply(this, arguments)
           : undefined;
 
-        let IDENode = app.graph._nodes.filter((wi) => wi.type == nodeData.name),
-          nodeName = `${nodeData.name}_${IDENode.length}`;
+        const node_title = await this.getTitle();
+        const nodeName = `${nodeData.name}_${this.id}`;
 
         console.log(`Create ${nodeData.name}: ${nodeName}`);
         this.name = nodeName;
 
-        this.onRemoved = function () {
-          for (const w of this?.widgets) {
-            if (w?.codeElement) w.codeElement.remove();
+        // Create default inputs, when first create node
+        if (!this?.inputs) {
+          ["var1", "var2", "var3"].forEach((inputName) => {
+            const currentWidth = this.size[0];
+            this.addInput(inputName, "*");
+            this.setSize([currentWidth, this.size[1]]);
+          });
+        }
+
+        const widgetEditor = findWidget(this, "pycode", "type");
+        // JS run
+        api.addEventListener("alekpet_js_result", async ({ detail }) => {
+          const { vars, unique_id } = detail;
+          if ((vars && !Object.keys(vars).length) || +unique_id !== this.id) {
+            return;
           }
-        };
+
+          await new Promise((res) => {
+            const edit_vars = JSON.parse(vars);
+            let code_run = `\nlet result = null;\n`;
+            for (let [k, v] of Object.entries(edit_vars)) {
+              // Check type
+              if (v instanceof String || typeof v === "string") {
+                v = `"${v}"`;
+              } else if (v instanceof Object || typeof v === "object") {
+                v = JSON.stringify(v);
+              }
+              code_run += `let ${k} = ${v};\n`;
+            }
+
+            code_run += `${widgetEditor.editor.getValue()}\nreturn result\n`;
+            let result_run_code = null;
+            try {
+              result_run_code = eval(`(function(){${code_run}}())`);
+            } catch (e) {
+              result_run_code = `Error in javascript code: ${e}`;
+              console.error(`<${this.name}> ${result_run_code}`);
+            }
+
+            res(result_run_code);
+          }).then((result_code) => {
+            api
+              .fetchApi("/alekpet/check_js_complete", {
+                method: "POST",
+                body: JSON.stringify({
+                  unique_id: this.id.toString(),
+                  result_code: JSON.stringify(result_code),
+                }),
+              })
+              .then((res) => res.json())
+              .then((res) =>
+                res?.status === "Ok"
+                  ? console.log(
+                      `%cJS complete ok: ${this.name}: ${res.status}`,
+                      "color: green; font-weight: 600;"
+                    )
+                  : console.error(`Error JS complete: ${res.status}`)
+              )
+              .catch((err) => console.error(`Error JS complete: ${err}`));
+          });
+        });
 
         this.setSize([500, 350]);
 
@@ -323,17 +332,26 @@ app.registerExtension({
 
       // Node Configure
       const onConfigure = nodeType.prototype.onConfigure;
-      nodeType.prototype.onConfigure = function (w) {
+      nodeType.prototype.onConfigure = function (node) {
         onConfigure?.apply(this, arguments);
-        if (w?.widgets_values?.length) {
-          const widget_code_id = this?.widgets.findIndex(
-            (w) => w.type == "pycode"
+        if (node?.widgets_values?.length) {
+          const widget_code_id = findWidget(
+            this,
+            "pycode",
+            "type",
+            "findIndex"
           );
-          const widget_theme_id = this?.widgets.findIndex(
-            (w) => w.name == "themes"
+          const widget_theme_id = findWidget(
+            this,
+            "theme_highlight",
+            "name",
+            "findIndex"
           );
-          const widget_language_id = this?.widgets.findIndex(
-            (w) => w.name == "language"
+          const widget_language_id = findWidget(
+            this,
+            "language",
+            "name",
+            "findIndex"
           );
 
           const editor = this.widgets[widget_code_id]?.editor;
@@ -355,21 +373,26 @@ app.registerExtension({
       const getExtraMenuOptions = nodeType.prototype.getExtraMenuOptions;
       nodeType.prototype.getExtraMenuOptions = function (_, options) {
         getExtraMenuOptions?.apply(this, arguments);
+
+        const lastSepId = options.lastIndexOf(null);
         const past_index = options.length - 1;
         const past = options[past_index];
 
+        // options.splice(lastSepId, 0, null);
         if (!!past) {
           for (const input_idx in this.inputs) {
             const input = this.inputs[input_idx];
+
+            if (["language", "theme_highlight"].includes(input.name)) continue;
 
             options.splice(past_index + 1, 0, {
               content: `Remove Input ${input.name}`,
               callback: (e) => {
                 const currentWidth = this.size[0];
-                if (input?.link) {
+                if (input.link) {
                   app.graph.removeLink(input.link);
                 }
-                this.removeInput(input);
+                this.removeInput(input_idx);
                 this.setSize([currentWidth, this.size[1]]);
               },
             });

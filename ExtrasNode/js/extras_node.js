@@ -212,54 +212,54 @@ app.registerExtension({
         };
         break;
       }
-      case "PreviewImage": {
-        // Node Created
-        const onNodeCreated = nodeType.prototype.onNodeCreated;
-        nodeType.prototype.onNodeCreated = function () {
-          const ret = onNodeCreated
-            ? onNodeCreated.apply(this, arguments)
-            : undefined;
+      // case "PreviewImage": {
+      //   // Node Created
+      //   const onNodeCreated = nodeType.prototype.onNodeCreated;
+      //   nodeType.prototype.onNodeCreated = function () {
+      //     const ret = onNodeCreated
+      //       ? onNodeCreated.apply(this, arguments)
+      //       : undefined;
 
-          let PreviewImage = app.graph._nodes.filter(
-              (wi) => wi.type == nodeData.name
-            ),
-            nodeName = `${nodeData.name}_${PreviewImage.length}`;
+      //     let PreviewImage = app.graph._nodes.filter(
+      //         (wi) => wi.type == nodeData.name
+      //       ),
+      //       nodeName = `${nodeData.name}_${PreviewImage.length}`;
 
-          const res = document.createElement("div");
-          this.addDOMWidget(nodeName, "show_resolution", res);
-          res.innerHTML = "";
-          Object.assign(res.style, {
-            height: "25px",
-            fontSize: "0.8rem",
-            color: "var(--input-text)",
-            fontFamily: "monospace",
-            padding: 0,
-            margin: 0,
-            outline: 0,
-          });
+      //     const res = document.createElement("div");
+      //     this.addDOMWidget(nodeName, "show_resolution", res);
+      //     res.innerHTML = "";
+      //     Object.assign(res.style, {
+      //       height: "25px",
+      //       fontSize: "0.8rem",
+      //       color: "var(--input-text)",
+      //       fontFamily: "monospace",
+      //       padding: 0,
+      //       margin: 0,
+      //       outline: 0,
+      //     });
 
-          this.onExecuted = function ({ images }) {
-            res.innerHTML = "";
+      //     this.onExecuted = function ({ images }) {
+      //       res.innerHTML = "";
 
-            images.forEach((data) => {
-              const image = new Image();
-              image.onload = () => {
-                res.innerHTML = `<div style="border: solid 1px var(--border-color); border-radius: 4px; padding: 5px;">Width: ${image.naturalWidth}, Height: ${image.naturalHeight}</div>`;
-              };
-              image.src = api.apiURL(
-                "/view?" +
-                  new URLSearchParams(data).toString() +
-                  app.getPreviewFormatParam() +
-                  app.getRandParam()
-              );
-            });
-          };
+      //       images.forEach((data) => {
+      //         const image = new Image();
+      //         image.onload = () => {
+      //           res.innerHTML = `<div style="border: solid 1px var(--border-color); border-radius: 4px; padding: 5px;">Width: ${image.naturalWidth}, Height: ${image.naturalHeight}</div>`;
+      //         };
+      //         image.src = api.apiURL(
+      //           "/view?" +
+      //             new URLSearchParams(data).toString() +
+      //             app.getPreviewFormatParam() +
+      //             app.getRandParam()
+      //         );
+      //       });
+      //     };
 
-          return ret;
-        };
+      //     return ret;
+      //   };
 
-        break;
-      }
+      //   break;
+      // }
       // -- Color nodes
 
       default: {

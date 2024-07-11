@@ -104,6 +104,10 @@ function makeModal({
     );
 }
 
+function findWidget(node, value, attr = "name", func = "find") {
+  return node?.widgets ? node.widgets[func]((w) => w[attr] === value) : null;
+}
+
 function animateTransitionProps(
   el,
   props = { opacity: 1 },
@@ -525,5 +529,6 @@ export {
   isEmptyObject,
   isValidStyle,
   rgbToHex,
+  findWidget,
   THEMES_MODAL_WINDOW,
 };
