@@ -581,7 +581,7 @@ def deep_translator_function(
     except Exception as e:
         print(f"[Deep Translator] Error: {e}")
     finally:
-        return text_tranlsated
+        return text_tranlsated, from_translate
 
 
 def makeRequiredFields(langs_support=[]):
@@ -687,6 +687,7 @@ class DeepTranslatorCLIPTextEncodeNode:
         "CONDITIONING",
         "STRING",
     )
+    OUTPUT_NODE = True
     FUNCTION = "deep_translate_text"
 
     CATEGORY = "AlekPet Nodes/conditioning"
@@ -709,7 +710,7 @@ class DeepTranslatorCLIPTextEncodeNode:
             self.current_service = service
 
         # Translate
-        text_tranlsated = deep_translator_function(
+        text_tranlsated, detected_lang = deep_translator_function(
             from_translate,
             to_translate,
             add_proxies,
@@ -722,10 +723,13 @@ class DeepTranslatorCLIPTextEncodeNode:
 
         tokens = clip.tokenize(text_tranlsated)
         cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
-        return (
-            [[cond, {"pooled_output": pooled}]],
-            text_tranlsated,
-        )
+        return {
+            "ui": {"detected_lang": (detected_lang,)},
+            "result": (
+                [[cond, {"pooled_output": pooled}]],
+                text_tranlsated,
+            ),
+        }
 
     @classmethod
     def VALIDATE_INPUTS(
@@ -755,6 +759,7 @@ class DeepTranslatorTextNode(DeepTranslatorCLIPTextEncodeNode):
 
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("text",)
+    OUTPUT_NODE = True
     FUNCTION = "deep_translate_text"
 
     CATEGORY = "AlekPet Nodes/text"
@@ -776,7 +781,7 @@ class DeepTranslatorTextNode(DeepTranslatorCLIPTextEncodeNode):
             self.current_service = service
 
         # Translate
-        text_tranlsated = deep_translator_function(
+        text_tranlsated, detected_lang = deep_translator_function(
             from_translate,
             to_translate,
             add_proxies,
@@ -786,8 +791,10 @@ class DeepTranslatorTextNode(DeepTranslatorCLIPTextEncodeNode):
             text,
             self.langs_support,
         )
-
-        return (text_tranlsated,)
+        return {
+            "ui": {"detected_lang": (detected_lang,)},
+            "result": (text_tranlsated,),
+        }
 
     @classmethod
     def VALIDATE_INPUTS(

@@ -250,6 +250,22 @@ app.registerExtension({
       };
     }
 
+    // Node onExecuted
+    const onExecuted = nodeType.prototype.onExecuted;
+    nodeType.prototype.onExecuted = function (data) {
+      onExecuted?.apply?.(this, arguments);
+      if (data?.detected_lang && data.detected_lang.length) {
+        const widget_from_translate = findWidget(
+          this,
+          "from_translate",
+          "name",
+          "find"
+        );
+        if (widget_from_translate)
+          widget_from_translate.value = data.detected_lang[0];
+      }
+    };
+
     // --- DeepTranslatorTextNode
   },
 });
