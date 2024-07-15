@@ -1,33 +1,34 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
+import { $el } from "../../../scripts/ui.js";
 import { isValidStyle, rgbToHex } from "./utils.js";
 
 function makeColorWidget(node, inputName, inputData, widget) {
-  const color_hex = document.createElement("input");
-  color_hex.type = "color";
-  color_hex.value = inputData[1]?.default || "#00ff33";
-
-  const color_text = document.createElement("div");
-  color_text.title = "Click to copy color to clipboard";
-  Object.assign(color_text.style, {
-    textAlign: "center",
-    fontSize: "20px",
-    height: "20px",
-    fontWeight: "600",
-    lineHeight: 1.5,
-    background: "var(--comfy-menu-bg)",
-    border: "dotted 2px white",
-    fontFamily: "sans-serif",
-    letterSpacing: "0.5rem",
-    borderRadius: "8px",
-    textShadow: "0 0 4px #fff",
-    cursor: "pointer",
+  const color_hex = $el("input", {
+    type: "color",
+    value: inputData[1]?.default || "#00ff33",
+    oninput: () => widget.callback?.(color_hex.value),
   });
 
-  color_text.addEventListener("click", () =>
-    navigator.clipboard.writeText(color_hex.value)
-  );
+  const color_text = $el("div", {
+    title: "Click to copy color to clipboard",
+    style: {
+      textAlign: "center",
+      fontSize: "20px",
+      height: "20px",
+      fontWeight: "600",
+      lineHeight: 1.5,
+      background: "var(--comfy-menu-bg)",
+      border: "dotted 2px white",
+      fontFamily: "sans-serif",
+      letterSpacing: "0.5rem",
+      borderRadius: "8px",
+      textShadow: "0 0 4px #fff",
+      cursor: "pointer",
+    },
+    onclick: () => navigator.clipboard.writeText(color_hex.value),
+  });
 
   const w_color_hex = node.addDOMWidget(inputName, "color_hex", color_hex, {
     getValue() {
@@ -42,7 +43,7 @@ function makeColorWidget(node, inputName, inputData, widget) {
   });
 
   widget.callback = (v) => {
-    let color = isValidStyle("color", v) ? v : "#00ff33";
+    let color = isValidStyle("color", v).result ? v : "#00ff33";
     if (color.includes("#") && color.length === 4) {
       const opt_color = new Option().style;
       opt_color["color"] = color;
@@ -52,10 +53,6 @@ function makeColorWidget(node, inputName, inputData, widget) {
     color_hex.value = color;
     widget.value = color;
   };
-
-  color_hex.addEventListener("input", () => {
-    widget.callback?.(color_hex.value);
-  });
 
   const w_color_text = node.addDOMWidget(
     inputName + "_box",
@@ -71,8 +68,181 @@ function makeColorWidget(node, inputName, inputData, widget) {
   return { widget };
 }
 
+function createPreiviewSize(node, name, options) {
+  const { color } = options;
+
+  const res = $el("div", {
+    style: {
+      height: "25px",
+      fontSize: "0.8rem",
+      color: color,
+      fontFamily: "monospace",
+      padding: 0,
+      margin: 0,
+      outline: 0,
+    },
+  });
+
+  const widget = node.addDOMWidget(name, "show_resolution", res, {
+    getValue() {
+      return res.innerHTML;
+    },
+    setValue(v) {
+      res.innerHTML = v;
+    },
+  });
+
+  return widget;
+}
+
+const convertIdClass = (text) => text.replaceAll(".", "_");
+const idExt = "Comfy.ExtrasNode";
+
+// LocalStorage settings
+const PreviewImageSizeLS = localStorage.getItem(
+  "Comfy.Settings.Comfy.ExtrasNode.PreviewImage"
+);
+const PreviewImageColorTextLS = localStorage.getItem(
+  "Comfy.Settings.Comfy.ExtrasNode.PreviewImageColorText"
+);
+const PreviewImageColorBgLS = localStorage.getItem(
+  "Comfy.Settings.Comfy.ExtrasNode.PreviewImageColorBg"
+);
+
+let PreviewImageSize = PreviewImageSizeLS
+    ? JSON.parse(PreviewImageSizeLS)
+    : false,
+  PreviewImageColorText =
+    PreviewImageColorTextLS && PreviewImageColorTextLS.trim() !== ""
+      ? PreviewImageColorTextLS
+      : document.documentElement.style.getPropertyValue("--input-text") ||
+        "#ddd",
+  PreviewImageColorBg = PreviewImageColorBgLS ? PreviewImageColorBgLS : "";
+
+// Register Extension
 app.registerExtension({
-  name: "Comfy.ExtrasNode",
+  name: idExt,
+  init() {
+    app.ui.settings.addSetting({
+      id: `${idExt}.PreviewImage`,
+      name: "🔸 PreviewImage: display image size",
+      defaultValue: true,
+      type: (name, sett, val) => {
+        return $el("tr", [
+          $el("td", [
+            $el("label", {
+              textContent: name,
+              for: convertIdClass(`${idExt}.PreviewImage_size_checkbox`),
+            }),
+          ]),
+          $el("td", [
+            $el(
+              "label",
+              {
+                style: { display: "block" },
+                textContent: "Enable: ",
+                for: convertIdClass(`${idExt}.PreviewImage_size_checkbox`),
+              },
+              [
+                $el("input", {
+                  id: convertIdClass(`${idExt}.PreviewImage_size_checkbox`),
+                  type: "checkbox",
+                  checked: val,
+                  onchange: (e) => {
+                    const checked = !!e.target.checked;
+                    PreviewImageSize = checked;
+                    sett(checked);
+                  },
+                }),
+              ]
+            ),
+            $el(
+              "label",
+              {
+                textContent: "Color text: ",
+                style: { display: "block" },
+              },
+              [
+                $el("input", {
+                  id: convertIdClass(`${idExt}.PreviewImage_color_input`),
+                  type: "color",
+                  value: PreviewImageColorText,
+                  onchange: (e) => {
+                    const colorVal =
+                      e.target.value ||
+                      document.documentElement.style.getPropertyValue(
+                        "--input-text"
+                      ) ||
+                      "#dddddd";
+                    PreviewImageColorText = colorVal;
+                    localStorage.setItem(
+                      "Comfy.Settings.Comfy.ExtrasNode.PreviewImageColorText",
+                      PreviewImageColorText
+                    );
+                  },
+                }),
+              ]
+            ),
+            $el(
+              "label",
+              {
+                textContent: "Color background: ",
+                style: { display: "block" },
+              },
+              [
+                $el("input", {
+                  id: convertIdClass(
+                    `${idExt}.PreviewImage_color_background_input`
+                  ),
+                  type: "color",
+                  value: PreviewImageColorBg,
+                  onchange: (e) => {
+                    const colorVal = e.target.value || "";
+                    PreviewImageColorBg = colorVal;
+                    localStorage.setItem(
+                      "Comfy.Settings.Comfy.ExtrasNode.PreviewImageColorBg",
+                      PreviewImageColorBg
+                    );
+                  },
+                }),
+              ]
+            ),
+            $el("button", {
+              textContent: "Reset colors",
+              onclick: () => {
+                PreviewImageColorText = isValidStyle(
+                  "color",
+                  document.documentElement.style.getPropertyValue(
+                    "--input-text"
+                  ) || "#ddd"
+                ).color_hex;
+                PreviewImageColorBg = "";
+
+                document.querySelector(
+                  "#Comfy_ExtrasNode_PreviewImage_color_input"
+                ).value = PreviewImageColorText;
+                document.querySelector(
+                  "#Comfy_ExtrasNode_PreviewImage_color_background_input"
+                ).value = PreviewImageColorBg;
+
+                localStorage.setItem(
+                  "Comfy.Settings.Comfy.ExtrasNode.PreviewImageColorText",
+                  PreviewImageColorText
+                );
+                localStorage.setItem(
+                  "Comfy.Settings.Comfy.ExtrasNode.PreviewImageColorBg",
+                  PreviewImageColorBg
+                );
+              },
+              style: {
+                display: "block",
+              },
+            }),
+          ]),
+        ]);
+      },
+    });
+  },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     // --- Preview Text Node
     switch (nodeData.name) {
@@ -212,55 +382,75 @@ app.registerExtension({
         };
         break;
       }
-      // case "PreviewImage": {
-      //   // Node Created
-      //   const onNodeCreated = nodeType.prototype.onNodeCreated;
-      //   nodeType.prototype.onNodeCreated = function () {
-      //     const ret = onNodeCreated
-      //       ? onNodeCreated.apply(this, arguments)
-      //       : undefined;
+      case "PreviewImage": {
+        // Node Created
+        const onNodeCreated = nodeType.prototype.onNodeCreated;
+        nodeType.prototype.onNodeCreated = function () {
+          const ret = onNodeCreated
+            ? onNodeCreated.apply(this, arguments)
+            : undefined;
 
-      //     let PreviewImage = app.graph._nodes.filter(
-      //         (wi) => wi.type == nodeData.name
-      //       ),
-      //       nodeName = `${nodeData.name}_${PreviewImage.length}`;
+          if (PreviewImageSize)
+            createPreiviewSize(this, nodeData.name, {
+              color: PreviewImageColorText,
+            });
 
-      //     const res = document.createElement("div");
-      //     this.addDOMWidget(nodeName, "show_resolution", res);
-      //     res.innerHTML = "";
-      //     Object.assign(res.style, {
-      //       height: "25px",
-      //       fontSize: "0.8rem",
-      //       color: "var(--input-text)",
-      //       fontFamily: "monospace",
-      //       padding: 0,
-      //       margin: 0,
-      //       outline: 0,
-      //     });
+          return ret;
+        };
 
-      //     this.onExecuted = function ({ images }) {
-      //       res.innerHTML = "";
+        const onExecuted = nodeType.prototype.onExecuted;
+        nodeType.prototype.onExecuted = function ({ images }) {
+          onExecuted?.apply(this, arguments);
 
-      //       images.forEach((data) => {
-      //         const image = new Image();
-      //         image.onload = () => {
-      //           res.innerHTML = `<div style="border: solid 1px var(--border-color); border-radius: 4px; padding: 5px;">Width: ${image.naturalWidth}, Height: ${image.naturalHeight}</div>`;
-      //         };
-      //         image.src = api.apiURL(
-      //           "/view?" +
-      //             new URLSearchParams(data).toString() +
-      //             app.getPreviewFormatParam() +
-      //             app.getRandParam()
-      //         );
-      //       });
-      //     };
+          if (PreviewImageSize !== undefined) {
+            let widgetRes = this?.widgets?.find(
+              (w) => w.type === "show_resolution"
+            );
 
-      //     return ret;
-      //   };
+            if (!PreviewImageSize) {
+              if (widgetRes) {
+                for (const w of this.widgets) {
+                  if (w.type === "show_resolution") {
+                    w?.onRemove();
+                  }
+                }
+                this.widgets.length = 0;
+                this.onResize(this.size);
+              }
+            } else {
+              if (!widgetRes) {
+                widgetRes = createPreiviewSize(this, nodeData.name, {
+                  color: PreviewImageColorText,
+                });
+                this.onResize(this.size);
+              } else {
+                widgetRes.element.style.color = PreviewImageColorText;
+              }
 
-      //   break;
-      // }
-      // -- Color nodes
+              images.forEach((data) => {
+                const image = new Image();
+                image.onload = () => {
+                  widgetRes.value = `<div style="border: solid 1px var(--border-color); border-radius: 4px; padding: 5px; ${
+                    PreviewImageColorBg !== ""
+                      ? "background:" + PreviewImageColorBg
+                      : ""
+                  }">Width: ${image.naturalWidth}, Height: ${
+                    image.naturalHeight
+                  }</div>`;
+                };
+                image.src = api.apiURL(
+                  "/view?" +
+                    new URLSearchParams(data).toString() +
+                    app.getPreviewFormatParam() +
+                    app.getRandParam()
+                );
+              });
+            }
+          }
+        };
+
+        break;
+      }
 
       default: {
         break;

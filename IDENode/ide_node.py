@@ -4,6 +4,7 @@ from aiohttp import web
 from asyncio import sleep, run
 import json
 
+
 # Hack: string type that is always equal in not equal comparisons, thanks pythongosssss
 class AnyType(str):
     def __ne__(self, __value: object) -> bool:
@@ -57,8 +58,7 @@ class IDENode:
     def INPUT_TYPES(s):
 
         return {
-            "optional": {
-            },
+            "optional": {},
             "required": {
                 "language": (
                     (["python", "javascript"]),
@@ -87,36 +87,17 @@ result = runCode()"""
 
     CATEGORY = "AlekPet Nodes/experiments"
 
-    def typesCheck(self, v):
-        result = None
-
-        if isinstance(v, str):
-            result = f'"{v}"'
-        elif isinstance(
-            v, (float, int, complex, bool, list, dict, tuple, range, set, frozenset)
-        ):
-            result = v
-        elif v is None:
-            result = f'""'
-
-        return result
-
     def exec_py(self, pycode, language, unique_id, **kwargs):
         if unique_id not in IDEs_DICT:
             IDEs_DICT[unique_id] = self
 
         if language == "python":
-            # Set variable correct type
-            pycode_ = ""
-            for perem in kwargs:
-                kwargs[perem] = self.typesCheck(kwargs[perem])
-                pycode_ += f"{perem} = {kwargs[perem]}\n"
-
-            pycode_ += pycode
-
             my_namespace = types.SimpleNamespace()
+            my_namespace.__dict__.update(kwargs)
+            my_namespace.__dict__.setdefault("result", "The result variable is not assigned")
+
             try:
-                exec(pycode_, my_namespace.__dict__)
+                exec(pycode, my_namespace.__dict__)
             except Exception as e:
                 my_namespace.result = f"Error in python code: {e}"
 

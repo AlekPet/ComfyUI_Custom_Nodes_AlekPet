@@ -193,9 +193,16 @@ function makeElement(tag, attrs = {}) {
 
 function isValidStyle(opt, strColor) {
   let op = new Option().style;
-  if (!op.hasOwnProperty(opt)) return false;
+  if (!op.hasOwnProperty(opt))
+    return { result: false, color: "", color_hex: "" };
+
   op[opt] = strColor;
-  return op[opt] !== "";
+
+  return {
+    result: op[opt] !== "",
+    color_rgb: op[opt],
+    color_hex: rgbToHex(op[opt]),
+  };
 }
 
 function rgbToHex(rgb) {

@@ -1,6 +1,6 @@
 # Title: ComfyUI Install Customs Nodes and javascript files
 # Author: AlekPet
-# Version: 2024.06.27
+# Version: 2024.07.15
 import os
 import importlib.util
 import subprocess
@@ -71,9 +71,7 @@ def checkModules(nodeElement):
     file_requir = os.path.join(extension_folder, nodeElement, "requirements.txt")
     if os.path.exists(file_requir):
         log("  -> File 'requirements.txt' found!")
-        module_install(
-            [sys.executable, "-s", "-m", "pip", "install", "-r", file_requir]
-        )
+        module_install([sys.executable, "-m", "pip", "install", "-r", file_requir])
 
 
 def addComfyUINodesToMapping(nodeElement):
