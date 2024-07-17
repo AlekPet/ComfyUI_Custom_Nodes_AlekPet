@@ -1,0 +1,35 @@
+.pose_panelButtons {
+  position: absolute;
+  padding: 4px;
+  display: flex;
+  gap: 4px;
+  flex-direction: column;
+  width: fit-content;
+}
+.pose_panelButtons .clear_history {
+  border-color: var(--error-text);
+  color: var(--error-text) !important;
+}
+.pose_context_menu {
+  position: absolute;
+  min-width: 100px;
+  padding: 5px;
+  background-color: var(--bg-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  gap: 2px;
+}
+.pose_btn_context {
+  border: 1px solid;
+  padding: 5px;
+  border-color: var(--border-color);
+  transition: 0.8s border-color, 0.8s background-color;
+  cursor: pointer;
+  user-select: none;
+}
+.pose_btn_context:hover {
+  color: var(--error-text);
+  border-color: var(--error-text);
+}

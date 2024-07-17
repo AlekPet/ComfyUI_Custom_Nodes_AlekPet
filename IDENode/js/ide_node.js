@@ -108,6 +108,8 @@ function getPostition(ctx, w_width, y, n_height) {
     maxHeight: `${n_height - MARGIN * 2 - y - 15}px`,
     width: "100%",
     height: "90%",
+    scrollbarColor: "var(--descrip-text) var(--bg-color)",
+    scrollbarWidth: "thin",
   };
 }
 

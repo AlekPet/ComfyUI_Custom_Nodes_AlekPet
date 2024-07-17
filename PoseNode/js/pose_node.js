@@ -7,6 +7,7 @@
  */
 
 import { app } from "../../scripts/app.js";
+import { addStylesheet } from "../../scripts/utils.js";
 import { fabric } from "./lib/posenode/fabric.js";
 
 fabric.Object.prototype.transparentCorners = false;
@@ -553,7 +554,7 @@ function createOpenPose(node, inputName, inputData, app) {
     redoButton = document.createElement("button"),
     historyClearButton = document.createElement("button");
 
-  panelButtons.className = "panelButtons comfy-menu-btns";
+  panelButtons.className = "pose_panelButtons comfy-menu-btns";
   refButton.textContent = "Ref";
   undoButton.textContent = "⟲";
   redoButton.textContent = "⟳";
@@ -572,16 +573,16 @@ function createOpenPose(node, inputName, inputData, app) {
   refButton.addEventListener("contextmenu", (e) => {
     e.preventDefault();
 
-    let menu = document.querySelector(".context_menu");
+    let menu = document.querySelector(".pose_context_menu");
     if (menu) {
       menu.remove();
     }
     menu = document.createElement("div");
-    menu.className = "context_menu";
+    menu.className = "pose_context_menu";
 
     const menu_button = document.createElement("div");
     menu_button.textContent = "Remove background";
-    menu_button.className = "btn_context remBG";
+    menu_button.className = "pose_btn_context remBG";
     menu.append(menu_button);
 
     panelButtons.append(menu);
@@ -590,7 +591,7 @@ function createOpenPose(node, inputName, inputData, app) {
     menu.addEventListener("click", (event) => {
       let { target } = event;
 
-      if (!target.classList.contains("btn_context")) return;
+      if (!target.classList.contains("pose_btn_context")) return;
 
       if (target.classList.contains("remBG")) {
         node.openPose.canvas.backgroundImage = null;
@@ -682,52 +683,13 @@ function createOpenPose(node, inputName, inputData, app) {
 
 window.LS_Poses = {};
 function LS_Save() {
-  ///console.log("Save:", LS_Poses);
   localStorage.setItem("ComfyUI_Poses", JSON.stringify(LS_Poses));
 }
 
 app.registerExtension({
-  name: "Comfy.PoseNode",
+  name: "alekpet.PoseNode",
   async init(app) {
-    // Any initial setup to run as soon as the page loads
-    let style = document.createElement("style");
-    style.innerText = `.panelButtons {
-      position: absolute;
-      padding: 4px;
-      display: flex;
-      gap: 4px;
-      flex-direction: column;
-      width: fit-content;
-    }
-    .panelButtons .clear_history {
-      border-color: var(--error-text);
-      color: var(--error-text) !important;
-    }
-    .context_menu {
-      position: absolute;
-      min-width: 100px;
-      padding: 5px;
-      background-color: var(--bg-color);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border: 1px solid var(--border-color);
-      gap: 2px;
-  }
-  .btn_context {
-    border: 1px solid;
-    padding: 5px;
-    border-color: var(--border-color);
-    transition: .8s border-color, .8s background-color;
-    cursor: pointer;
-    user-select: none;
-  }
-  .btn_context:hover {
-    color: var(--error-text);
-    border-color: var(--error-text);
-  }
-    `;
-    document.head.appendChild(style);
+    addStylesheet("css/posenode/pose_node_styles.css", import.meta.url);
   },
   async setup(app) {
     let openPoseNode = app.graph._nodes.filter((wi) => wi.type == "PoseNode");

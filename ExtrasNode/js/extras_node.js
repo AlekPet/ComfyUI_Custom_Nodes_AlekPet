@@ -96,17 +96,17 @@ function createPreiviewSize(node, name, options) {
 }
 
 const convertIdClass = (text) => text.replaceAll(".", "_");
-const idExt = "Comfy.ExtrasNode";
+const idExt = "alekpet.ExtrasNode";
 
 // LocalStorage settings
 const PreviewImageSizeLS = localStorage.getItem(
-  "Comfy.Settings.Comfy.ExtrasNode.PreviewImage"
+  `Comfy.Settings.${idExt}.PreviewImage`
 );
 const PreviewImageColorTextLS = localStorage.getItem(
-  "Comfy.Settings.Comfy.ExtrasNode.PreviewImageColorText"
+  `Comfy.Settings.${idExt}.PreviewImageColorText`
 );
 const PreviewImageColorBgLS = localStorage.getItem(
-  "Comfy.Settings.Comfy.ExtrasNode.PreviewImageColorBg"
+  `Comfy.Settings.${idExt}.PreviewImageColorBg`
 );
 
 let PreviewImageSize = PreviewImageSizeLS
@@ -116,7 +116,7 @@ let PreviewImageSize = PreviewImageSizeLS
     PreviewImageColorTextLS && PreviewImageColorTextLS.trim() !== ""
       ? PreviewImageColorTextLS
       : document.documentElement.style.getPropertyValue("--input-text") ||
-        "#ddd",
+        "#dddddd",
   PreviewImageColorBg = PreviewImageColorBgLS ? PreviewImageColorBgLS : "";
 
 // Register Extension
@@ -125,7 +125,7 @@ app.registerExtension({
   init() {
     app.ui.settings.addSetting({
       id: `${idExt}.PreviewImage`,
-      name: "🔸 PreviewImage: display image size",
+      name: "🔸 Preview Image",
       defaultValue: true,
       type: (name, sett, val) => {
         return $el("tr", [
@@ -140,7 +140,7 @@ app.registerExtension({
               "label",
               {
                 style: { display: "block" },
-                textContent: "Enable: ",
+                textContent: "Display image size: ",
                 for: convertIdClass(`${idExt}.PreviewImage_size_checkbox`),
               },
               [
@@ -176,7 +176,7 @@ app.registerExtension({
                       "#dddddd";
                     PreviewImageColorText = colorVal;
                     localStorage.setItem(
-                      "Comfy.Settings.Comfy.ExtrasNode.PreviewImageColorText",
+                      `Comfy.Settings.${idExt}.PreviewImageColorText`,
                       PreviewImageColorText
                     );
                   },
@@ -200,7 +200,7 @@ app.registerExtension({
                     const colorVal = e.target.value || "";
                     PreviewImageColorBg = colorVal;
                     localStorage.setItem(
-                      "Comfy.Settings.Comfy.ExtrasNode.PreviewImageColorBg",
+                      `Comfy.Settings.${idExt}.PreviewImageColorBg`,
                       PreviewImageColorBg
                     );
                   },
@@ -219,18 +219,18 @@ app.registerExtension({
                 PreviewImageColorBg = "";
 
                 document.querySelector(
-                  "#Comfy_ExtrasNode_PreviewImage_color_input"
+                  "#alekpet_ExtrasNode_PreviewImage_color_input"
                 ).value = PreviewImageColorText;
                 document.querySelector(
-                  "#Comfy_ExtrasNode_PreviewImage_color_background_input"
+                  "#alekpet_ExtrasNode_PreviewImage_color_background_input"
                 ).value = PreviewImageColorBg;
 
                 localStorage.setItem(
-                  "Comfy.Settings.Comfy.ExtrasNode.PreviewImageColorText",
+                  `Comfy.Settings.${idExt}.PreviewImageColorText`,
                   PreviewImageColorText
                 );
                 localStorage.setItem(
-                  "Comfy.Settings.Comfy.ExtrasNode.PreviewImageColorBg",
+                  `Comfy.Settings.${idExt}.PreviewImageColorBg`,
                   PreviewImageColorBg
                 );
               },
@@ -427,7 +427,7 @@ app.registerExtension({
                 widgetRes.element.style.color = PreviewImageColorText;
               }
 
-              images.forEach((data) => {
+              if (images.length) {
                 const image = new Image();
                 image.onload = () => {
                   widgetRes.value = `<div style="border: solid 1px var(--border-color); border-radius: 4px; padding: 5px; ${
@@ -440,11 +440,11 @@ app.registerExtension({
                 };
                 image.src = api.apiURL(
                   "/view?" +
-                    new URLSearchParams(data).toString() +
+                    new URLSearchParams(images[0]).toString() +
                     app.getPreviewFormatParam() +
                     app.getRandParam()
                 );
-              });
+              }
             }
           }
         };

@@ -10,6 +10,7 @@ import __main__
 import pkgutil
 import re
 import threading
+import ast
 
 python = sys.executable
 
@@ -47,6 +48,33 @@ def information(datas):
         if DEBUG:
             print(info, end="")
 
+
+def get_classes(code):
+    cls = []
+    tree = ast.parse(code)
+    for n in ast.walk(tree):
+        if isinstance(n, ast.ClassDef) and "Node" in n.name:
+            cls.append(n.name)
+    return cls
+
+
+def getNamesNodesInsidePyFile(nodeElement):
+    node_folder = os.path.join(extension_folder, nodeElement)
+    cls_name = []
+    for f in os.listdir(node_folder):
+        ext = os.path.splitext(f)
+        path_to_py = os.path.join(node_folder, f)
+        # Find files extensions .py
+        if (
+            os.path.isfile(path_to_py)
+            and not f.startswith("__")
+            and ext[1] == ".py"
+            and ext[0] != "__init__"
+        ):
+            with open(path_to_py, "r") as pyf:
+                cls_name = get_classes(pyf.read())
+
+    return cls_name
 
 def module_install(commands, cwd="."):
     result = subprocess.Popen(
@@ -159,7 +187,7 @@ def installNodes():
 
     checkFolderIsset()
 
-    extensions_dirs_copy = ["js", "assets", "lib"]
+    extensions_dirs_copy = ["js", "css", "assets", "lib"]
 
     for nodeElement in os.listdir(extension_folder):
         if (
@@ -181,7 +209,9 @@ def installNodes():
                     shutil.copytree(folder_curr, folder_curr_dist, dirs_exist_ok=True)
 
             # Loading node info
-            printColorInfo(f"Node -> {nodeElement} [Loading]")
+            clsNodes = getNamesNodesInsidePyFile(nodeElement)
+            clsNodesText = "\033[93m"+", ".join(clsNodes)+"\033[0m" if len(clsNodes) else ""
+            printColorInfo(f"Node -> {nodeElement}: {clsNodesText} \033[92m[Loading]")
 
             checkModules(nodeElement)
             # addComfyUINodesToMapping(nodeElement) # dynamic class nodes append in mappings

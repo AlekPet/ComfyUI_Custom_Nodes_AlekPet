@@ -184,6 +184,12 @@ function makeElement(tag, attrs = {}) {
       } catch (err) {
         console.log(err);
       }
+    } else if (["for"].includes(key)) {
+      element.setAttribute(key, currValue);
+    } else if (key === "children") {
+      element.append(...(currValue instanceof Array ? currValue : [currValue]));
+    } else if (key === "parent") {
+      currValue.append(element);
     } else {
       element[key] = currValue;
     }

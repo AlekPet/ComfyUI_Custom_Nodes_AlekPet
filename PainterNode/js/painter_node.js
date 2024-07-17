@@ -11,6 +11,7 @@ import { fabric } from "./lib/painternode/fabric.js";
 import "./lib/painternode/mybrush.js";
 import { svgSymmetryButtons } from "./lib/painternode/brushes.js";
 import { toRGBA, getColorHEX, LS_Class } from "./lib/painternode/helpers.js";
+import { addStylesheet } from "../../scripts/utils.js";
 import {
   showHide,
   makeElement,
@@ -22,12 +23,24 @@ import {
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
-const painters_settings_json = false; // save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
+
+// Save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
+const SaveSettingsJsonLS = localStorage.getItem(
+  "Comfy.Settings.alekpet.PainterNode.SaveSettingsJson",
+  false
+);
+let painters_settings_json = SaveSettingsJsonLS
+  ? JSON.parse(SaveSettingsJsonLS)
+  : false;
+//
+
 const removeIcon =
   "data:image/svg+xml,%3Csvg version='1.1' id='Ebene_1' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3C/defs%3E%3Crect x='125.3' y='264.6' width='350.378' height='349.569' style='fill: rgb(237, 0, 0); stroke: rgb(197, 2, 2);' rx='58.194' ry='58.194'%3E%3C/rect%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18' rx='32.772' ry='32.772'%3E%3C/rect%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179' rx='32.772' ry='32.772'%3E%3C/rect%3E%3C/g%3E%3C/svg%3E";
 
 const removeImg = document.createElement("img");
 removeImg.src = removeIcon;
+
+const convertIdClass = (text) => text.replaceAll(".", "_");
 
 function renderIcon(icon) {
   return function renderIcon(ctx, left, top, styleOverride, fabricObject) {
@@ -2242,419 +2255,84 @@ function PainterWidget(node, inputName, inputData, app) {
 
 // ================= CREATE EXTENSION ================
 
+const extensionName = "alekpet.PainterNode";
+
 app.registerExtension({
-  name: "Comfy.PainterNode",
+  name: extensionName,
   async init(app) {
-    const style = document.createElement("style");
-    style.innerText = `.panelPaintBox {
-      position: absolute;
-      width: 100%;
-    }
-    .comfy-menu-btns button.active {
-      color: var(--error-text) !important;
-      font-weight: bold;
-      border: 1px solid;
-    }
-    .painter_manipulation_box {
-      position: absolute;
-      left: 50%;
-      top: -40px;
-      transform: translateX(-50%);
-    }
-    .painter_manipulation_box > div {
-      display: grid;
-      gap: 2px;
-      grid-template-columns: 0.1fr 0.1fr 0.1fr 0.1fr 0.1fr;
-      justify-content: center;
-      margin-bottom: 2px;
-    }
-    .painter_manipulation_box > div button {
-      font-size: 0.5rem;
-    }
-    .painter_manipulation_box > div button[id^=zpos]:active {
-      background-color: #484848;
-    }
-    .painter_drawning_box {
-      position: absolute;
-      top: -64px;
-      width: 88px;
-    }
-    .painter_drawning_box button {
-      width: 24px;
-    }
-    .painter_drawning_box_property {
-      position: absolute;
-      top: -60px;
-      width: 100%;
-    }
-    .painter_drawning_box_property select {
-      color: var(--input-text);
-      background-color: var(--comfy-input-bg);
-      border-radius: 4px;
-      border-color: var(--border-color);
-      border-style: solid;
-    }
-    .separator {
-      width: 1px;
-      height: 25px;
-      background-color: var(--border-color);
-      display: inline-block;
-      vertical-align: middle;
-      margin: 0 4px 0 4px;
-  }
-    .painter_drawning_box > div {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      align-items: center;
-    }
-    .painter_drawning_box input[type="number"] {
-      width: 2.6rem;
-      color: var(--input-text);
-      background-color: var(--comfy-input-bg);
-      border-radius: 8px;
-      border-color: var(--border-color);
-      border-style: solid;
-      font-size: inherit;
-    }
-    .painter_colors_box input[type="color"], .painter_bg_setting input[type="color"] {
-      width: 1.5rem;
-      height: 1.5rem;
-      padding: 0;
-      margin-bottom: 5px;
-      color: var(--input-text);
-      background-color: var(--comfy-input-bg);
-      border-radius: 8px;
-      border-color: var(--border-color);
-      border-style: solid;
-      font-size: inherit;
-    }
+    // Add styles
+    addStylesheet("css/painternode/painter_node_styles.css", import.meta.url);
 
-    .painter_bg_setting button{
-      width: 40px;
-      height: 20px;
-    }
-    .painter_bg_setting #bgColor:after {
-      content: attr(data-label);
-      position: absolute;
-      color: var(--input-text);
-      left: 70%;
-      font-size: 0.5rem;
-      margin-top: -18%;
-    }
-    .painter_colors_box input[type="color"]::-webkit-color-swatch-wrapper, .painter_bg_setting input[type="color"]::-webkit-color-swatch-wrapper {
-      padding: 1px !important;
-    }
-    .painter_grid_style {
-      display: grid;
-      gap: 3px;
-      font-size: 0.55rem;
-      text-align: center;
-      align-items: start;
-      justify-items: center;
-    }
-    .painter_shapes_box {
-      grid-template-columns: 1fr 1fr 1fr;
-    }
-    .painter_colors_alpha {
-      grid-template-columns: 0.7fr 0.7fr;
-    }
-    .fieldset_box {
-      padding: 2px;
-      margin: 15px 0 2px 0;
-      position: relative;
-      text-align: center;
-    }
-    .fieldset_box:before {
-      content: attr(f_name) ":";
-      font-size: 0.6rem;
-      position: absolute;
-      top: -10px;
-      color: yellow;
-      left: 0;
-      right: 0;
-    }
-    .list_objects_panel {
-      width: 90%;
-      font-size: 0.7rem;
-    }
-    .list_objects_panel__items {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      overflow-y: auto;
-      max-height: 350px;
-    }
-    .list_objects_panel__items button {
-      width: 80% !important;
-    }
-    .list_objects_panel__items::-webkit-scrollbar, .kistey__body::-webkit-scrollbar {
-      width: 8px;
-    }
-    .list_objects_panel__items::-webkit-scrollbar-track, .kistey__body::-webkit-scrollbar-track {
-      background-color: var(--descrip-text);
-    }
-    .list_objects_panel__items::-webkit-scrollbar-thumb, .kistey__body::-webkit-scrollbar-thumb {
-      background-color: var(--fg-color);
-    }
-    .list_objects_align {
-      display: flex;
-      flex-direction: column;
-      text-align: center;
-      justify-content: space-between;
-      height: 430px;
-   }
-   .list_objects_align > div{
-    flex: 1;
-   }
-   .viewlist__itembox {
-    flex-direction: row;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 2px;
-    }
-    .viewlist__itembox > img {
-      width: 12px;
-      cursor: pointer;
-    }
-    .viewlist__itembox > img:hover{
-      opacity: 0.8;
-    }
-   .painter_history_panel {
-    position: absolute;
-    padding: 4px;
-    display: flex;
-    gap: 4px;
-    right: 0;
-    opacity: 0.5;
-    flex-direction: row;
-    width: fit-content;
-  }
-  .painter_history_panel > button {
-    background: black;
-  }
-  .painter_history_panel > button:hover:enabled {
-    opacity: 1;
-    border-color: var(--error-text);
-    color: var(--error-text) !important;
-  }
-  .painter_history_panel > button:disabled {
-    opacity: .5;
-  }
-  .painter_stroke_box {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-  }
-  .painter_stroke_box > label span {
-    margin-right: 9px;
-    vertical-align: middle;
-    font-size: 10px;
-    color: var(--input-text);
-  }
-  .property_brushesBox, .property_brushesSecondBox {
-    display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
-    flex: 1 0;
-  }
-  .property_brushesSecondBox > button {
-    min-width: 30px;
-    font-size: 0.5rem;
-  }
-  .property_brushesSecondBox svg {
-    width: 100%;
-    height: 100%;
-  }
-  .active svg > .cls-2 {
-    fill: var(--error-text);
-  }
-  .active svg > * {
-    stroke: var(--error-text);
-  }
+    // Add settings params painter node
+    app.ui.settings.addSetting({
+      id: `${extensionName}.SaveSettingsJson`,
+      name: "🔸 Painter Node",
+      defaultValue: false,
+      type: (name, sett, val) => {
+        return makeElement("tr", {
+          children: [
+            makeElement("td", {
+              children: [
+                makeElement("label", {
+                  textContent: name,
+                  for: convertIdClass(
+                    `${extensionName}.save_settings_json_checkbox`
+                  ),
+                }),
+              ],
+            }),
+            makeElement("td", {
+              children: [
+                makeElement("label", {
+                  style: { display: "block" },
+                  textContent: "Save settings to json file: ",
+                  for: convertIdClass(
+                    `${extensionName}.save_settings_json_checkbox`
+                  ),
+                  children: [
+                    makeElement("input", {
+                      id: convertIdClass(
+                        `${extensionName}.save_settings_json_checkbox`
+                      ),
+                      type: "checkbox",
+                      checked: val,
+                      onchange: (e) => {
+                        const checked = !!e.target.checked;
+                        painters_settings_json = checked;
 
-  /* -- Styles Kistey */
-  .viewMenuBrushes {
-    position: absolute;
-    opacity: 0.9;
-    z-index: 3;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-    left: 101%;
-  }
+                        // Settings all painter nodes save in the JSON or LocalStorage
+                        const PainerNodes = app.graph._nodes.filter(
+                          (wi) => wi.type == "PainterNode"
+                        );
 
-  .kistey__title {
-    display: flex;
-    gap: 5px;
-    justify-content: space-evenly;
-    width: 100%;
-    align-items: center;
-  }
-  
-  .kistey__body {
-    display: grid;
-    grid-auto-rows: auto;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 5px;
-    background: #2d2d2d;
-    padding: 5px;
-    max-height: 230px;
-    overflow-y: auto;
-    min-width: 250px;  
-  }
+                        if (PainerNodes.length) {
+                          PainerNodes.map((n) => {
+                            n.LS_Cls.painters_settings_json =
+                              painters_settings_json;
+                          });
+                        }
+                        //
 
-  .kistey__img {
-    width: 50px;
-  }
-  
-  .kistey__img img {
-    max-width: 100%;
-  }
-  
-  .kistey__item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    transition: 0.6s all;
-    cursor: pointer;
-    user-select: none;
-  }
-  
-  .kistey__item:hover,
-  .kistey__arrow:hover {
-    transform: scale(1.05);
-  }
-  
-  .selected {
-    outline: 3px solid #4003fd;
-  }
-  
-  .kistey__name {
-    background: #2a272b;
-    font-size: 0.5rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
-    width: 50px;    
-  }
-  
-  .kistey__arrow {
-    transition: 0.6s transform;
-    cursor: pointer;
-    user-select: none;
-    color: silver;
-  }
-  
-  .kistey__arrow:hover {
-    color: white;
-    transform: scale(1.25);
-  }
-  
-  .kistey_dir__name {
-    font-weight: bold;
-    text-transform: capitalize;
-    min-width: 150px;
-    user-select: none;
-    cursor: pointer;
-  }
-  
-  .kistey_dir__name_wrapper {
-    display: flex;
-    max-width: 50%;
-    flex: 1 0 0;
-    overflow: hidden;
-    align-items: center;
-    justify-content: flex-start;
-  }
-  
-  .kistey_directory_slider {
-    display: flex;
-    justify-content: flex-start;
-    align-items: flex-start;
-    position: relative;
-    transition: 1s all;
-  }
-  
-  .kistey_directory_popup {
-    position: absolute;
-    top: 35px;
-    left: 70%;
-    background: black;
-    display: none;
-    flex-direction: column;
-    gap: 5px;
-    padding: 10px 5px;
-    border-radius: 6px;
-    border: 2px solid #4300e7;
-    opacity: 0.9;
-    transform: translateX(-50%);
-    z-index: 2;
-    box-shadow: 4px 4px 8px #4300e7;
-  }
-  
-  .kistey_dir__name-popup:hover {
-    background: #4300e7;
-  }
-  
-  .pop_active {
-    color: #38ffc1;
-  }
-  /* -- end Styles Kistey -- */
-  
-  /* -- Styles Settigs Kistey -- */
-  .kistey_setting__item {
-    display: flex;
-    align-items: center;
-  }
-
-  .kistey_settings_body input[type="range"] {
-    width: 100px;
-  }
-
-  .kistey_settings_body input[type="range"] {
-    -webkit-appearance: none;
-    appearance: none;
-    background: linear-gradient(
-      to right,
-      #15539e 0%,
-      #15539e 50%,
-      #282828 50%,
-      #282828 100%
-    );
-    cursor: pointer;
-    border-radius: 16px;
-    border: 1px solid black;
-    transition: background 400ms ease-in;
-  }
-  
-  .kistey_settings_body input[type="range"]::-webkit-slider-runnable-track {
-    -webkit-appearance: none;
-    appearance: none;
-    border-radius: 16px;
-    height: 3.2px;
-  }
-  
-  .kistey_settings_body input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    margin-top: -6.4px;
-    background: #2b2b2b;
-    border: 1px solid black;
-    height: 1rem;
-    width: 1rem;
-    border-radius: 50%;
-  }
-  
-  .kistey_settings_body input[type="range"]::-webkit-slider-thumb:hover {
-    background-color: rgb(49 49 49);
-  }
-  /* -- end Styles Settigs Kistey -- */  
-`;
-    document.head.append(style);
+                        sett(checked);
+                      },
+                    }),
+                  ],
+                }),
+                // makeElement("button", {
+                //   textContent: "Managing Data",
+                //   onclick: () => {
+                //     console.log("Dev...");
+                //   },
+                //   style: {
+                //     display: "block",
+                //   },
+                // }),
+              ],
+            }),
+          ],
+        });
+      },
+    });
   },
   async setup(app) {
     let PainerNode = app.graph._nodes.filter((wi) => wi.type == "PainterNode");
