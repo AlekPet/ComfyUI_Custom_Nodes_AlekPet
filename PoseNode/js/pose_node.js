@@ -504,23 +504,28 @@ function createOpenPose(node, inputName, inputData, app) {
           .translateSelf(margin, margin + y),
         w = (widgetWidth - margin * 2 - 3) * transform.a;
 
+      let aspect_ratio = 1;
+      if (node.openPose.canvas.width !== node.openPose.canvas.height) {
+        aspect_ratio = node.openPose.canvas.width / node.openPose.canvas.height;
+      }
+
       Object.assign(this.openpose.style, {
         left: `${transform.a * margin + transform.e}px`,
         top: `${transform.d + transform.f}px`,
         width: w + "px",
-        height: w + "px",
+        height: w / aspect_ratio + "px",
         position: "absolute",
         zIndex: app.graph._nodes.indexOf(node),
       });
 
       Object.assign(this.openpose.children[0].style, {
         width: w + "px",
-        height: w + "px",
+        height: w / aspect_ratio + "px",
       });
 
       Object.assign(this.openpose.children[1].style, {
         width: w + "px",
-        height: w + "px",
+        height: w / aspect_ratio + "px",
       });
 
       Array.from(this.openpose.children[2].children).forEach((element) => {
@@ -552,18 +557,21 @@ function createOpenPose(node, inputName, inputData, app) {
     refButton = document.createElement("button"),
     undoButton = document.createElement("button"),
     redoButton = document.createElement("button"),
-    historyClearButton = document.createElement("button");
+    historyClearButton = document.createElement("button"),
+    canvasSizeButton = document.createElement("button");
 
   panelButtons.className = "pose_panelButtons comfy-menu-btns";
   refButton.textContent = "Ref";
   undoButton.textContent = "⟲";
   redoButton.textContent = "⟳";
   historyClearButton.textContent = "✖";
+  canvasSizeButton.textContent = "Cnv Size";
   refButton.title = "Reference Image (Right click remove)";
   undoButton.title = "Undo";
   redoButton.title = "Redo";
   historyClearButton.title = "Clear History";
   historyClearButton.className = "clear_history";
+  canvasSizeButton.title = "Change canvas size";
 
   refButton.addEventListener("click", () => {
     node.openPose.backgroundInput.value = "";
@@ -615,6 +623,31 @@ function createOpenPose(node, inputName, inputData, app) {
     }
   });
 
+  canvasSizeButton.addEventListener("click", () => {
+    function checkSized(prop = "", defaultVal = 512) {
+      let inputSize;
+      let correct = false;
+      while (!correct) {
+        inputSize = +prompt(`Enter canvas ${prop}:`, defaultVal);
+        if (
+          Number(inputSize) === inputSize &&
+          inputSize % 1 === 0 &&
+          inputSize > 0
+        ) {
+          return inputSize;
+        }
+        alert(`[${prop}] Invalid number "${inputSize}" or <=0!`);
+      }
+    }
+
+    let width = checkSized("width", node.openPose.canvas.width),
+      height = checkSized("height", node.openPose.canvas.height);
+
+    node.openPose.canvas.setWidth(width);
+    node.openPose.canvas.setHeight(height);
+    node.openPose.resetCanvas();
+  });
+
   // Background image
   node.openPose.backgroundInput = document.createElement("input");
   node.openPose.backgroundInput.type = "file";
@@ -625,7 +658,7 @@ function createOpenPose(node, inputName, inputData, app) {
     node.openPose.onLoadBackground.bind(node.openPose)
   );
 
-  panelButtons.append(refButton, undoButton, redoButton, historyClearButton);
+  panelButtons.append(refButton, undoButton, redoButton, historyClearButton, canvasSizeButton);
   node.openPose.canvas.wrapperEl.append(
     panelButtons,
     node.openPose.backgroundInput
