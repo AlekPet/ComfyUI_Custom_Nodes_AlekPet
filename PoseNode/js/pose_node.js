@@ -2,11 +2,12 @@
  * Title: Set Poses in ComflyUI from ControlNet
  * Author: AlekPet
  * Description: I rewrote the main.js file as a class, from fkunn1326's openpose-editor (https://github.com/fkunn1326/openpose-editor/blob/master/javascript/main.js)
- * Version: 2024.02.15
+ * Version: 2024.07.21
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
 import { app } from "../../scripts/app.js";
+import { $el } from "../../../scripts/ui.js";
 import { addStylesheet } from "../../scripts/utils.js";
 import { fabric } from "./lib/posenode/fabric.js";
 
@@ -15,7 +16,7 @@ fabric.Object.prototype.cornerColor = "#108ce6";
 fabric.Object.prototype.borderColor = "#108ce6";
 fabric.Object.prototype.cornerSize = 10;
 
-let connect_keypoints = [
+const connect_keypoints = [
   [0, 1],
   [1, 2],
   [2, 3],
@@ -35,7 +36,7 @@ let connect_keypoints = [
   [15, 17],
 ];
 
-let connect_color = [
+const connect_color = [
   [0, 0, 255],
   [255, 0, 0],
   [255, 170, 0],
@@ -77,6 +78,27 @@ const default_keypoints = [
   [260, 72],
 ];
 
+window.LS_Poses = {};
+
+function LS_Save() {
+  localStorage.setItem("ComfyUI_Poses", JSON.stringify(LS_Poses));
+}
+
+function resizeCanvas(node, sizes) {
+  const { width, height } = sizes ?? node.openPose.currentCanvasSize;
+
+  node.openPose.canvas.setDimensions({
+    width: width,
+    height: height,
+  });
+
+  node.openPose.canvas.getElement().width = width;
+  node.openPose.canvas.getElement().height = height;
+
+  node.openPose.canvas.renderAll();
+  app.graph.setDirtyCanvas(true, false);
+}
+
 class OpenPose {
   constructor(node, canvasElement) {
     this.lockMode = false;
@@ -86,14 +108,42 @@ class OpenPose {
     this.undo_history = LS_Poses[node.name].undo_history || [];
     this.redo_history = LS_Poses[node.name].redo_history || [];
     this.history_change = false;
+    this.currentCanvasSize = { width: 512, height: 512 };
+
     this.canvas = this.initCanvas(canvasElement);
     this.image = node.widgets.find((w) => w.name === "image");
   }
 
+  setCanvasSize(new_width, new_height, resetPose = false) {
+    resizeCanvas(this.node, {
+      width: new_width,
+      height: new_height,
+    });
+
+    this.currentCanvasSize = { width: new_width, height: new_height };
+
+    // Check isset local storage key currentCanvasSize
+    if (!LS_Poses[this.node.name].hasOwnProperty("currentCanvasSize"))
+      LS_Poses[this.node.name]["currentCanvasSize"] = {};
+
+    LS_Poses[this.node.name]["currentCanvasSize"] = this.currentCanvasSize;
+
+    this.node.title = `${this.node.type} - ${new_width}x${new_height}`;
+    resetPose && this.resetCanvas();
+    this.canvas.renderAll();
+    app.graph.setDirtyCanvas(true, false);
+    this.node.onResize();
+    LS_Save();
+  }
+
   setPose(keypoints) {
+    const tmpImage = this.canvas.backgroundImage;
     this.canvas.clear();
 
+    if (tmpImage) this.setBackground(tmpImage);
+
     this.canvas.backgroundColor = "#000";
+    this.canvas.renderAll();
 
     const res = [];
     for (let i = 0; i < keypoints.length; i += 18) {
@@ -290,6 +340,7 @@ class OpenPose {
 
     this.canvas.on("object:moving", (e) => {
       updateLines(e.target);
+      this.canvas.renderAll();
     });
 
     this.canvas.on("object:scaling", (e) => {
@@ -302,12 +353,15 @@ class OpenPose {
       this.canvas.renderAll();
     });
 
-    this.canvas.on("object:modified", () => {
+    this.canvas.on("object:modified", (e) => {
       if (
         this.lockMode ||
         this.canvas.getActiveObject().type == "activeSelection"
-      )
+      ) {
+        this.uploadPoseFile(this.node.name);
         return;
+      }
+
       this.undo_history.push(this.getJSON());
       this.redo_history.length = 0;
       this.history_change = true;
@@ -342,6 +396,7 @@ class OpenPose {
       const content = this.redo_history.pop();
       this.undo_history.push(content);
       this.loadPreset(content);
+
       this.canvas.renderAll();
       this.lockMode = false;
       this.history_change = true;
@@ -349,13 +404,18 @@ class OpenPose {
     }
   }
 
-  resetCanvas() {
+  resetCanvas(reset_size = false) {
+    if (reset_size && confirm("Reset canvas size?")) {
+      this.setCanvasSize(512, 512);
+    }
+
     const backgroundImg = this.canvas.backgroundImage;
     this.canvas.clear();
     this.canvas.backgroundColor = "#000";
     this.addPose();
 
     this.setBackground(backgroundImg);
+    this.uploadPoseFile(this.node.name);
   }
 
   setBackground(backgroundImg) {
@@ -382,6 +442,19 @@ class OpenPose {
 
   uploadPoseFile(fileName) {
     // Upload pose to temp folder ComfyUI
+    const hideShowControls = (show) => {
+      if (!this.canvas.isDrawingMode) {
+        const activeObj = this.canvas.getActiveObject();
+
+        if (activeObj?.type === "activeSelection") {
+          activeObj.hasControls = show;
+          activeObj.hasBorders = show;
+          this.canvas.renderAll();
+        }
+      }
+    };
+
+    hideShowControls(false);
 
     const uploadFile = async (blobFile) => {
       try {
@@ -399,10 +472,13 @@ class OpenPose {
 
           this.image.value = data.name;
           this.updateHistoryData();
+
+          hideShowControls(true);
         } else {
           alert(resp.status + " - " + resp.statusText);
         }
       } catch (error) {
+        hideShowControls(true);
         console.log(error);
       }
     };
@@ -534,6 +610,20 @@ function createOpenPose(node, inputName, inputData, app) {
           height: `${22.0 * transform.d}px`,
           fontSize: `${transform.d * 10.0}px`,
         });
+
+        if (element.classList.contains("posenode_cnavas_size")) {
+          const svg = element.children[0];
+
+          Object.assign(element.style, {
+            height: `${28.0 * transform.d}px`,
+          });
+
+          Object.assign(svg.style, {
+            width: `${20.0 * transform.a}px`,
+            height: `${20.0 * transform.d}px`,
+          });
+        }
+
         element.hidden = !visible;
       });
     },
@@ -553,112 +643,111 @@ function createOpenPose(node, inputName, inputData, app) {
   widget.parent = node;
 
   // Create elements undo, redo, clear history
-  let panelButtons = document.createElement("div"),
-    refButton = document.createElement("button"),
-    undoButton = document.createElement("button"),
-    redoButton = document.createElement("button"),
-    historyClearButton = document.createElement("button"),
-    canvasSizeButton = document.createElement("button");
+  let panelButtons = $el("div.pose_panelButtons.comfy-menu-btns", [
+    $el("button", {
+      textContent: "Ref",
+      title: "Reference Image (Right click remove)",
+      onclick: () => {
+        node.openPose.backgroundInput.value = "";
+        node.openPose.backgroundInput.click();
+      },
+      oncontextmenu: (e) => {
+        e.preventDefault();
 
-  panelButtons.className = "pose_panelButtons comfy-menu-btns";
-  refButton.textContent = "Ref";
-  undoButton.textContent = "⟲";
-  redoButton.textContent = "⟳";
-  historyClearButton.textContent = "✖";
-  canvasSizeButton.textContent = "Cnv Size";
-  refButton.title = "Reference Image (Right click remove)";
-  undoButton.title = "Undo";
-  redoButton.title = "Redo";
-  historyClearButton.title = "Clear History";
-  historyClearButton.className = "clear_history";
-  canvasSizeButton.title = "Change canvas size";
-
-  refButton.addEventListener("click", () => {
-    node.openPose.backgroundInput.value = "";
-    node.openPose.backgroundInput.click();
-  });
-
-  refButton.addEventListener("contextmenu", (e) => {
-    e.preventDefault();
-
-    let menu = document.querySelector(".pose_context_menu");
-    if (menu) {
-      menu.remove();
-    }
-    menu = document.createElement("div");
-    menu.className = "pose_context_menu";
-
-    const menu_button = document.createElement("div");
-    menu_button.textContent = "Remove background";
-    menu_button.className = "pose_btn_context remBG";
-    menu.append(menu_button);
-
-    panelButtons.append(menu);
-    app.graph.setDirtyCanvas(true, false);
-
-    menu.addEventListener("click", (event) => {
-      let { target } = event;
-
-      if (!target.classList.contains("pose_btn_context")) return;
-
-      if (target.classList.contains("remBG")) {
-        node.openPose.canvas.backgroundImage = null;
-        node.openPose.canvas.renderAll();
-      }
-    });
-
-    menu.addEventListener("mouseleave", () => menu && menu.remove());
-  });
-
-  undoButton.addEventListener("click", () => node.openPose.undo());
-  redoButton.addEventListener("click", () => node.openPose.redo());
-  historyClearButton.addEventListener("click", () => {
-    if (confirm(`Delete all pose history of a node "${node.name}"?`)) {
-      node.openPose.undo_history = [];
-      node.openPose.redo_history = [];
-      node.openPose.setPose(default_keypoints);
-      node.openPose.undo_history.push(node.openPose.getJSON());
-      node.openPose.history_change = true;
-      node.openPose.updateHistoryData();
-    }
-  });
-
-  canvasSizeButton.addEventListener("click", () => {
-    function checkSized(prop = "", defaultVal = 512) {
-      let inputSize;
-      let correct = false;
-      while (!correct) {
-        inputSize = +prompt(`Enter canvas ${prop}:`, defaultVal);
-        if (
-          Number(inputSize) === inputSize &&
-          inputSize % 1 === 0 &&
-          inputSize > 0
-        ) {
-          return inputSize;
+        let menu = panelButtons.querySelector(".pose_context_menu");
+        if (menu) {
+          menu.remove();
         }
-        alert(`[${prop}] Invalid number "${inputSize}" or <=0!`);
-      }
-    }
 
-    let width = checkSized("width", node.openPose.canvas.width),
-      height = checkSized("height", node.openPose.canvas.height);
+        menu = $el(
+          "div.pose_context_menu",
+          {
+            onclick: (event) => {
+              let { target } = event;
 
-    node.openPose.canvas.setWidth(width);
-    node.openPose.canvas.setHeight(height);
-    node.openPose.resetCanvas();
-  });
+              if (!target.classList.contains("pose_btn_context")) return;
+
+              if (target.classList.contains("remBG")) {
+                node.openPose.canvas.backgroundImage = null;
+                node.openPose.canvas.renderAll();
+              }
+            },
+            onmouseleave: () => menu && menu.remove(),
+          },
+          [
+            $el("div.pose_btn_context.remBG", {
+              textContent: "Remove background",
+            }),
+          ]
+        );
+
+        panelButtons.append(menu);
+        app.graph.setDirtyCanvas(true, false);
+      },
+    }),
+    $el("button", {
+      textContent: "⟲",
+      title: "Undo",
+      onclick: () => node.openPose.undo(),
+    }),
+    $el("button", {
+      textContent: "⟳",
+      title: "Redo",
+      onclick: () => node.openPose.redo(),
+    }),
+    $el("button.clear_history", {
+      textContent: "✖",
+      title: "Clear History",
+      onclick: () => {
+        if (confirm(`Delete all pose history of a node "${node.name}"?`)) {
+          node.openPose.undo_history = [];
+          node.openPose.redo_history = [];
+          node.openPose.setPose(default_keypoints);
+          node.openPose.undo_history.push(node.openPose.getJSON());
+          node.openPose.history_change = true;
+          node.openPose.updateHistoryData();
+        }
+      },
+    }),
+    $el("button.posenode_cnavas_size", {
+      innerHTML: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <path d="m15.8,18.93q0,0.22 -0.17,0.4l-5.73,5.73l2.48,2.48q0.33,0.33 0.33,0.78t-0.33,0.78q-0.33,0.33 -0.78,0.33l-7.73,0q-0.45,0 -0.78,-0.33t-0.33,-0.78l0,-7.73q0,-0.45 0.33,-0.78t0.78,-0.33q0.45,0 0.78,0.33l2.48,2.48l5.73,-5.73q0.17,-0.17 0.4,-0.17t0.4,0.17l1.97,1.97q0.17,0.17 0.17,0.4zm13.47,-14.91l0,7.73q0,0.45 -0.33,0.78t-0.78,0.33q-0.45,0 -0.78,-0.33l-2.48,-2.48l-5.73,5.73q-0.17,0.17 -0.4,0.17t-0.4,-0.17l-1.97,-1.97q-0.17,-0.17 -0.17,-0.4t0.17,-0.4l5.73,-5.73l-2.48,-2.48q-0.33,-0.33 -0.33,-0.78t0.33,-0.78q0.33,-0.33 0.78,-0.33l7.73,0q0.45,0 0.78,0.33t0.33,0.78z" fill="currentColor" id="posenode_svg_canvas_size"/>
+</svg>`,
+      title: "Change canvas size",
+      onclick: () => {
+        function checkSized(prop = "", defaultVal = 512) {
+          let inputSize;
+          let correct = false;
+          while (!correct) {
+            inputSize = +prompt(`Enter canvas ${prop}:`, defaultVal);
+            if (
+              Number(inputSize) === inputSize &&
+              inputSize % 1 === 0 &&
+              inputSize > 0
+            ) {
+              return inputSize;
+            }
+            alert(`[${prop}] Invalid number "${inputSize}" or <=0!`);
+          }
+        }
+
+        const width = checkSized("width", node.openPose.canvas.width),
+          height = checkSized("height", node.openPose.canvas.height);
+
+        node.openPose.setCanvasSize(width, height, true);
+        node.openPose.uploadPoseFile(node.name);
+      },
+    }),
+  ]);
 
   // Background image
-  node.openPose.backgroundInput = document.createElement("input");
-  node.openPose.backgroundInput.type = "file";
-  node.openPose.backgroundInput.accept = "image/jpeg,image/png,image/webp";
-  node.openPose.backgroundInput.style.display = "none";
-  node.openPose.backgroundInput.addEventListener(
-    "change",
-    node.openPose.onLoadBackground.bind(node.openPose)
-  );
+  node.openPose.backgroundInput = $el("input", {
+    type: "file",
+    accept: "image/jpeg,image/png,image/webp",
+    style: { display: "none" },
+    onchange: node.openPose.onLoadBackground.bind(node.openPose),
+  });
 
-  panelButtons.append(refButton, undoButton, redoButton, historyClearButton, canvasSizeButton);
   node.openPose.canvas.wrapperEl.append(
     panelButtons,
     node.openPose.backgroundInput
@@ -672,7 +761,7 @@ function createOpenPose(node, inputName, inputData, app) {
   });
 
   node.addWidget("button", "Reset pose", "reset_pose", () => {
-    node.openPose.resetCanvas();
+    node.openPose.resetCanvas(true);
   });
 
   // Add customWidget to node
@@ -714,11 +803,7 @@ function createOpenPose(node, inputName, inputData, app) {
   return { widget: widget };
 }
 
-window.LS_Poses = {};
-function LS_Save() {
-  localStorage.setItem("ComfyUI_Poses", JSON.stringify(LS_Poses));
-}
-
+// Register extension Pose
 app.registerExtension({
   name: "alekpet.PoseNode",
   async init(app) {
@@ -757,7 +842,7 @@ app.registerExtension({
           nodeName = `Pose_${openPoseNode.length}`,
           nodeNamePNG = `${nodeName}.png`;
 
-        console.log(`Create PoseNode: ${nodeName}`);
+        console.log(`Create PoseNode: ${nodeNamePNG}`);
 
         LS_Poses =
           localStorage.getItem("ComfyUI_Poses") &&
@@ -771,13 +856,27 @@ app.registerExtension({
           LS_Poses[nodeNamePNG] = {
             undo_history: [],
             redo_history: [],
+            currentCanvasSize: { width: 512, height: 512 },
           };
           LS_Save();
         }
 
         createOpenPose.apply(this, [this, nodeNamePNG, {}, app]);
+
         setTimeout(() => {
+          if (LS_Poses[nodeNamePNG]?.currentCanvasSize) {
+            this.openPose.currentCanvasSize =
+              LS_Poses[nodeNamePNG]?.currentCanvasSize;
+
+            this.openPose.setCanvasSize(
+              this.openPose.currentCanvasSize.width,
+              this.openPose.currentCanvasSize.height
+            );
+          }
+
           this.openPose.uploadPoseFile(nodeNamePNG);
+          // Resize window
+          window.addEventListener("resize", (e) => resizeCanvas(this), false);
         }, 1);
 
         this.setSize([530, 620]);
