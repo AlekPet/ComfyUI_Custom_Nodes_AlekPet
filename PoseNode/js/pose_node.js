@@ -7,7 +7,7 @@
  */
 
 import { app } from "../../scripts/app.js";
-import { $el } from "../../../scripts/ui.js";
+import { $el } from "../../scripts/ui.js";
 import { addStylesheet } from "../../scripts/utils.js";
 import { fabric } from "./lib/posenode/fabric.js";
 

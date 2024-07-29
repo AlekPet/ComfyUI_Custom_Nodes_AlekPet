@@ -1,7 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
-import { $el } from "../../../scripts/ui.js";
+import { $el } from "../../scripts/ui.js";
 import { isValidStyle, rgbToHex } from "./utils.js";
 
 function makeColorWidget(node, inputName, inputData, widget) {
