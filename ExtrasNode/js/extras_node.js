@@ -2,98 +2,15 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
 import { $el } from "../../scripts/ui.js";
-import { isValidStyle, rgbToHex } from "./utils.js";
-
-function makeColorWidget(node, inputName, inputData, widget) {
-  const color_hex = $el("input", {
-    type: "color",
-    value: inputData[1]?.default || "#00ff33",
-    oninput: () => widget.callback?.(color_hex.value),
-  });
-
-  const color_text = $el("div", {
-    title: "Click to copy color to clipboard",
-    style: {
-      textAlign: "center",
-      fontSize: "20px",
-      height: "20px",
-      fontWeight: "600",
-      lineHeight: 1.5,
-      background: "var(--comfy-menu-bg)",
-      border: "dotted 2px white",
-      fontFamily: "sans-serif",
-      letterSpacing: "0.5rem",
-      borderRadius: "8px",
-      textShadow: "0 0 4px #fff",
-      cursor: "pointer",
-    },
-    onclick: () => navigator.clipboard.writeText(color_hex.value),
-  });
-
-  const w_color_hex = node.addDOMWidget(inputName, "color_hex", color_hex, {
-    getValue() {
-      color_text.style.color = color_hex.value;
-      color_text.textContent = color_hex.value;
-      return color_hex.value;
-    },
-    setValue(v) {
-      widget.value = v;
-      color_hex.value = v;
-    },
-  });
-
-  widget.callback = (v) => {
-    let color = isValidStyle("color", v).result ? v : "#00ff33";
-    if (color.includes("#") && color.length === 4) {
-      const opt_color = new Option().style;
-      opt_color["color"] = color;
-      color = rgbToHex(opt_color["color"]);
-    }
-
-    color_hex.value = color;
-    widget.value = color;
-  };
-
-  const w_color_text = node.addDOMWidget(
-    inputName + "_box",
-    "color_hex_box",
-    color_text
-  );
-
-  w_color_hex.color_hex = color_hex;
-
-  widget.w_color_hex = w_color_hex;
-  widget.w_color_text = w_color_text;
-
-  return { widget };
-}
-
-function createPreiviewSize(node, name, options) {
-  const { color } = options;
-
-  const res = $el("div", {
-    style: {
-      height: "25px",
-      fontSize: "0.8rem",
-      color: color,
-      fontFamily: "monospace",
-      padding: 0,
-      margin: 0,
-      outline: 0,
-    },
-  });
-
-  const widget = node.addDOMWidget(name, "show_resolution", res, {
-    getValue() {
-      return res.innerHTML;
-    },
-    setValue(v) {
-      res.innerHTML = v;
-    },
-  });
-
-  return widget;
-}
+import { isValidStyle, findWidget } from "./utils.js";
+import { addStylesheet } from "../../scripts/utils.js";
+import {
+  SpeechWidget,
+  makeColorWidget,
+  createPreiviewSize,
+  speechRect,
+  SpeechSynthesis,
+} from "./lib/extrasnode/extras_node_widgets.js";
 
 const convertIdClass = (text) => text.replaceAll(".", "_");
 const idExt = "alekpet.ExtrasNode";
@@ -109,6 +26,11 @@ const PreviewImageColorBgLS = localStorage.getItem(
   `Comfy.Settings.${idExt}.PreviewImageColorBg`
 );
 
+const SpeechAndRecognationSpeechLS = localStorage.getItem(
+  `Comfy.Settings.${idExt}.SpeechAndRecognationSpeech`
+);
+
+// Settings set values from LS or default
 let PreviewImageSize = PreviewImageSizeLS
     ? JSON.parse(PreviewImageSizeLS)
     : false,
@@ -117,12 +39,92 @@ let PreviewImageSize = PreviewImageSizeLS
       ? PreviewImageColorTextLS
       : document.documentElement.style.getPropertyValue("--input-text") ||
         "#dddddd",
-  PreviewImageColorBg = PreviewImageColorBgLS ? PreviewImageColorBgLS : "";
+  PreviewImageColorBg = PreviewImageColorBgLS ? PreviewImageColorBgLS : "",
+  // Speech & Recognition widget settings
+  SpeechAndRecognationSpeech = SpeechAndRecognationSpeechLS
+    ? JSON.parse(SpeechAndRecognationSpeechLS)
+    : true;
+
+const CONVERTED_TYPE = "converted-widget";
+function hideWidget(node, widget, suffix = "") {
+  if (widget.type?.startsWith(CONVERTED_TYPE)) return;
+  widget.origType = widget.type;
+  widget.origComputeSize = widget.computeSize;
+  widget.origSerializeValue = widget.serializeValue;
+  widget.computeSize = () => [0, -4]; // -4 is due to the gap litegraph adds between widgets automatically
+  widget.type = CONVERTED_TYPE + suffix;
+  widget.serializeValue = () => {
+    // Prevent serializing the widget if we have no input linked
+    if (!node.inputs) {
+      return undefined;
+    }
+    let node_input = node.inputs.find((i) => i.widget?.name === widget.name);
+
+    if (!node_input || !node_input.link) {
+      return undefined;
+    }
+    return widget.origSerializeValue
+      ? widget.origSerializeValue()
+      : widget.value;
+  };
+
+  // Hide any linked widgets, e.g. seed+seedControl
+  if (widget.linkedWidgets) {
+    for (const w of widget.linkedWidgets) {
+      hideWidget(node, w, ":" + widget.name);
+    }
+  }
+}
+
+function showWidget(widget) {
+  widget.type = widget.origType;
+  widget.computeSize = widget.origComputeSize;
+  widget.serializeValue = widget.origSerializeValue;
+
+  delete widget.origType;
+  delete widget.origComputeSize;
+  delete widget.origSerializeValue;
+
+  // Hide any linked widgets, e.g. seed+seedControl
+  if (widget.linkedWidgets) {
+    for (const w of widget.linkedWidgets) {
+      showWidget(w);
+    }
+  }
+}
 
 // Register Extension
 app.registerExtension({
   name: idExt,
+  nodeCreated(node, app) {
+    // if ui settings is true and SpeechSynthesis or speechRecognition is not undefined
+    if (SpeechAndRecognationSpeech && (speechRect || SpeechSynthesis)) {
+      // Find all widget type customtext
+      const widgetsTextMulti = node?.widgets?.filter(
+        (w) => w.type === "customtext"
+      );
+
+      if (widgetsTextMulti.length) {
+        widgetsTextMulti.forEach((w) => {
+          node.addCustomWidget(SpeechWidget(node, "speechText", true, w));
+        });
+
+        const onRemovedOrig = node.onRemoved;
+        node.onRemoved = function () {
+          node?.widgets?.forEach((w) => {
+            if (w.type === "speech_button") {
+              w?.onRemove();
+            }
+          });
+          onRemovedOrig?.apply(this, arguments);
+        };
+      }
+    }
+  },
   init() {
+    addStylesheet("css/extrasnode/extras_node_styles.css", import.meta.url);
+
+    // PreviewImage settings ui
     app.ui.settings.addSetting({
       id: `${idExt}.PreviewImage`,
       name: "🔸 Preview Image",
@@ -242,8 +244,144 @@ app.registerExtension({
         ]);
       },
     });
+
+    // Speech & Recognition speech settings ui
+    app.ui.settings.addSetting({
+      id: `${idExt}.SpeechAndRecognationSpeech`,
+      name: "🔸 Speech & Recognition speech",
+      defaultValue: true,
+      type: (name, sett, val) => {
+        return $el("tr", [
+          $el("td", [
+            $el("label", {
+              textContent: name,
+              for: convertIdClass(`${idExt}.SpeechAndRecognationSpeech_show`),
+            }),
+          ]),
+          $el("td", [
+            $el(
+              "label",
+              {
+                style: { display: "block" },
+                textContent: "Enabled: ",
+                for: convertIdClass(`${idExt}.SpeechAndRecognationSpeech_show`),
+              },
+              [
+                $el("input", {
+                  id: convertIdClass(
+                    `${idExt}.SpeechAndRecognationSpeech_show`
+                  ),
+                  type: "checkbox",
+                  checked: val,
+                  onchange: (e) => {
+                    const checked = !!e.target.checked;
+                    SpeechAndRecognationSpeech = checked;
+                    sett(checked);
+                  },
+                }),
+              ]
+            ),
+            $el("button", {
+              textContent: "Default reset",
+              onclick: () => {},
+              style: {
+                display: "block",
+              },
+            }),
+          ]),
+        ]);
+      },
+    });
   },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
+    let user_nodes_to_context = false;
+
+    if (nodeData?.input && nodeData?.input?.required) {
+      for (const inp of Object.keys(nodeData.input.required)) {
+        if (nodeData.input.required[inp][1]?.multiline) {
+          const type = nodeData.input.required[inp][0];
+
+          if (["STRING"].includes(type)) {
+            user_nodes_to_context = true;
+            break;
+          }
+        }
+      }
+    }
+    if (user_nodes_to_context) {
+      const origGetExtraMenuOptions = nodeType.prototype.getExtraMenuOptions;
+      nodeType.prototype.getExtraMenuOptions = function (_, options) {
+        const r = origGetExtraMenuOptions
+          ? origGetExtraMenuOptions.apply(this, arguments)
+          : undefined;
+
+        if (this.widgets) {
+          console.log(this.widgets);
+          const self = this;
+          for (const w of this.widgets) {
+            if (["customtext", "converted-widget"].includes(w.type)) {
+              const config = nodeData?.input?.required[w.name] ||
+                nodeData?.input?.optional?.[w.name] || [
+                  w.type,
+                  w.options || {},
+                ];
+
+              const findSpeech = this.widgets.filter(
+                (wi) =>
+                  wi?.text_element &&
+                  (wi.text_element === w?.element ||
+                    wi.text_element === w?.inputEl)
+              );
+
+              for (const option of options) {
+                if (option?.submenu && option.submenu?.options) {
+                  for (const o of option.submenu.options) {
+                    if (o?.content === `Convert ${w.name} to input`) {
+                      const origCall = o?.callback;
+
+                      o.callback = function () {
+                        hideWidget(self, findSpeech[0], "-speech-hidden");
+                        origCall(this, arguments);
+                      };
+                    }
+
+                    if (o?.content === `Convert ${w.name} to widget`) {
+                      const origCall = o?.callback;
+
+                      o.callback = function () {
+                        showWidget(findSpeech[0]);
+                        origCall(this, arguments);
+                      };
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        return r;
+      };
+
+      // onConfigure
+      const onConfigure = nodeType.prototype.onConfigure;
+      nodeType.prototype.onConfigure = function (w) {
+        onConfigure?.apply(this, arguments);
+        if (w?.widgets_values?.length) {
+          const id_speech_clear = findWidget(
+            this,
+            "speech_button",
+            "type",
+            "findIndex"
+          );
+
+          this?.widgets[id_speech_clear].callback(
+            w.widgets_values[id_speech_clear]
+          );
+        }
+      };
+    }
+
     // --- Preview Text Node
     switch (nodeData.name) {
       case "PreviewTextNode": {

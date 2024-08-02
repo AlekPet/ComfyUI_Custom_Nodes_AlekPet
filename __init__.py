@@ -62,7 +62,7 @@ def log(*text):
 def information(datas):
     for info in datas:
         if not DEBUG:
-            print(info, end="")
+            print(info, end="\r", flush=True)
 
 
 def printColorInfo(text, color="\033[92m"):
