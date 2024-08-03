@@ -1,8 +1,8 @@
 [project]
 name = "comfyui_custom_nodes_alekpet"
 description = "Nodes: PoseNode, PainterNode, TranslateTextNode, TranslateCLIPTextEncodeNode, DeepTranslatorTextNode, DeepTranslatorCLIPTextEncodeNode, ArgosTranslateTextNode, ArgosTranslateCLIPTextEncodeNode, PreviewTextNode, HexToHueNode, ColorsCorrectNode, IDENode."
-version = "1.0.13"
-license = "LICENSE"
+version = "1.0.14"
+license = { file = "LICENSE" }
 
 [project.urls]
 Repository = "https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet"

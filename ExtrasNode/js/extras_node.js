@@ -243,7 +243,7 @@ app.registerExtension({
             $el(
               "label",
               {
-                style: { display: "block" },
+                style: { display: "flex", alignItems: "center" },
                 textContent: "Enabled: ",
                 for: convertIdClass(`${idExt}.SpeechAndRecognationSpeech_show`),
               },
@@ -259,6 +259,10 @@ app.registerExtension({
                     SpeechAndRecognationSpeech = checked;
                     sett(checked);
                   },
+                }),
+                $el("span", {
+                  textContent: "(Then reload the page)",
+                  style: { fontSize: "0.6rem", color: "yellow" },
                 }),
               ]
             ),

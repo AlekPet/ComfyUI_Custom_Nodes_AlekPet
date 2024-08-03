@@ -11,13 +11,13 @@ import { rgbToHex } from "../../utils.js";
 const CONVERTED_TYPE = "converted-widget";
 
 /* ~~~ Speech & Recognition speech Widget ~~~ */
-const speechRecognition =
+const spRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
 const SpeechSynthesis = window.speechSynthesis;
 
 let speechRect;
-if (speechRecognition) {
-  speechRect = new speechRecognition();
+if (spRecognition) {
+  speechRect = new spRecognition();
   speechRect.elements = null;
 
   speechRect.addEventListener("result", (event) => {
@@ -61,7 +61,9 @@ if (speechRecognition) {
     console.log(">> Error recognition: " + event.error);
   });
 } else {
-  console.warn("Your browser does not support: SpeechRecognition");
+  console.warn(
+    "Your browser does not support: SpeechRecognition.\nIf Firefox: go to about:config > media.webspeech.recognition.enable and media.webspeech.recognition.force_enable > set true"
+  );
 }
 
 if (!SpeechSynthesis) {
@@ -84,7 +86,7 @@ function getPostition(ctx, w_width, y, n_height, wInput) {
     transform: scale,
     transform: transform,
     left: `${transform.a * w_width - 65 * scale.a}px`,
-    top: `${wInput.last_y * scale.d + scale.f}px`,
+    top: `${(wInput.last_y - 15) * scale.d + scale.f}px`,
     maxWidth: `${w_width - MARGIN * 2}px`,
     maxHeight: `${n_height - MARGIN * 2}px`,
     zIndex: wInput?.inputEl?.style?.zIndex
