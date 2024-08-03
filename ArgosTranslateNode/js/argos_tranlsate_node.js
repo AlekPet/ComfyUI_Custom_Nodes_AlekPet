@@ -44,7 +44,7 @@ function get_support_langs() {
           langs_support.find((f) => f.toLowerCase() == "english") || "english";
         // To translate
 
-        if (node?.widgets_values.length) {
+        if (node?.widgets_values?.length) {
           const valueSerialized = node?.widgets_values[1];
           defaultValue = langs_support.includes(valueSerialized)
             ? valueSerialized
@@ -88,7 +88,7 @@ app.registerExtension({
       const onConfigure = nodeType.prototype.onConfigure;
       nodeType.prototype.onConfigure = function () {
         onConfigure?.apply?.(this, arguments);
-        if (this?.widgets_values.length) get_support_langs.apply(this);
+        if (this?.widgets_values?.length) get_support_langs.apply(this);
       };
     }
 

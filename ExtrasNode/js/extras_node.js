@@ -51,54 +51,6 @@ let PreviewImageSize = PreviewImageSizeLS
     ? JSON.parse(SpeechAndRecognationSpeechLS)
     : true;
 
-const CONVERTED_TYPE = "converted-widget";
-function hideWidget(node, widget, suffix = "") {
-  if (widget.type?.startsWith(CONVERTED_TYPE)) return;
-  widget.origType = widget.type;
-  widget.origComputeSize = widget.computeSize;
-  widget.origSerializeValue = widget.serializeValue;
-  widget.computeSize = () => [0, -4]; // -4 is due to the gap litegraph adds between widgets automatically
-  widget.type = CONVERTED_TYPE + suffix;
-  widget.serializeValue = () => {
-    // Prevent serializing the widget if we have no input linked
-    if (!node.inputs) {
-      return undefined;
-    }
-    let node_input = node.inputs.find((i) => i.widget?.name === widget.name);
-
-    if (!node_input || !node_input.link) {
-      return undefined;
-    }
-    return widget.origSerializeValue
-      ? widget.origSerializeValue()
-      : widget.value;
-  };
-
-  // Hide any linked widgets, e.g. seed+seedControl
-  if (widget.linkedWidgets) {
-    for (const w of widget.linkedWidgets) {
-      hideWidget(node, w, ":" + widget.name);
-    }
-  }
-}
-
-function showWidget(widget) {
-  widget.type = widget.origType;
-  widget.computeSize = widget.origComputeSize;
-  widget.serializeValue = widget.origSerializeValue;
-
-  delete widget.origType;
-  delete widget.origComputeSize;
-  delete widget.origSerializeValue;
-
-  // Hide any linked widgets, e.g. seed+seedControl
-  if (widget.linkedWidgets) {
-    for (const w of widget.linkedWidgets) {
-      showWidget(w);
-    }
-  }
-}
-
 // Register Extension
 app.registerExtension({
   name: idExt,
@@ -229,7 +181,7 @@ app.registerExtension({
     // Speech & Recognition speech settings ui
     app.ui.settings.addSetting({
       id: `${idExt}.SpeechAndRecognationSpeech`,
-      name: "🔸 Speech & Recognition speech",
+      name: "🔸 Speak text & Recognition speech",
       defaultValue: true,
       type: (name, sett, val) => {
         return $el("tr", [
@@ -491,7 +443,7 @@ app.registerExtension({
         // -- Speech & Recognition speech widget
         // If ui settings is true and SpeechSynthesis or speechRecognition is not undefined
         if (SpeechAndRecognationSpeech && (speechRect || SpeechSynthesis)) {
-          let user_nodes_to_context = false;
+          let nodeIsMultiString = false;
 
           if (nodeData?.input && nodeData?.input?.required) {
             for (const inp of Object.keys(nodeData.input.required)) {
@@ -499,14 +451,14 @@ app.registerExtension({
                 const type = nodeData.input.required[inp][0];
 
                 if (["STRING"].includes(type)) {
-                  user_nodes_to_context = true;
+                  nodeIsMultiString = true;
                   break;
                 }
               }
             }
           }
 
-          if (user_nodes_to_context) {
+          if (nodeIsMultiString) {
             // Node Created
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = async function () {
@@ -528,74 +480,12 @@ app.registerExtension({
               if (widgetsTextMulti.length) {
                 widgetsTextMulti.forEach(async (w) => {
                   this.addCustomWidget(
-                    SpeechWidget(
-                      this,
-
-                      "speech_and_recognation",
-                      true,
-                      w
-                    )
+                    SpeechWidget(this, "speak_and_recognation", true, w)
                   );
                 });
               }
 
               return ret;
-            };
-
-            const origGetExtraMenuOptions =
-              nodeType.prototype.getExtraMenuOptions;
-            nodeType.prototype.getExtraMenuOptions = function (_, options) {
-              const r = origGetExtraMenuOptions
-                ? origGetExtraMenuOptions.apply(this, arguments)
-                : undefined;
-
-              if (this.widgets) {
-                const self = this;
-                for (const w of this.widgets) {
-                  if (
-                    ["customtext", "converted-widget"].includes(w.type) &&
-                    w.name !== "speech_and_recognation"
-                  ) {
-                    const config = nodeData?.input?.required[w.name] ||
-                      nodeData?.input?.optional?.[w.name] || [
-                        w.type,
-                        w.options || {},
-                      ];
-
-                    const findSpeech = this.widgets.filter(
-                      (wi) =>
-                        wi?.text_element &&
-                        (wi.text_element === w?.element ||
-                          wi.text_element === w?.inputEl)
-                    );
-                    if (findSpeech?.length)
-                      for (const option of options) {
-                        if (option?.submenu && option.submenu?.options) {
-                          for (const o of option.submenu.options) {
-                            if (o?.content === `Convert ${w.name} to input`) {
-                              const origCall = o?.callback;
-
-                              o.callback = function () {
-                                hideWidget(self, findSpeech[0], "-speech-hide");
-                                origCall(this, arguments);
-                              };
-                            }
-
-                            if (o?.content === `Convert ${w.name} to widget`) {
-                              const origCall = o?.callback;
-                              o.callback = function () {
-                                showWidget(findSpeech[0]);
-                                origCall(this, arguments);
-                              };
-                            }
-                          }
-                        }
-                      }
-                  }
-                }
-              }
-
-              return r;
             };
 
             // onConfigure
@@ -614,11 +504,7 @@ app.registerExtension({
                   el,
                   idx
                 ) {
-                  if (
-                    el.type === "speech_button" ||
-                    el.type === CONVERTED_TYPE + "-speech-hide"
-                  )
-                    arr.push(idx);
+                  if (el.type === "speak_and_recognation_type") arr.push(idx);
                   return arr;
                 },
                 []);

@@ -97,7 +97,7 @@ function getPostition(ctx, w_width, y, n_height, wInput) {
 
 function SpeechWidget(node, inputName, inputData, widgetsText) {
   const widget = {
-    type: "speech_button",
+    type: "speak_and_recognation_type",
     name: inputName,
     value: inputData,
     size: [22, 1],
@@ -142,7 +142,7 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
     buttons.push(
       $el("div.alekpet_extras_node_recognition_icon_box", [
         $el("span.alekpet_extras_node_recognition_icon", {
-          title: "Speech to text",
+          title: "Speech recognition",
           onclick: function () {
             const info = widget.element.querySelector(
               ".alekpet_extras_node_info span"
@@ -179,6 +179,14 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
   }
 
   if (SpeechSynthesis) {
+    function speak(text, options = {}) {
+      if (!SpeechSynthesis && speechSynthesis.speaking) return;
+      const utterance = new SpeechSynthesisUtterance(text);
+
+      Object.assign(utterance, { ...options });
+      return utterance;
+    }
+
     buttons.push(
       $el("span.alekpet_extras_node_speech_icon", {
         onclick: function () {
@@ -195,29 +203,36 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
 
           // Start playing text
           const text = widgetsText?.inputEl.value;
-          if (
-            SpeechSynthesis &&
-            !speechSynthesis.speaking &&
-            text.trim() !== ""
-          ) {
-            this.style.opacity = 0.7;
-            info.textContent = "playing";
+          if (text.trim() !== "") {
+            const utterance = speak(text, {
+              onend: (e) => {
+                this.style.opacity = 1;
+                info.textContent = "";
+              },
+            });
 
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.onend = (e) => {
-              this.style.opacity = 1;
-              info.textContent = "";
-            };
+            if (utterance) {
+              this.style.opacity = 0.7;
+              info.textContent = "saying now";
 
-            SpeechSynthesis.speak(utterance);
+              SpeechSynthesis.speak(utterance);
+            }
           } else {
+            if (text.trim() === "") {
+              const utterance = speak(
+                `${widgetsText?.name || "This"}}, field is empty!`
+              );
+              utterance && SpeechSynthesis.speak(utterance);
+              info.textContent = "empty text!";
+            } else {
+              info.textContent = "error speak!";
+            }
             this.style.opacity = 1;
-            info.textContent = "error speak!";
             setTimeout(() => (info.textContent = ""), 2000);
           }
         },
         textContent: "🔊",
-        title: "Speech text",
+        title: "Speak text",
         style: { fontSize: "0.7em" },
       })
     );
@@ -249,7 +264,7 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
   const onRemovedOrig = node.onRemoved;
   node.onRemoved = function () {
     node?.widgets?.forEach((w) => {
-      if (w.type === "speech_button") {
+      if (w.type === "speak_and_recognation_type") {
         w?.onRemove();
       }
     });
