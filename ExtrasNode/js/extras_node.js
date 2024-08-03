@@ -1,3 +1,9 @@
+/*
+ * Title: Extras extensions
+ * Author: AlekPet
+ * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/tree/master/ExtrasNode
+ */
+
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
@@ -96,31 +102,6 @@ function showWidget(widget) {
 // Register Extension
 app.registerExtension({
   name: idExt,
-  nodeCreated(node, app) {
-    // if ui settings is true and SpeechSynthesis or speechRecognition is not undefined
-    if (SpeechAndRecognationSpeech && (speechRect || SpeechSynthesis)) {
-      // Find all widget type customtext
-      const widgetsTextMulti = node?.widgets?.filter(
-        (w) => w.type === "customtext"
-      );
-
-      if (widgetsTextMulti.length) {
-        widgetsTextMulti.forEach((w) => {
-          node.addCustomWidget(SpeechWidget(node, "speechText", true, w));
-        });
-
-        const onRemovedOrig = node.onRemoved;
-        node.onRemoved = function () {
-          node?.widgets?.forEach((w) => {
-            if (w.type === "speech_button") {
-              w?.onRemove();
-            }
-          });
-          onRemovedOrig?.apply(this, arguments);
-        };
-      }
-    }
-  },
   init() {
     addStylesheet("css/extrasnode/extras_node_styles.css", import.meta.url);
 
@@ -281,107 +262,19 @@ app.registerExtension({
                 }),
               ]
             ),
-            $el("button", {
-              textContent: "Default reset",
-              onclick: () => {},
-              style: {
-                display: "block",
-              },
-            }),
+            // $el("button", {
+            //   textContent: "Default reset",
+            //   onclick: () => {},
+            //   style: {
+            //     display: "block",
+            //   },
+            // }),
           ]),
         ]);
       },
     });
   },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
-    let user_nodes_to_context = false;
-
-    if (nodeData?.input && nodeData?.input?.required) {
-      for (const inp of Object.keys(nodeData.input.required)) {
-        if (nodeData.input.required[inp][1]?.multiline) {
-          const type = nodeData.input.required[inp][0];
-
-          if (["STRING"].includes(type)) {
-            user_nodes_to_context = true;
-            break;
-          }
-        }
-      }
-    }
-    if (user_nodes_to_context) {
-      const origGetExtraMenuOptions = nodeType.prototype.getExtraMenuOptions;
-      nodeType.prototype.getExtraMenuOptions = function (_, options) {
-        const r = origGetExtraMenuOptions
-          ? origGetExtraMenuOptions.apply(this, arguments)
-          : undefined;
-
-        if (this.widgets) {
-          console.log(this.widgets);
-          const self = this;
-          for (const w of this.widgets) {
-            if (["customtext", "converted-widget"].includes(w.type)) {
-              const config = nodeData?.input?.required[w.name] ||
-                nodeData?.input?.optional?.[w.name] || [
-                  w.type,
-                  w.options || {},
-                ];
-
-              const findSpeech = this.widgets.filter(
-                (wi) =>
-                  wi?.text_element &&
-                  (wi.text_element === w?.element ||
-                    wi.text_element === w?.inputEl)
-              );
-
-              for (const option of options) {
-                if (option?.submenu && option.submenu?.options) {
-                  for (const o of option.submenu.options) {
-                    if (o?.content === `Convert ${w.name} to input`) {
-                      const origCall = o?.callback;
-
-                      o.callback = function () {
-                        hideWidget(self, findSpeech[0], "-speech-hidden");
-                        origCall(this, arguments);
-                      };
-                    }
-
-                    if (o?.content === `Convert ${w.name} to widget`) {
-                      const origCall = o?.callback;
-
-                      o.callback = function () {
-                        showWidget(findSpeech[0]);
-                        origCall(this, arguments);
-                      };
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        return r;
-      };
-
-      // onConfigure
-      const onConfigure = nodeType.prototype.onConfigure;
-      nodeType.prototype.onConfigure = function (w) {
-        onConfigure?.apply(this, arguments);
-        if (w?.widgets_values?.length) {
-          const id_speech_clear = findWidget(
-            this,
-            "speech_button",
-            "type",
-            "findIndex"
-          );
-
-          this?.widgets[id_speech_clear].callback(
-            w.widgets_values[id_speech_clear]
-          );
-        }
-      };
-    }
-
     // --- Preview Text Node
     switch (nodeData.name) {
       case "PreviewTextNode": {
@@ -591,6 +484,149 @@ app.registerExtension({
       }
 
       default: {
+        // -- Speech & Recognition speech widget
+        // If ui settings is true and SpeechSynthesis or speechRecognition is not undefined
+        if (SpeechAndRecognationSpeech && (speechRect || SpeechSynthesis)) {
+          let user_nodes_to_context = false;
+
+          if (nodeData?.input && nodeData?.input?.required) {
+            for (const inp of Object.keys(nodeData.input.required)) {
+              if (nodeData.input.required[inp][1]?.multiline) {
+                const type = nodeData.input.required[inp][0];
+
+                if (["STRING"].includes(type)) {
+                  user_nodes_to_context = true;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (user_nodes_to_context) {
+            // Node Created
+            const onNodeCreated = nodeType.prototype.onNodeCreated;
+            nodeType.prototype.onNodeCreated = async function () {
+              const ret = onNodeCreated
+                ? onNodeCreated.apply(this, arguments)
+                : undefined;
+
+              // Find all widget type customtext
+              const widgetsTextMulti = this?.widgets?.filter((w) =>
+                ["customtext", "converted-widget"].includes(w.type)
+              );
+
+              await new Promise((res) =>
+                setTimeout(() => {
+                  res();
+                }, 16 * this.widgets.length)
+              );
+
+              if (widgetsTextMulti.length) {
+                widgetsTextMulti.forEach(async (w) => {
+                  this.addCustomWidget(
+                    SpeechWidget(
+                      this,
+
+                      "speech_and_recognation",
+                      true,
+                      w
+                    )
+                  );
+                });
+              }
+
+              return ret;
+            };
+
+            const origGetExtraMenuOptions =
+              nodeType.prototype.getExtraMenuOptions;
+            nodeType.prototype.getExtraMenuOptions = function (_, options) {
+              const r = origGetExtraMenuOptions
+                ? origGetExtraMenuOptions.apply(this, arguments)
+                : undefined;
+
+              if (this.widgets) {
+                const self = this;
+                for (const w of this.widgets) {
+                  if (
+                    ["customtext", "converted-widget"].includes(w.type) &&
+                    w.name !== "speech_and_recognation"
+                  ) {
+                    const config = nodeData?.input?.required[w.name] ||
+                      nodeData?.input?.optional?.[w.name] || [
+                        w.type,
+                        w.options || {},
+                      ];
+
+                    const findSpeech = this.widgets.filter(
+                      (wi) =>
+                        wi?.text_element &&
+                        (wi.text_element === w?.element ||
+                          wi.text_element === w?.inputEl)
+                    );
+                    if (findSpeech?.length)
+                      for (const option of options) {
+                        if (option?.submenu && option.submenu?.options) {
+                          for (const o of option.submenu.options) {
+                            if (o?.content === `Convert ${w.name} to input`) {
+                              const origCall = o?.callback;
+
+                              o.callback = function () {
+                                hideWidget(self, findSpeech[0], "-speech-hide");
+                                origCall(this, arguments);
+                              };
+                            }
+
+                            if (o?.content === `Convert ${w.name} to widget`) {
+                              const origCall = o?.callback;
+                              o.callback = function () {
+                                showWidget(findSpeech[0]);
+                                origCall(this, arguments);
+                              };
+                            }
+                          }
+                        }
+                      }
+                  }
+                }
+              }
+
+              return r;
+            };
+
+            // onConfigure
+            const onConfigure = nodeType.prototype.onConfigure;
+            nodeType.prototype.onConfigure = async function (w) {
+              onConfigure?.apply(this, arguments);
+              if (w?.widgets_values?.length) {
+                await new Promise((res) =>
+                  setTimeout(() => {
+                    res();
+                  }, 16 * this.widgets.length)
+                );
+
+                const ids_speech_clear = this.widgets.reduce(function (
+                  arr,
+                  el,
+                  idx
+                ) {
+                  if (
+                    el.type === "speech_button" ||
+                    el.type === CONVERTED_TYPE + "-speech-hide"
+                  )
+                    arr.push(idx);
+                  return arr;
+                },
+                []);
+
+                for (const id of ids_speech_clear)
+                  this?.widgets[id]?.callback(w.widgets_values[id]);
+              }
+            };
+          }
+        }
+        // -- end - Speech & Recognition speech widget
+
         break;
       }
     }

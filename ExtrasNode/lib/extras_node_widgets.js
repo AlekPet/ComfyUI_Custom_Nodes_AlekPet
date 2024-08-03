@@ -1,3 +1,9 @@
+/*
+ * Title: Extras widgets
+ * Author: AlekPet
+ * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/tree/master/ExtrasNode
+ */
+
 import { app } from "../../../../scripts/app.js";
 import { $el } from "../../../../scripts/ui.js";
 import { rgbToHex } from "../../utils.js";
@@ -58,9 +64,6 @@ if (speechRecognition) {
   console.warn("Your browser does not support: SpeechRecognition");
 }
 
-if (!speechRect) {
-}
-
 if (!SpeechSynthesis) {
   console.warn("Your browser does not support: speechSynthesis");
 }
@@ -96,16 +99,23 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
     name: inputName,
     value: inputData,
     size: [22, 1],
+    options: { hideOnZoom: true },
     text_element: widgetsText?.inputEl,
     draw(ctx, node, widget_width, y, widget_height) {
-      this.speech_button.style.display =
-        app.canvas.ds.scale < 0.6 ||
-        widget?.type === CONVERTED_TYPE + "-speech-hidden"
-          ? "none"
-          : "flex";
+      const hidden =
+        node.flags?.collapsed ||
+        (!!widget.options.hideOnZoom && app.canvas.ds.scale < 0.6) ||
+        widgetsText?.type === CONVERTED_TYPE ||
+        widget.type === "hidden";
+
+      widget.element.hidden = hidden;
+      widget.element.style.display = hidden ? "none" : "flex";
+      if (hidden) {
+        return;
+      }
 
       Object.assign(
-        this.speech_button.style,
+        widget.element.style,
         getPostition(ctx, widget_width, y, node.size[1], widgetsText)
       );
     },
@@ -114,12 +124,16 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
     },
     callback(v) {
       widget.value = v;
-      const checkbox = widget.speech_button.querySelector(
+      const checkbox = widget.element.querySelector(
         ".alekpet_extras_node_recognition_clear"
       );
       checkbox.checked = widget.value;
     },
+    onRemove() {
+      widget.element?.remove();
+    },
   };
+
   const buttons = [];
 
   if (speechRect) {
@@ -128,12 +142,12 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
         $el("span.alekpet_extras_node_recognition_icon", {
           title: "Speech to text",
           onclick: function () {
-            const info = widget.speech_button.querySelector(
+            const info = widget.element.querySelector(
               ".alekpet_extras_node_info span"
             );
 
             if (!speechRect.elements) {
-              speechRect.elements = [widget.speech_button, widgetsText.inputEl];
+              speechRect.elements = [widget.element, widgetsText.inputEl];
               info.textContent = "recognition";
               this.classList.add("alekpet_extras_node_recognition_icon_active");
               speechRect.start();
@@ -166,7 +180,7 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
     buttons.push(
       $el("span.alekpet_extras_node_speech_icon", {
         onclick: function () {
-          const info = widget.speech_button.querySelector(
+          const info = widget.element.querySelector(
             ".alekpet_extras_node_info span"
           );
 
@@ -207,21 +221,40 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
     );
   }
 
-  widget.speech_button = $el("div.alekpet_extras_node_speechrecognition_box", [
-    $el("div.alekpet_extras_node_speechrecognition_row", [...buttons]),
-    $el("div.alekpet_extras_node_info", [
-      $el("span", {
-        textContent: "",
-        style: { fontSize: "0.4em" },
-      }),
-    ]),
-  ]);
+  widget.element = $el(
+    "div.alekpet_extras_node_speechrecognition_box",
+    { hidden: true, style: { display: "none" } },
+    [
+      $el("div.alekpet_extras_node_speechrecognition_row", [...buttons]),
+      $el("div.alekpet_extras_node_info", [
+        $el("span", {
+          textContent: "",
+          style: { fontSize: "0.4em" },
+        }),
+      ]),
+    ]
+  );
 
-  widget.onRemove = () => {
-    widget.speech_button?.remove();
+  const collapse = node.collapse;
+  node.collapse = function () {
+    collapse.apply(this, arguments);
+    if (this.flags?.collapsed) {
+      widget.element.hidden = true;
+      widget.element.style.display = "none";
+    }
   };
 
-  document.body.appendChild(widget.speech_button);
+  const onRemovedOrig = node.onRemoved;
+  node.onRemoved = function () {
+    node?.widgets?.forEach((w) => {
+      if (w.type === "speech_button") {
+        w?.onRemove();
+      }
+    });
+    onRemovedOrig?.apply(node, arguments);
+  };
+
+  document.body.appendChild(widget.element);
 
   return widget;
 }
