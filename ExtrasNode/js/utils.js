@@ -105,7 +105,11 @@ function makeModal({
 }
 
 function findWidget(node, value, attr = "name", func = "find") {
-  return node?.widgets ? node.widgets[func]((w) => w[attr] === value) : null;
+  return node?.widgets
+    ? node.widgets[func]((w) =>
+        Array.isArray(value) ? value.includes(w[attr]) : w[attr] === value
+      )
+    : null;
 }
 
 function animateTransitionProps(
