@@ -8,7 +8,7 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
 import { $el } from "../../scripts/ui.js";
-import { isValidStyle, findWidget } from "./utils.js";
+import { isValidStyle } from "./utils.js";
 import { addStylesheet } from "../../scripts/utils.js";
 import {
   SpeechWidget,

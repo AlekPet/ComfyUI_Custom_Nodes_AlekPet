@@ -6,7 +6,7 @@
 
 import { app } from "../../../../scripts/app.js";
 import { $el } from "../../../../scripts/ui.js";
-import { rgbToHex } from "../../utils.js";
+import { rgbToHex, isValidStyle } from "../../utils.js";
 
 const CONVERTED_TYPE = "converted-widget";
 
