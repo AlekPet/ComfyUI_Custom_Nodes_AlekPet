@@ -1,6 +1,6 @@
 # Title: ComfyUI Install Customs Nodes and javascript files
 # Author: AlekPet
-# Version: 2024.07.27
+# Version: 2024.08.08
 import os
 import importlib.util
 import subprocess
@@ -217,7 +217,7 @@ def install_node(nodeElement):
 
     clsNodes = getNamesNodesInsidePyFile(nodeElement)
     clsNodesText = "\033[93m" + ", ".join(clsNodes) + "\033[0m" if clsNodes else ""
-    printColorInfo(f"Node -> {nodeElement}: {clsNodesText} \033[92m[Loading]")
+    printColorInfo(f"Node -> {nodeElement}: {clsNodesText} \033[92m[Loading] ")
 
     checkModules(nodeElement)
     # addComfyUINodesToMapping(nodeElement) # dynamic class nodes append in mappings

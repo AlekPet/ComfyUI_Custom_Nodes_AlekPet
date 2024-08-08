@@ -586,8 +586,8 @@ function createOpenPose(node, inputName, inputData, app) {
       }
 
       Object.assign(this.openpose.style, {
-        left: `${transform.a * margin + transform.e}px`,
-        top: `${transform.d + transform.f}px`,
+        left: `${transform.a * margin + transform.e + clientRectBound.left}px`,
+        top: `${transform.d + transform.f + clientRectBound.top}px`,
         width: w + "px",
         height: w / aspect_ratio + "px",
         position: "absolute",

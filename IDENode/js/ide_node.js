@@ -89,27 +89,29 @@ result = runCode()
 `,
 };
 
-function getPostition(ctx, w_width, y, n_height) {
-  const MARGIN = 5;
+function getPostition(node, ctx, w_width, y, n_height) {
+  const margin = 5;
 
   const rect = ctx.canvas.getBoundingClientRect();
   const transform = new DOMMatrix()
     .scaleSelf(rect.width / ctx.canvas.width, rect.height / ctx.canvas.height)
     .multiplySelf(ctx.getTransform())
-    .translateSelf(MARGIN, MARGIN + y);
+    .translateSelf(margin, margin + y);
+  const scale = new DOMMatrix().scaleSelf(transform.a, transform.d);
 
   return {
     transformOrigin: "0 0",
-    transform: transform,
-    left: `0px`,
-    top: `0px`,
-    position: "absolute",
-    maxWidth: `${w_width - MARGIN * 2}px`,
-    maxHeight: `${n_height - MARGIN * 2 - y - 15}px`,
-    width: "100%",
+    transform: scale,
+    left: `${transform.a + transform.e + rect.left}px`,
+    top: `${transform.d + transform.f + rect.top}px`,
+    maxWidth: `${w_width - margin * 2}px`,
+    maxHeight: `${n_height - margin * 2 - y - 15}px`,
+    width: `${w_width - margin * 2}px`,
     height: "90%",
+    position: "absolute",
     scrollbarColor: "var(--descrip-text) var(--bg-color)",
     scrollbarWidth: "thin",
+    zIndex: app.graph._nodes.indexOf(node),
   };
 }
 
@@ -118,30 +120,61 @@ function codeEditor(node, inputName, inputData) {
   const widget = {
     type: "pycode",
     name: inputName,
+    options: { hideOnZoom: true },
     value:
       inputData[1]?.default ||
       `def my(a, b=1):
   return a * b<br>
     
 result = str(my(23, 9))`,
-    size: [500, 350],
     draw(ctx, node, widget_width, y, widget_height) {
+      const hidden =
+        node.flags?.collapsed ||
+        (!!widget.options.hideOnZoom && app.canvas.ds.scale < 0.5) ||
+        widget.type === "converted-widget" ||
+        widget.type === "hidden";
+
+      widget.hidden = hidden;
+      widget.codeElement.style.display = hidden ? "none" : null;
+
+      if (hidden) {
+        widget.options.onHide?.(widget);
+        return;
+      }
+
       Object.assign(
         this.codeElement.style,
-        getPostition(ctx, widget_width, y, node.size[1])
+        getPostition(node, ctx, widget_width, y, node.size[1])
       );
     },
     computeSize(...args) {
-      return [500, 350];
+      return [500, 250];
     },
   };
 
-  widget.codeElement = makeElement("pre", { innerHTML: widget.value });
+  widget.codeElement = makeElement("pre", {
+    innerHTML: widget.value,
+  });
+
   widget.editor = ace.edit(widget.codeElement);
   widget.editor.setTheme("ace/theme/monokai");
   widget.editor.session.setMode("ace/mode/python");
 
   document.body.appendChild(widget.codeElement);
+
+  const collapse = node.collapse;
+  node.collapse = function () {
+    collapse.apply(this, arguments);
+    if (this.flags?.collapsed) {
+      widget.codeElement.hidden = true;
+      widget.codeElement.style.display = "none";
+    } else {
+      if (this.flags?.collapsed === false) {
+        widget.codeElement.hidden = false;
+        widget.codeElement.style.display = null;
+      }
+    }
+  };
 
   return widget;
 }

@@ -1966,8 +1966,14 @@ function PainterWidget(node, inputName, inputData, app) {
       }
 
       Object.assign(this.painter_wrap.style, {
-        left: `${transform.a * margin * left_offset + transform.e}px`,
-        top: `${transform.d + transform.f + top_offset}px`,
+        left: `${
+          transform.a * margin * left_offset +
+          transform.e +
+          clientRectBound.left
+        }px`,
+        top: `${
+          transform.d + transform.f + top_offset + clientRectBound.top
+        }px`,
         width: `${w * transform.a}px`,
         height: `${w * transform.d}px`,
         position: "absolute",
