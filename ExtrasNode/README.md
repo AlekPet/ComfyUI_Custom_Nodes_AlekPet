@@ -19,3 +19,5 @@
 - Dispaly image size node "Preview Image"
 
 - Speech & Recognition speech
+
+**Note** (Speech & Recognition speech): If your browser Firefox: go to `about:config`, find `media.webspeech.recognition.enable`, `media.webspeech.recognition.force_enable` set values ​​to `true`
