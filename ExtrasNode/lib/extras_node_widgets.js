@@ -85,8 +85,8 @@ function getPostition(ctx, w_width, y, n_height, wInput) {
     transformOrigin: "0 0",
     transform: scale,
     transform: transform,
-    left: `${transform.a * w_width - 65 * scale.a}px`,
-    top: `${(wInput.last_y - 15) * scale.d + scale.f}px`,
+    left: `${transform.a * w_width - 65 * scale.a + rect.left}px`,
+    top: `${(wInput.last_y - 15) * scale.d + scale.f + rect.top}px`,
     maxWidth: `${w_width - MARGIN * 2}px`,
     maxHeight: `${n_height - MARGIN * 2}px`,
     zIndex: wInput?.inputEl?.style?.zIndex
@@ -125,7 +125,7 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
       return [22, 1];
     },
     callback(v) {
-      widget.value = v;
+      widget.value = v ?? inputData;
       const checkbox = widget.element.querySelector(
         ".alekpet_extras_node_recognition_clear"
       );
