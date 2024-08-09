@@ -171,7 +171,7 @@ function makeElement(tag, attrs = {}) {
     if (key === "class") {
       if (Array.isArray(currValue)) {
         element.classList.add(...currValue);
-      } else if (currValue instanceof String && typeof currValue === "string") {
+      } else if (currValue instanceof String || typeof currValue === "string") {
         element.className = currValue;
       }
     } else if (key === "dataset") {
@@ -187,6 +187,22 @@ function makeElement(tag, attrs = {}) {
         }
       } catch (err) {
         console.log(err);
+      }
+    } else if (key === "style") {
+      if (
+        typeof currValue === "object" &&
+        !Array.isArray(currValue) &&
+        Object.keys(currValue).length
+      ) {
+        Object.assign(element[key], currValue);
+      } else if (
+        typeof currValue === "object" &&
+        Array.isArray(currValue) &&
+        currValue.length
+      ) {
+        element[key] = [...currValue];
+      } else if (currValue instanceof String || typeof currValue === "string") {
+        element[key] = currValue;
       }
     } else if (["for"].includes(key)) {
       element.setAttribute(key, currValue);
