@@ -9,6 +9,7 @@ import asyncio
 from PIL import Image, ImageOps
 import torch
 import numpy as np
+import glob
 import folder_paths
 
 # Directory node save settings
@@ -90,6 +91,31 @@ async def loadingSettings(request):
     return web.json_response({"settings_nodes": load_data})
 
 
+# Load json's files
+@PromptServer.instance.routes.get("/alekpet/loading_all_node_settings")
+async def loadingAllSettings(request):
+    load_data = []
+    jsonFiles = glob.glob("Paint_*.json", root_dir=nodes_settings_path)
+
+    for f in jsonFiles:
+        path_to_file = os.path.join(nodes_settings_path, f)
+
+        if os.path.isfile(path_to_file):
+            file = open(path_to_file, "rb")
+            try:
+                jsonData = json.load(file)
+                load_data.append({"name":f.replace(PREFIX,""), "value": jsonData})
+            except Exception as e:
+                print("Error load json file: ", e)
+
+            finally:
+                file.close()
+        else:
+            print(f"File {f} not file!")
+
+    return web.json_response({"all_settings_nodes": load_data})
+
+
 # Save data to json file
 @PromptServer.instance.routes.post("/alekpet/save_node_settings")
 async def saveSettings(request):
@@ -137,7 +163,7 @@ async def saveSettings(request):
 
 # Remove file settings painter node data
 @PromptServer.instance.routes.post("/alekpet/remove_node_settings")
-async def saveSettings(request):
+async def removeSettings(request):
     try:
         json_data = await request.json()
         filename = json_data.get("name")

@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2024.06.22
+ * Version: 2024.08.14
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -10,15 +10,9 @@ import { api } from "../../scripts/api.js";
 import { fabric } from "./lib/painternode/fabric.js";
 import "./lib/painternode/mybrush.js";
 import { svgSymmetryButtons } from "./lib/painternode/brushes.js";
-import {
-  toRGBA,
-  getColorHEX,
-  LS_Class,
-  formatBytes,
-} from "./lib/painternode/helpers.js";
-import { ComfyDialog } from "../../../scripts/ui.js";
+import { toRGBA, getColorHEX, LS_Class } from "./lib/painternode/helpers.js";
+import { PainterStorageDialog } from "./lib/painternode/dialogs.js";
 import { addStylesheet } from "../../scripts/utils.js";
-// import { ComfyDialog as MComfyDialog } from "../../scripts/ui/dialog.js";
 import {
   showHide,
   makeElement,
@@ -2268,173 +2262,6 @@ function PainterWidget(node, inputName, inputData, app) {
 
 // ================= CREATE EXTENSION ================
 
-class PainterStorageDialog extends ComfyDialog {
-  static createElements(elementBody) {
-    if (!elementBody) return;
-    let localStorageItems = Object.keys(localStorage)
-      .filter((v) => v.indexOf("Paint_") !== -1)
-      .map((v) => ({ name: v, value: localStorage.getItem(v) }))
-      .sort((a, b) => {
-        a = JSON.stringify(a.value).length;
-        b = JSON.stringify(b.value).length;
-        return b - a;
-      });
-
-    if (!localStorageItems?.length) {
-      return makeElement("div", {
-        class: ["painter_storage_items_box"],
-        textContent: "LocalStorage keys is not found!",
-      });
-    }
-
-    const itemBox = makeElement("div", {
-      class: ["painter_storage_items_box"],
-      style: {
-        display: "flex",
-        flexDirection: "column",
-        gap: "5px",
-        alignItems: "stretch",
-        justifyContent: "center",
-      },
-      children: [
-        makeElement("div", {
-          class: ["painter_storage_items_header"],
-          style: {
-            display: "grid",
-            gridTemplateColumns: "0.2fr 1fr 1fr 1fr",
-            justifyContent: "center",
-            justifyItems: "center",
-            alignItems: "center",
-            background: "var(--primary-bg)",
-          },
-          children: [
-            makeElement("span", { textContent: "#" }),
-            makeElement("span", { textContent: "Name" }),
-            makeElement("span", { textContent: "Size" }),
-            makeElement("span", { textContent: "Action" }),
-          ],
-        }),
-      ],
-    });
-
-    for (const [idx, { name, value }] of localStorageItems.entries()) {
-      const item = makeElement("div", {
-        class: ["painter_storage_item"],
-        style: {
-          display: "grid",
-          gridTemplateColumns: "0.2fr 1fr 1fr 1fr",
-          justifyContent: "center",
-          justifyItems: "center",
-          alignItems: "center",
-          background: `var(${
-            (idx + 1) % 2 !== 0 ? "--tr-odd-bg-color" : "--tr-even-bg-color"
-          })`,
-        },
-        children: [
-          makeElement("span", { textContent: idx + 1 }),
-          makeElement("span", { textContent: name }),
-          makeElement("span", {
-            innerHTML: formatBytes(JSON.stringify(value).length),
-          }),
-          makeElement("button", {
-            style: { color: "var(--error-text)" },
-            textContent: "Delete",
-            title: "Delete Local Storage record!",
-            onclick: (e) => {
-              if (
-                confirm(`Delete record "${name}"?`) &&
-                localStorage.getItem(name)
-              ) {
-                localStorage.removeItem(name);
-                makeModal({
-                  title: "Information",
-                  text: `Record name "${name}" deleted from local storage!`,
-                });
-                elementBody.innerHTML = "";
-                elementBody.append(
-                  PainterStorageDialog.createElements(elementBody)
-                );
-              }
-            },
-          }),
-        ],
-        parent: itemBox,
-      });
-    }
-
-    return itemBox;
-  }
-
-  async show(lsStorage = true) {
-    const body = makeElement("div", {
-      class: ["painter_storage_body"],
-      style: {},
-    });
-
-    const box = makeElement("div", {
-      class: ["painter_storage_box"],
-      style: {
-        width: "30vw",
-        display: "flex",
-        flexDirection: "column",
-        gap: "20px",
-        color: "var(--primary-fg)",
-      },
-      children: [
-        makeElement("div", {
-          class: ["painter_storage_select"],
-          style: {
-            display: "flex",
-            justifyContent: "space-evenly",
-            alignItems: "center",
-            background: "var(--content-bg)",
-            padding: "3px",
-            borderRadius: "8px",
-          },
-          children: [
-            makeElement("label", {
-              textContent: "Local storage",
-              for: "painter_storage_radio_ls",
-              children: [
-                makeElement("input", {
-                  type: "radio",
-                  name: "painter_storage_radio",
-                  value: "ls",
-                  id: "painter_storage_radio_ls",
-                  checked: lsStorage,
-                }),
-              ],
-            }),
-
-            makeElement("label", {
-              textContent: "JSON files",
-              for: "painter_storage_radio_json",
-              children: [
-                makeElement("input", {
-                  type: "radio",
-                  name: "painter_storage_radio",
-                  value: "json",
-                  id: "painter_storage_radio_json",
-                  checked: !lsStorage,
-                }),
-              ],
-            }),
-          ],
-        }),
-        body,
-      ],
-    });
-
-    if (!lsStorage) {
-      console.log("Loading JSON files");
-    } else {
-      body.innerHTML = "";
-      body.append(PainterStorageDialog.createElements(body));
-    }
-    super.show(box);
-  }
-}
-
 const extensionName = "alekpet.PainterNode";
 
 app.registerExtension({
@@ -2502,7 +2329,7 @@ app.registerExtension({
                   textContent: "Managing Data",
                   onclick: () => {
                     app.ui.settings.element.close();
-                    new PainterStorageDialog().show();
+                    new PainterStorageDialog().show(painters_settings_json);
                   },
                   style: {
                     display: "block",

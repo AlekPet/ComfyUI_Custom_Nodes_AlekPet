@@ -411,3 +411,56 @@
   background-color: rgb(49 49 49);
 }
 /* -- end Styles Settigs Kistey -- */
+
+/* Settings store managing data */
+.painter_storage_box {
+  width: 30vw;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: var(--primary-fg);
+}
+
+.painter_storage_select {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  background: var(--content-bg);
+  padding: 3px;
+  border-radius: 8px;
+}
+
+.painter_storage_body {
+  text-align: center;
+}
+
+.painter_storage_items_box {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.painter_storage_item:hover {
+  background: var(--primary-hover-bg) !important;
+}
+
+.painter_storage_grid {
+  display: grid;
+  grid-template-columns: 0.2fr 1fr 1fr 1fr 1fr;
+  justify-content: center;
+  place-items: center;
+}
+
+.painter_storage_items_header {
+  background: var(--primary-bg);
+  text-transform: uppercase;
+}
+
+.painter_storage_item_preview_canvas {
+  width: 60% !important;
+  height: auto !important;
+}
+
+/* -- end Settings store managing data */
