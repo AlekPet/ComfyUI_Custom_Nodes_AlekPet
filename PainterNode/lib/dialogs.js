@@ -116,7 +116,7 @@ export class PainterStorageDialog extends ComfyDialog {
       });
 
       const removeButtonEl = makeElement("button", {
-        style: { color: "var(--error-text)" },
+        style: { color: "var(--error-text)", padding: "7px", fontSize: "1rem" },
         textContent: "Delete",
         title: "Delete record!",
         onclick: async (e) => {
@@ -220,7 +220,6 @@ export class PainterStorageDialog extends ComfyDialog {
                 }),
               ],
             }),
-
             makeElement("label", {
               textContent: "JSON files",
               for: "painter_storage_radio_json",
@@ -235,6 +234,10 @@ export class PainterStorageDialog extends ComfyDialog {
                 }),
               ],
             }),
+            // makeElement("button", {
+            //   textContent: "Refresh",
+            //   style: { color: "limegreen", fontSize: "1rem", padding: "7px" },
+            // }),
           ],
         }),
         this.body,
@@ -253,5 +256,10 @@ export class PainterStorageDialog extends ComfyDialog {
       this.body.append(this.createMenuElements(json_data_settings));
     }
     super.show(box);
+    this.element.style.zIndex = 9999;
+  }
+
+  close() {
+    this.element.remove();
   }
 }
