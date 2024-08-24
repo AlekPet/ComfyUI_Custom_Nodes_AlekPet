@@ -104,14 +104,20 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
     options: { hideOnZoom: true },
     text_element: widgetsText?.inputEl,
     draw(ctx, node, widget_width, y, widget_height) {
-      const hidden =
-        node.flags?.collapsed ||
-        (!!widget.options.hideOnZoom && app.canvas.ds.scale < 0.6) ||
-        widgetsText?.type === CONVERTED_TYPE ||
-        widget.type === "hidden";
+      const hidden = widgetsText?.element?.hidden;
 
-      widget.element.hidden = hidden;
-      widget.element.style.display = hidden ? "none" : "flex";
+      widget.element.dataset.shouldHide = hidden ? "true" : "false";
+      const isInVisibleNodes =
+        widget.element.dataset.isInVisibleNodes === "true";
+      const isCollapsed = widget.element.dataset.collapsed === "true";
+      const actualHidden = hidden || !isInVisibleNodes || isCollapsed;
+      const wasHidden = widget.element.hidden;
+      widget.element.hidden = actualHidden;
+      widget.element.style.display = actualHidden ? "none" : "flex";
+      if (actualHidden && !wasHidden) {
+        widget.options.onHide?.(widget);
+      }
+
       if (hidden) {
         return;
       }
@@ -259,6 +265,7 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
       widget.element.hidden = true;
       widget.element.style.display = "none";
     }
+    widget.element.dataset.collapsed = this.flags?.collapsed ? "true" : "false";
   };
 
   const onRemovedOrig = node.onRemoved;
