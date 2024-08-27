@@ -63,3 +63,10 @@
 .alekpet_extras_node_recognition_clear:not(:checked) {
   opacity: 0.5;
 }
+
+.alekpet_extras_node_speech_icon_playing::after {
+  content: "✖";
+  position: absolute;
+  right: 3px;
+  color: var(--error-text);
+}

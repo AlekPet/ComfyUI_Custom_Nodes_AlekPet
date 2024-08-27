@@ -184,57 +184,94 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
     );
   }
 
-  if (SpeechSynthesis) {
+  if (SpeechSynthesis && speechSynthesis) {
+    // Function return utterance
     function speak(text, options = {}) {
-      if (!SpeechSynthesis && speechSynthesis.speaking) return;
       const utterance = new SpeechSynthesisUtterance(text);
 
       Object.assign(utterance, { ...options });
       return utterance;
     }
 
+    function buttonsStyles(
+      speechesButtons,
+      action = "add",
+      className = "alekpet_extras_node_speech_icon_playing"
+    ) {
+      speechesButtons?.forEach((speechButton) =>
+        speechButton?.classList[action](className)
+      );
+    }
+
     buttons.push(
       $el("span.alekpet_extras_node_speech_icon", {
         onclick: function () {
-          const info = widget.element.querySelector(
-            ".alekpet_extras_node_info span"
-          );
+          try {
+            const info = widget.element.querySelector(
+              ".alekpet_extras_node_info span"
+            );
 
-          // Already playing
-          if (SpeechSynthesis && speechSynthesis.speaking) {
-            info.textContent = "wait...";
-            setTimeout(() => (info.textContent = ""), 2000);
-            return;
-          }
+            const speechesButtons = Array.from(
+              document.querySelectorAll(".alekpet_extras_node_speech_icon")
+            );
 
-          // Start playing text
-          const text = widgetsText?.inputEl.value;
-          if (text.trim() !== "") {
-            const utterance = speak(text, {
-              onend: (e) => {
-                this.style.opacity = 1;
-                info.textContent = "";
-              },
-            });
+            // Already playing
+            if (speechSynthesis.speaking) {
+              SpeechSynthesis.cancel();
 
-            if (utterance) {
-              this.style.opacity = 0.7;
-              info.textContent = "saying now";
+              info.textContent = "canceled";
+              this.title = "Speak text";
 
-              SpeechSynthesis.speak(utterance);
+              buttonsStyles(speechesButtons, "remove");
+              setTimeout(() => (info.textContent = ""), 2000);
+              return;
             }
-          } else {
-            if (text.trim() === "") {
-              const utterance = speak(
-                `${widgetsText?.name || "This"}}, field is empty!`
-              );
-              utterance && SpeechSynthesis.speak(utterance);
-              info.textContent = "empty text!";
+
+            // Start playing text
+            const text = widgetsText?.inputEl.value;
+            if (text.trim() !== "") {
+              const utterance = speak(text, {
+                onend: (e) => {
+                  this.style.opacity = 1;
+                  this.title = "Speak text";
+                  info.textContent = "";
+
+                  buttonsStyles(speechesButtons, "remove");
+                },
+              });
+
+              if (utterance) {
+                this.style.opacity = 0.7;
+                this.title = "Cancel speech";
+                info.textContent = "saying now";
+
+                buttonsStyles(speechesButtons);
+                SpeechSynthesis.speak(utterance);
+              }
             } else {
-              info.textContent = "error speak!";
+              const utterance = speak(
+                `${widgetsText?.name || "This"}}, field is empty!`,
+                {
+                  onend: (e) => {
+                    this.style.opacity = 1;
+                    this.title = "Speak text";
+                    info.textContent = "";
+
+                    buttonsStyles(speechesButtons, "remove");
+                  },
+                }
+              );
+
+              if (utterance) {
+                this.style.opacity = 0.7;
+                this.title = "Cancel speech";
+                info.textContent = "empty text!";
+                buttonsStyles(speechesButtons);
+                SpeechSynthesis.speak(utterance);
+              }
             }
-            this.style.opacity = 1;
-            setTimeout(() => (info.textContent = ""), 2000);
+          } catch (err) {
+            console.log(err);
           }
         },
         textContent: "🔊",
