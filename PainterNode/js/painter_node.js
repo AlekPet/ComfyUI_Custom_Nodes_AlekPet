@@ -2276,18 +2276,21 @@ app.registerExtension({
       name: "🔸 Painter Node",
       defaultValue: false,
       type: (name, sett, val) => {
+        const newUI = document.querySelector(".p-dialog-header");
         return makeElement("tr", {
           children: [
-            makeElement("td", {
-              children: [
-                makeElement("label", {
-                  textContent: name,
-                  for: convertIdClass(
-                    `${extensionName}.save_settings_json_checkbox`
-                  ),
-                }),
-              ],
-            }),
+            !newUI
+              ? makeElement("td", {
+                  children: [
+                    makeElement("label", {
+                      textContent: name,
+                      for: convertIdClass(
+                        `${extensionName}.save_settings_json_checkbox`
+                      ),
+                    }),
+                  ],
+                })
+              : "",
             makeElement("td", {
               children: [
                 makeElement("label", {

@@ -63,13 +63,16 @@ app.registerExtension({
       name: "🔸 Preview Image",
       defaultValue: true,
       type: (name, sett, val) => {
+        const newUI = document.querySelector(".p-dialog-header");
         return $el("tr", [
-          $el("td", [
-            $el("label", {
-              textContent: name,
-              for: convertIdClass(`${idExt}.PreviewImage_size_checkbox`),
-            }),
-          ]),
+          !newUI
+            ? $el("td", [
+                $el("label", {
+                  textContent: name,
+                  for: convertIdClass(`${idExt}.PreviewImage_size_checkbox`),
+                }),
+              ])
+            : "",
           $el("td", [
             $el(
               "label",
@@ -184,13 +187,18 @@ app.registerExtension({
       name: "🔸 Speak text & Recognition speech",
       defaultValue: true,
       type: (name, sett, val) => {
+        const newUI = document.querySelector(".p-dialog-header");
         return $el("tr", [
-          $el("td", [
-            $el("label", {
-              textContent: name,
-              for: convertIdClass(`${idExt}.SpeechAndRecognationSpeech_show`),
-            }),
-          ]),
+          !newUI
+            ? $el("td", [
+                $el("label", {
+                  textContent: name,
+                  for: convertIdClass(
+                    `${idExt}.SpeechAndRecognationSpeech_show`
+                  ),
+                }),
+              ])
+            : "",
           $el("td", [
             $el(
               "label",

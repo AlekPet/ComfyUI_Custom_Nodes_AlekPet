@@ -9,7 +9,6 @@ export class PainterStorageDialog extends ComfyDialog {
   async removeRecord(name, type) {
     if (!confirm(`Delete record "${name}"?`)) return;
 
-    console.log(name, type);
     if (type === "ls") {
       if (localStorage.getItem(name)) {
         localStorage.removeItem(name);
@@ -192,6 +191,25 @@ export class PainterStorageDialog extends ComfyDialog {
     if (data) this.updateBodyData(data);
   }
 
+  async updateDataStorages(lsStorage) {
+    try {
+      this.body.innerHTML = "";
+
+      if (lsStorage === "ls") {
+        let localStorageItems = this.loadingDataLocalStorage();
+        console.log("Loading localStorage data");
+        this.body.append(this.createMenuElements(localStorageItems));
+      } else if (lsStorage === "json") {
+        const json_data_settings = await this.loadingDataJSON();
+        console.log("Loading JSON files data");
+        this.body.append(this.createMenuElements(json_data_settings));
+      }
+      return true;
+    } catch (err) {
+      return err;
+    }
+  }
+
   // Main function show
   async show(_lsStorage = true) {
     const lsStorage = !_lsStorage;
@@ -234,27 +252,43 @@ export class PainterStorageDialog extends ComfyDialog {
                 }),
               ],
             }),
-            // makeElement("button", {
-            //   textContent: "Refresh",
-            //   style: { color: "limegreen", fontSize: "1rem", padding: "7px" },
-            // }),
+            makeElement("button", {
+              textContent: "Refresh",
+              style: { color: "limegreen", fontSize: "1rem", padding: "7px" },
+              onclick: async (e) => {
+                const target = e.target;
+                target.style.color = "var(--descrip-text)";
+                target.disabled = true;
+                target.textContent = "Wait...";
+
+                await new Promise((res, rej) => {
+                  const result = this.updateDataStorages(
+                    document.querySelector(
+                      "[name=painter_storage_radio]:checked"
+                    ).value
+                  );
+                  result ? res(true) : rej(result);
+                })
+                  .then(() => {
+                    setTimeout(() => {
+                      target.style.color = "limegreen";
+                      target.disabled = false;
+                      target.textContent = "Refresh";
+                    }, 500);
+                  })
+                  .catch((e) => {
+                    console.log(e);
+                  });
+              },
+            }),
           ],
         }),
         this.body,
       ],
     });
 
-    this.body.innerHTML = "";
+    this.updateDataStorages(lsStorage ? "ls" : "json");
 
-    if (lsStorage) {
-      let localStorageItems = this.loadingDataLocalStorage();
-      console.log("Loading localStorage data");
-      this.body.append(this.createMenuElements(localStorageItems));
-    } else {
-      const json_data_settings = await this.loadingDataJSON();
-      console.log("Loading JSON files data");
-      this.body.append(this.createMenuElements(json_data_settings));
-    }
     super.show(box);
     this.element.style.zIndex = 9999;
   }
