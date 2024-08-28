@@ -17,7 +17,7 @@ ace.config.set(
 );
 
 // Constants
-const MAX_CHAR_VARNAME = 20;
+const MAX_CHAR_VARNAME = 50;
 const LIST_THEMES = [
   "ambiance",
   "chaos",
@@ -77,7 +77,7 @@ const runCode = () => {
   const date = new Date().toJSON().replace("T"," ");
   return date.slice(0,date.indexOf("."))
 }
-result = runCode();`,
+result = \`Hello ComfyUI with us today \${runCode()}!\``,
   py: `# !!! Attention, do not insert unverified code !!!
 # ---- Example code ----
 # Globals inputs variables: var1, var2, var3, user variables ...
@@ -227,23 +227,23 @@ app.registerExtension({
           };
         }
 
-        node.addWidget("button", "Add Variable", "add_variable", () => {
-          const nameInput = node?.inputs?.length
-            ? `var${node.inputs.length + 1}`
-            : "var1";
-          const varName = prompt("Enter variable name:", nameInput);
-
+        function makeValidVariable(
+          varName,
+          textContent,
+          regex = /^[a-z_][a-z0-9_]*$/i
+        ) {
           if (
             !varName ||
             varName.trim() === "" ||
             varName.length > MAX_CHAR_VARNAME ||
-            !/^[a-z_][a-z0-9_]*$/i.test(varName)
+            !regex.test(varName)
           ) {
-            const windowError = createWindowModal({
+            createWindowModal({
               textTitle: "WARNING",
               textBody: [
                 makeElement("div", {
-                  innerHTML: `<h3>Variable name is incorrect!</h3><ul style="text-align:left;padding: 2px;"><li>starts with a number</li><li>has spaces or tabs</li><li>is empty</li><li>variable name is greater ${MAX_CHAR_VARNAME}</li></ul>`,
+                  style: { fontSize: "0.7rem" },
+                  innerHTML: textContent,
                 }),
               ],
               ...THEMES_MODAL_WINDOW.warning,
@@ -258,12 +258,105 @@ app.registerExtension({
               },
             });
 
-            return;
+            return false;
           }
-          const currentWidth = node.size[0];
-          node.addInput(varName, "*");
-          node.setSize([currentWidth, node.size[1]]);
-        });
+          return true;
+        }
+
+        node.addWidget(
+          "button",
+          "Add Input variable",
+          "add_input_variable",
+          () => {
+            // Input name variable and check
+            const nameInput = node?.inputs?.length
+              ? `var${node.inputs.length + 1}`
+              : "var1";
+
+            const varName = prompt(
+              "Enter input variable name:",
+              nameInput
+            ).trim();
+
+            if (
+              !makeValidVariable(
+                varName,
+                `<h3>Variable for <span style="color: limegreen">Input</span> name is incorrect!</h3><ul style="text-align:left;padding: 2px;margin-left: 5%;"><li>starts with a number</li><li>has spaces or tabs</li><li>is empty</li><li>variable name is greater ${MAX_CHAR_VARNAME}</li></ul>`
+              )
+            )
+              return;
+
+            // Type variable and check
+            let type = prompt(
+              "Enter type data output (default: *):",
+              "*"
+            ).trim();
+
+            if (
+              !makeValidVariable(
+                type,
+                `<h3>Type value is incorrect!</h3><ul style="text-align:left;padding: 2px;"><li>has spaces or tabs</li><li>is empty</li><li>type value length is greater ${MAX_CHAR_VARNAME}</li></ul>`,
+                /^[*a-z_][a-z0-9_]*$/i
+              )
+            )
+              return;
+
+            const currentWidth = node.size[0];
+            node.addInput(
+              `${varName}{${type === "*" ? "ANY" : type.toUpperCase()}}`,
+              type
+            );
+            node.setSize([currentWidth, node.size[1]]);
+          }
+        );
+
+        node.addWidget(
+          "button",
+          "Add Output variable",
+          "add_output_variable",
+          () => {
+            const currentWidth = node.size[0];
+
+            // Output name variable
+            const nameOutput = node?.outputs?.length
+              ? `result${node.outputs.length + 1}`
+              : "result1";
+            const varName = prompt(
+              "Enter output variable name:",
+              nameOutput
+            ).trim();
+
+            // Check output variable name
+            if (
+              !makeValidVariable(
+                varName,
+                `<h3>Variable for <span style="color: pink">Output</span> name is incorrect!</h3><ul style="text-align:left;padding: 2px;margin-left: 5%;"><li>starts with a number</li><li>has spaces or tabs</li><li>is empty</li><li>variable name is greater ${MAX_CHAR_VARNAME}</li></ul>`
+              )
+            )
+              return;
+
+            // Type variable and check
+            let type = prompt(
+              "Enter type data output (default: *):",
+              "*"
+            ).trim();
+
+            if (
+              !makeValidVariable(
+                type,
+                `<h3>Type value is incorrect!</h3><ul style="text-align:left;padding: 2px;"><li>has spaces or tabs</li><li>is empty</li><li>type value length is greater ${MAX_CHAR_VARNAME}</li></ul>`,
+                /^[*a-z_][a-z0-9_]*$/i
+              )
+            )
+              return;
+
+            node.addOutput(
+              `${varName}{${type === "*" ? "ANY" : type.toUpperCase()}}`,
+              type
+            );
+            node.setSize([currentWidth, node.size[1]]);
+          }
+        );
 
         node.addWidget("button", "Clear", "clear_code", () => {
           widget.editor.setValue("");
@@ -300,7 +393,7 @@ app.registerExtension({
 
         // Create default inputs, when first create node
         if (!this?.inputs) {
-          ["var1", "var2", "var3"].forEach((inputName) => {
+          ["var1{ANY}", "var2{ANY}", "var3{ANY}"].forEach((inputName) => {
             const currentWidth = this.size[0];
             this.addInput(inputName, "*");
             this.setSize([currentWidth, this.size[1]]);
@@ -311,13 +404,14 @@ app.registerExtension({
         // JS run
         api.addEventListener("alekpet_js_result", async ({ detail }) => {
           const { vars, unique_id } = detail;
+
           if ((vars && !Object.keys(vars).length) || +unique_id !== this.id) {
             return;
           }
 
           await new Promise((res) => {
             const edit_vars = JSON.parse(vars);
-            let code_run = `\nlet result = null;\n`;
+            let code_run = "";
             for (let [k, v] of Object.entries(edit_vars)) {
               // Check type
               if (v instanceof String || typeof v === "string") {
@@ -328,15 +422,36 @@ app.registerExtension({
               code_run += `let ${k} = ${v};\n`;
             }
 
-            code_run += `${widgetEditor.editor.getValue()}\nreturn result\n`;
+            code_run += `${widgetEditor.editor.getValue()}\nreturn [${Object.keys(
+              edit_vars
+            )},]\n`;
             let result_run_code = null;
             try {
               result_run_code = eval(`(function(){${code_run}}())`);
             } catch (e) {
               result_run_code = `Error in javascript code: ${e}`;
               console.error(`<${this.name}> ${result_run_code}`);
+              createWindowModal({
+                textTitle: "Error in javascript code",
+                textBody: [
+                  makeElement("div", {
+                    style: { fontSize: "0.7rem" },
+                    textContent: e,
+                  }),
+                ],
+                ...THEMES_MODAL_WINDOW.error,
+                options: {
+                  auto: {
+                    autohide: true,
+                    autoremove: true,
+                    autoshow: true,
+                    timewait: 2000,
+                  },
+                  parent: widgetEditor.codeElement,
+                },
+              });
+              res(Object.keys(edit_vars).map((v) => e.message));
             }
-
             res(result_run_code);
           }).then((result_code) => {
             api
@@ -344,7 +459,7 @@ app.registerExtension({
                 method: "POST",
                 body: JSON.stringify({
                   unique_id: this.id.toString(),
-                  result_code: JSON.stringify(result_code),
+                  result_code,
                 }),
               })
               .then((res) => res.json())
@@ -360,7 +475,7 @@ app.registerExtension({
           });
         });
 
-        this.setSize([500, 350]);
+        this.setSize([530, this.size[1]]);
 
         return ret;
       };
@@ -409,12 +524,11 @@ app.registerExtension({
       nodeType.prototype.getExtraMenuOptions = function (_, options) {
         getExtraMenuOptions?.apply(this, arguments);
 
-        const lastSepId = options.lastIndexOf(null);
         const past_index = options.length - 1;
         const past = options[past_index];
 
-        // options.splice(lastSepId, 0, null);
         if (!!past) {
+          // Inputs remove
           for (const input_idx in this.inputs) {
             const input = this.inputs[input_idx];
 
@@ -428,6 +542,26 @@ app.registerExtension({
                   app.graph.removeLink(input.link);
                 }
                 this.removeInput(input_idx);
+                this.setSize([currentWidth, this.size[1]]);
+              },
+            });
+          }
+
+          // Output remove
+          for (const output_idx in this.outputs) {
+            const output = this.outputs[output_idx];
+
+            if (["result{ANY}"].includes(output.name)) continue;
+
+            options.splice(past_index + 1, 0, {
+              content: `Remove Output ${output.name}`,
+              callback: (e) => {
+                const currentWidth = this.size[0];
+                console.log(output);
+                if (output.link) {
+                  app.graph.removeLink(output.link);
+                }
+                this.removeOutput(output_idx);
                 this.setSize([currentWidth, this.size[1]]);
               },
             });

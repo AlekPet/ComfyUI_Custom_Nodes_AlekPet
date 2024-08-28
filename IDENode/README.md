@@ -4,6 +4,10 @@
 
 **IDE Node** is an experimental node that allows you to run code written in **Python** or **Javascript** directly in the node, it is also possible to receive input data, which is stored in variables, process and output the result.
 
+# Changelog:
+
+- 2024.08.28: Implemented add output variables and types
+
 # Features:
 
 - Selecting a syntax highlighting theme

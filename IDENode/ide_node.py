@@ -3,7 +3,9 @@ from server import PromptServer
 from aiohttp import web
 from asyncio import sleep, run
 import json
+import re
 
+remove_type_name = re.compile(r"(\{.*\})", re.I | re.M)
 
 # Hack: string type that is always equal in not equal comparisons, thanks pythongosssss
 class AnyType(str):
@@ -49,6 +51,24 @@ async def wait_js_complete(unique_id, time_out=40):
     return False
 
 
+# - Thank you very much for the class -> Trung0246 -
+# - https://github.com/Trung0246/ComfyUI-0246/blob/main/utils.py#L51
+class TautologyStr(str):
+	def __ne__(self, other):
+		return False
+
+
+class ByPassTypeTuple(tuple):
+	def __getitem__(self, index):
+		if index > 0:
+			index = 0
+		item = super().__getitem__(index)
+		if isinstance(item, str):
+			return TautologyStr(item)
+		return item
+# ---------------------------
+
+
 class IDENode:
     def __init__(self):
         self.js_complete = False
@@ -78,43 +98,57 @@ result = runCode()"""
                     },
                 ),
             },
-            "hidden": {"unique_id": "UNIQUE_ID"},
+            "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
 
-    RETURN_TYPES = (PY_CODE,)
-    RETURN_NAMES = ("any",)
+    RETURN_TYPES = ByPassTypeTuple((PY_CODE,))
+    RETURN_NAMES =  ("result{ANY}",)
     FUNCTION = "exec_py"
 
     CATEGORY = "AlekPet Nodes/experiments"
 
-    def exec_py(self, pycode, language, unique_id, **kwargs):
+    def exec_py(self, pycode, language, unique_id, extra_pnginfo, **kwargs):
         if unique_id not in IDEs_DICT:
             IDEs_DICT[unique_id] = self
 
-        if language == "python":
-            my_namespace = types.SimpleNamespace()
-            my_namespace.__dict__.update(kwargs)
-            my_namespace.__dict__.setdefault("result", "The result variable is not assigned")
 
+        outputs = {}
+
+        for node in extra_pnginfo['workflow']['nodes']:
+            if node['id'] == int(unique_id):
+                outputs_valid = [ouput for ouput in node.get('outputs', []) if ouput.get('name','') != '' and ouput.get('type','') != '']
+                outputs = {re.sub(remove_type_name, "", ouput['name']): None for ouput in outputs_valid}
+                self.RETURN_TYPES = ByPassTypeTuple(out["type"] for out in outputs_valid)
+                self.RETURN_NAMES = tuple(name for name in outputs.keys())
+
+        my_namespace = types.SimpleNamespace()
+        my_namespace.__dict__.update(outputs)            
+        my_namespace.__dict__.update({re.sub(remove_type_name, "", prop): kwargs[prop] for prop in kwargs})
+        my_namespace.__dict__.setdefault("result", "The result variable is not assigned")
+
+        if language == "python":
             try:
                 exec(pycode, my_namespace.__dict__)
             except Exception as e:
                 my_namespace.result = f"Error in python code: {e}"
 
-            return (my_namespace.result,)
+            new_dict = {key: my_namespace.__dict__[key] for key in my_namespace.__dict__ if key not in ['__builtins__', *kwargs.keys()] and not callable(my_namespace.__dict__[key])}
+
+            return (*new_dict.values(),)
 
         else:
             IDEs_DICT[unique_id].js_complete = False
             IDEs_DICT[unique_id].js_result = None
 
+            new_dict = {key: my_namespace.__dict__[key] for key in my_namespace.__dict__ if key not in ['__builtins__', *kwargs.keys()] and not callable(my_namespace.__dict__[key])}
+            
             PromptServer.instance.send_sync(
                 "alekpet_js_result",
-                {"unique_id": unique_id, "vars": json.dumps(kwargs)},
+                {"unique_id": unique_id, "vars": json.dumps(new_dict)},
             )
             if not run(wait_js_complete(unique_id)):
                 print(f"IDENode_{unique_id}: Failed to get data!")
             else:
                 print(f"IDENode_{unique_id}: Data received successful!")
 
-            print(IDEs_DICT[unique_id].js_result)
-            return (IDEs_DICT[unique_id].js_result,)
+            return (*IDEs_DICT[unique_id].js_result,)
