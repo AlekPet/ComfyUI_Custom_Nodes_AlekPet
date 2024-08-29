@@ -145,6 +145,7 @@ class LS_Class {
             propStyles: { opacity: 0 },
             propPreStyles: { display: "flex" },
           },
+          close: { showClose: false },
           parent,
         },
       });

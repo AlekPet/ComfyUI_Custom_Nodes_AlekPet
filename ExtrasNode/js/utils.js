@@ -271,53 +271,86 @@ function deepMerge(target, source) {
 
 const THEME_MODAL_WINDOW_BASE = {
   stylesTitle: {
-    background: "#8f210f",
+    background: "auto",
     padding: "5px",
     borderRadius: "6px",
     marginBottom: "5px",
     alignSelf: "stretch",
   },
-  stylesBox: {
-    background: "auto",
-    color: "auto",
-    border: 0,
-    boxShadow: "none",
-    padding: 0,
-    fontFamily: "sans-serif",
-  },
   stylesWrapper: {
+    display: "none",
+    opacity: 0,
+    minWidth: "220px",
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    transform: "translate(-50%, -50%)",
+    opacity: 0,
+    transition: "all .8s",
+    fontFamily: "monospace",
+    zIndex: 99999,
+  },
+  stylesBox: {
     display: "flex",
-    background: "#3b2222",
-    justifyContent: "center",
     flexDirection: "column",
-    alignItems: "stretch",
+    background: "#0e0e0e",
+    padding: "6px",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "3px",
     textAlign: "center",
     borderRadius: "6px",
-    boxShadow: "3px 3px 6px #141414",
-    border: "1px solid #f91b1b",
     color: "white",
-    padding: "6px",
-    fontFamily: "sans-serif",
-    lineHeight: 1.5,
+    border: "2px solid silver",
+    boxShadow: "2px 2px 4px silver",
     maxWidth: "300px",
   },
-  stylesClose: { background: "#3b2222" },
+  stylesClose: {
+    position: "absolute",
+    top: "-10px",
+    right: "-10px",
+    background: "silver",
+    borderRadius: "50%",
+    width: "20px",
+    height: "20px",
+    cursor: "pointer",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    fontSize: "0.8rem",
+  },
 };
 
 const THEMES_MODAL_WINDOW = {
-  error: { ...THEME_MODAL_WINDOW_BASE },
+  error: {
+    stylesTitle: {
+      ...THEME_MODAL_WINDOW_BASE.stylesTitle,
+      background: "#8f210f",
+    },
+    stylesBox: {
+      ...THEME_MODAL_WINDOW_BASE.stylesBox,
+      background: "#3b2222",
+      boxShadow: "3px 3px 6px #141414",
+      border: "1px solid #f91b1b",
+    },
+    stylesWrapper: { ...THEME_MODAL_WINDOW_BASE.stylesWrapper },
+    stylesClose: {
+      ...THEME_MODAL_WINDOW_BASE.stylesClose,
+      background: "#3b2222",
+    },
+  },
   warning: {
     stylesTitle: {
       ...THEME_MODAL_WINDOW_BASE.stylesTitle,
       background: "#e99818",
     },
-    stylesBox: { ...THEME_MODAL_WINDOW_BASE.stylesBox },
-    stylesWrapper: {
-      ...THEME_MODAL_WINDOW_BASE.stylesWrapper,
+    stylesBox: {
+      ...THEME_MODAL_WINDOW_BASE.stylesBox,
       background: "#594e32",
       boxShadow: "3px 3px 6px #141414",
       border: "1px solid #e99818",
     },
+    stylesWrapper: { ...THEME_MODAL_WINDOW_BASE.stylesWrapper },
     stylesClose: {
       ...THEME_MODAL_WINDOW_BASE.stylesClose,
       background: "#594e32",
@@ -328,13 +361,13 @@ const THEMES_MODAL_WINDOW = {
       ...THEME_MODAL_WINDOW_BASE.stylesTitle,
       background: "#108f0f",
     },
-    stylesBox: { ...THEME_MODAL_WINDOW_BASE.stylesBox },
-    stylesWrapper: {
-      ...THEME_MODAL_WINDOW_BASE.stylesWrapper,
+    stylesBox: {
+      ...THEME_MODAL_WINDOW_BASE.stylesBox,
       background: "#223b2a",
       boxShadow: "3px 3px 6px #141414",
       border: "1px solid #108f0f",
     },
+    stylesWrapper: { ...THEME_MODAL_WINDOW_BASE.stylesWrapper },
     stylesClose: {
       ...THEME_MODAL_WINDOW_BASE.stylesClose,
       background: "#223b2a",
@@ -351,6 +384,12 @@ const defaultOptions = {
     propPreStyles: {},
     timewait: 2000,
   },
+  overlay: {
+    overlay_enabled: false,
+    overlayClasses: [],
+    overlayStyles: {},
+  },
+  close: { closeRemove: false, showClose: true },
   parent: null,
 };
 
@@ -373,10 +412,15 @@ function createWindowModal({
   options = defaultOptions,
 } = {}) {
   // Check all options exist
-  options = deepMerge({ ...defaultOptions }, options);
+  const _options = deepMerge(
+    JSON.parse(JSON.stringify(defaultOptions)),
+    options
+  );
 
   const {
     parent,
+    overlay: { overlay_enabled, overlayClasses, overlayStyles },
+    close: { closeRemove, showClose },
     auto: {
       autohide,
       autoshow,
@@ -385,7 +429,7 @@ function createWindowModal({
       propStyles,
       propPreStyles,
     },
-  } = options;
+  } = _options;
 
   // Function past text(html)
   function addText(text, parent) {
@@ -408,21 +452,35 @@ function createWindowModal({
     }
   }
 
+  // Overlay
+  let overlayElement = null;
+  if (overlay_enabled) {
+    overlayElement = makeElement("div", {
+      class: [...overlayClasses],
+      style: {
+        display: "none",
+        position: "fixed",
+        background: "rgba(0 0 0 / 0.8)",
+        opacity: 0,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 99999,
+        transition: "all .8s",
+        cursor: "pointer",
+        ...overlayStyles,
+      },
+    });
+  }
+
   // Wrapper
   const wrapper_settings = makeElement("div", {
     class: ["alekpet__wrapper__window", ...classesWrapper],
   });
 
   Object.assign(wrapper_settings.style, {
-    display: "none",
-    opacity: 0,
-    minWidth: "220px",
-    position: "absolute",
-    left: "50%",
-    top: "50%",
-    transform: "translate(-50%, -50%)",
-    opacity: 0,
-    transition: "all .8s",
+    ...THEME_MODAL_WINDOW_BASE.stylesWrapper,
     ...stylesWrapper,
   });
 
@@ -431,29 +489,20 @@ function createWindowModal({
     class: ["alekpet__window__box", ...classesBox],
   });
   Object.assign(box__settings.style, {
-    display: "flex",
-    flexDirection: "column",
-    background: "#0e0e0e",
-    padding: "10px",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: "10px",
-    textAlign: "center",
-    borderRadius: "6px",
-    color: "white",
-    border: "2px solid silver",
-    fontFamily: "monospace",
-    boxShadow: "2px 2px 4px silver",
+    ...THEME_MODAL_WINDOW_BASE.stylesBox,
     ...stylesBox,
   });
 
   // Title
   const box_settings_title = makeElement("div", {
-    class: ["alekpet__window__title", , ...classesTitle],
+    class: ["alekpet__window__title", ...classesTitle],
   });
+
   Object.assign(box_settings_title.style, {
+    ...THEME_MODAL_WINDOW_BASE.stylesTitle,
     ...stylesTitle,
   });
+
   // Add text (html) to title
   addText(textTitle, box_settings_title);
 
@@ -461,6 +510,7 @@ function createWindowModal({
   const box_settings_body = makeElement("div", {
     class: ["alekpet__window__body", ...classesBody],
   });
+
   Object.assign(box_settings_body.style, {
     display: "flex",
     flexDirection: "column",
@@ -469,6 +519,7 @@ function createWindowModal({
     textWrap: "wrap",
     ...stylesBody,
   });
+
   // Add text (html) to body
   addText(textBody, box_settings_body);
 
@@ -477,28 +528,44 @@ function createWindowModal({
     class: ["close__box__button", ...classesClose],
     textContent: "✖",
   });
+
   Object.assign(close__box__button.style, {
-    position: "absolute",
-    top: "-10px",
-    right: "-10px",
-    background: "silver",
-    borderRadius: "50%",
-    width: "20px",
-    height: "20px",
-    cursor: "pointer",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    fontSize: "0.8rem",
+    ...THEME_MODAL_WINDOW_BASE.stylesClose,
     ...stylesClose,
   });
 
+  if (!showClose) close__box__button.style.display = "none";
+
+  const closeEvent = new Event("closeModal");
+  const closeModalWindow = function () {
+    overlay_enabled
+      ? animateTransitionProps(overlayElement, {
+          opacity: 0,
+        })
+          .then(() =>
+            animateTransitionProps(wrapper_settings, {
+              opacity: 0,
+            })
+          )
+          .then(() => {
+            if (closeRemove) {
+              parent.removeChild(wrapper_settings);
+              parent.removeChild(overlayElement);
+            } else {
+              showHide({ elements: [wrapper_settings, overlayElement] });
+            }
+          })
+      : animateTransitionProps(wrapper_settings, {
+          opacity: 0,
+        }).then(() => {
+          showHide({ elements: [wrapper_settings] });
+        });
+  };
+
+  close__box__button.addEventListener("closeModal", closeModalWindow);
+
   close__box__button.addEventListener("click", () =>
-    animateTransitionProps(wrapper_settings, {
-      opacity: 0,
-    }).then(() => {
-      showHide({ elements: [wrapper_settings] });
-    })
+    close__box__button.dispatchEvent(closeEvent)
   );
 
   close__box__button.onmouseenter = () => {
@@ -529,22 +596,54 @@ function createWindowModal({
   wrapper_settings.append(close__box__button, box__settings);
 
   if (parent && parent.nodeType === 1) {
+    if (overlay_enabled) parent.append(overlayElement);
     parent.append(wrapper_settings);
 
     if (autoshow) {
-      animateClick(wrapper_settings).then(
-        () =>
-          autohide &&
-          setTimeout(
-            () =>
-              animateTransitionProps(
-                wrapper_settings,
-                { ...propStyles },
-                { ...propPreStyles }
-              ).then(() => autoremove && parent.removeChild(wrapper_settings)),
-            timewait
+      overlay_enabled
+        ? animateClick(overlayElement).then(() =>
+            animateClick(wrapper_settings).then(
+              () =>
+                autohide &&
+                setTimeout(
+                  () =>
+                    animateTransitionProps(
+                      wrapper_settings,
+                      { ...propStyles },
+                      { ...propPreStyles }
+                    )
+                      .then(() =>
+                        animateTransitionProps(
+                          overlayElement,
+                          { ...propStyles },
+                          { ...propPreStyles }
+                        )
+                      )
+                      .then(() => {
+                        if (autoremove) {
+                          parent.removeChild(wrapper_settings);
+                          parent.removeChild(overlayElement);
+                        }
+                      }),
+                  timewait
+                )
+            )
           )
-      );
+        : animateClick(wrapper_settings).then(
+            () =>
+              autohide &&
+              setTimeout(
+                () =>
+                  animateTransitionProps(
+                    wrapper_settings,
+                    { ...propStyles },
+                    { ...propPreStyles }
+                  ).then(
+                    () => autoremove && parent.removeChild(wrapper_settings)
+                  ),
+                timewait
+              )
+          );
     }
   }
 

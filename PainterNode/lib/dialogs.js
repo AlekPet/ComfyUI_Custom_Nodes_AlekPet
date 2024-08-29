@@ -2,7 +2,11 @@ import { api } from "../../../../scripts/api.js";
 import { fabric } from "./fabric.js";
 import { formatBytes } from "./helpers.js";
 import { ComfyDialog } from "../../../../../scripts/ui.js";
-import { makeElement, makeModal } from "../../utils.js";
+import {
+  makeElement,
+  createWindowModal,
+  THEMES_MODAL_WINDOW,
+} from "../../utils.js";
 
 export class PainterStorageDialog extends ComfyDialog {
   // Remove record in LocalStorage or JSON file
@@ -125,11 +129,28 @@ export class PainterStorageDialog extends ComfyDialog {
           const result = await this.removeRecord(name, readioType);
 
           if (result) {
-            makeModal({
-              title: "Information",
-              text: `Record name "${name}" deleted from ${
+            createWindowModal({
+              ...THEMES_MODAL_WINDOW.normal,
+              stylesBox: {
+                ...THEMES_MODAL_WINDOW.normal.stylesBox,
+                lineHeight: 1.5,
+              },
+
+              textTitle: "Information",
+              textBody: `Record name "${name}" deleted from ${
                 readioType === "ls" ? "local storage" : "json files"
               }!`,
+              options: {
+                parent: document.body,
+                overlay: { overlay_enabled: true },
+                auto: {
+                  autoshow: true,
+                  autoremove: true,
+                  autohide: true,
+                  timewait: 500,
+                },
+                close: { showClose: false },
+              },
             });
 
             const data =

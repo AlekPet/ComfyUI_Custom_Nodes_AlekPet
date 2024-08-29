@@ -252,8 +252,10 @@ app.registerExtension({
                   autohide: true,
                   autoremove: true,
                   autoshow: true,
-                  timewait: 2000,
+                  timewait: 1000,
                 },
+                close: { showClose: false },
+                overlay: { overlay_enabled: true },
                 parent: widget.codeElement,
               },
             });
@@ -281,7 +283,7 @@ app.registerExtension({
             if (
               !makeValidVariable(
                 varName,
-                `<h3>Variable for <span style="color: limegreen">Input</span> name is incorrect!</h3><ul style="text-align:left;padding: 2px;margin-left: 5%;"><li>starts with a number</li><li>has spaces or tabs</li><li>is empty</li><li>variable name is greater ${MAX_CHAR_VARNAME}</li></ul>`
+                `<h3 style="margin: 0;">Variable for <span style="color: limegreen">Input</span> name is incorrect!</h3><ul style="text-align:left;padding: 2px;margin-left: 5%;"><li>starts with a number</li><li>has spaces or tabs</li><li>is empty</li><li>variable name is greater ${MAX_CHAR_VARNAME}</li></ul>`
               )
             )
               return;
@@ -295,7 +297,7 @@ app.registerExtension({
             if (
               !makeValidVariable(
                 type,
-                `<h3>Type value is incorrect!</h3><ul style="text-align:left;padding: 2px;"><li>has spaces or tabs</li><li>is empty</li><li>type value length is greater ${MAX_CHAR_VARNAME}</li></ul>`,
+                `<h3 style="margin: 0;">Type value is incorrect!</h3><ul style="text-align:left;padding: 2px;"><li>has spaces or tabs</li><li>is empty</li><li>type value length is greater ${MAX_CHAR_VARNAME}</li></ul>`,
                 /^[*a-z_][a-z0-9_]*$/i
               )
             )
@@ -330,7 +332,7 @@ app.registerExtension({
             if (
               !makeValidVariable(
                 varName,
-                `<h3>Variable for <span style="color: pink">Output</span> name is incorrect!</h3><ul style="text-align:left;padding: 2px;margin-left: 5%;"><li>starts with a number</li><li>has spaces or tabs</li><li>is empty</li><li>variable name is greater ${MAX_CHAR_VARNAME}</li></ul>`
+                `<h3 style="margin: 0;">Variable for <span style="color: pink">Output</span> name is incorrect!</h3><ul style="text-align:left;padding: 2px;margin-left: 5%;"><li>starts with a number</li><li>has spaces or tabs</li><li>is empty</li><li>variable name is greater ${MAX_CHAR_VARNAME}</li></ul>`
               )
             )
               return;
@@ -344,7 +346,7 @@ app.registerExtension({
             if (
               !makeValidVariable(
                 type,
-                `<h3>Type value is incorrect!</h3><ul style="text-align:left;padding: 2px;"><li>has spaces or tabs</li><li>is empty</li><li>type value length is greater ${MAX_CHAR_VARNAME}</li></ul>`,
+                `<h3 style="margin: 0;">Type value is incorrect!</h3><ul style="text-align:left;padding: 2px;"><li>has spaces or tabs</li><li>is empty</li><li>type value length is greater ${MAX_CHAR_VARNAME}</li></ul>`,
                 /^[*a-z_][a-z0-9_]*$/i
               )
             )
@@ -445,8 +447,10 @@ app.registerExtension({
                     autohide: true,
                     autoremove: true,
                     autoshow: true,
-                    timewait: 2000,
+                    timewait: 1000,
                   },
+                  close: { showClose: false },
+                  overlay: { overlay_enabled: true },
                   parent: widgetEditor.codeElement,
                 },
               });
