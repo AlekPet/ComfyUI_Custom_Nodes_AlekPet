@@ -688,6 +688,7 @@ class DeepTranslatorCLIPTextEncodeNode:
         "STRING",
     )
     OUTPUT_NODE = True
+    DESCRIPTION = "This is a node that translates the hint text into another language using various services included in Deep Translator."
     FUNCTION = "deep_translate_text"
 
     CATEGORY = "AlekPet Nodes/conditioning"

@@ -94,6 +94,7 @@ class GoogleTranslateCLIPTextEncodeNode:
         "STRING",
     )
     FUNCTION = "translate_text"
+    DESCRIPTION = "This is a node that translates the prompt into another language using Google Translate."
     CATEGORY = "AlekPet Nodes/conditioning"
 
     def translate_text(self, **kwargs):

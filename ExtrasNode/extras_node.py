@@ -20,6 +20,7 @@ class PreviewTextNode:
 
     RETURN_TYPES = ("STRING",)
     OUTPUT_NODE = True
+    DESCRIPTION = "The node displays the input text."    
     FUNCTION = "preview_text"
 
     CATEGORY = "AlekPet Nodes/extras"
@@ -59,6 +60,7 @@ class HexToHueNode:
         "string_hue_norm",
     )
     FUNCTION = "to_hue"
+    DESCRIPTION = "The node convert HEX color to HUE."    
     CATEGORY = "AlekPet Nodes/extras"
 
     def to_hue(self, color_hex, unique_id):
@@ -112,6 +114,7 @@ class ColorsCorrectNode:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "correct"
+    DESCRIPTION = "Node for correcting image colors."      
     CATEGORY = "AlekPet Nodes/extras"
 
     @staticmethod

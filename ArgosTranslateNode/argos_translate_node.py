@@ -176,6 +176,7 @@ class ArgosTranslateCLIPTextEncodeNode:
         "STRING",
     )
     FUNCTION = "argos_translate_text"
+    DESCRIPTION = "This is a node that translates the prompt into another language using Argos Translate."
     CATEGORY = "AlekPet Nodes/conditioning"
 
     def argos_translate_text(self, from_translate, to_translate, text, clip):

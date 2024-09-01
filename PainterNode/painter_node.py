@@ -246,7 +246,7 @@ class PainterNode(object):
 
     RETURN_TYPES = ("IMAGE", "MASK")
     FUNCTION = "painter_execute"
-
+    DESCRIPTION = "PainterNode allows you to draw in the node window, for later use in the ControlNet or in any other node."
     CATEGORY = "AlekPet Nodes/image"
 
     def painter_execute(self, image, unique_id, update_node=True, images=None):

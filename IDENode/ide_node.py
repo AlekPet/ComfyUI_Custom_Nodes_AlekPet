@@ -104,7 +104,7 @@ result = runCode()"""
     RETURN_TYPES = ByPassTypeTuple((PY_CODE,))
     RETURN_NAMES =  ("result{ANY}",)
     FUNCTION = "exec_py"
-
+    DESCRIPTION = "IDE Node is an node that allows you to run code written in Python or Javascript directly in the node."
     CATEGORY = "AlekPet Nodes/experiments"
 
     def exec_py(self, pycode, language, unique_id, extra_pnginfo, **kwargs):

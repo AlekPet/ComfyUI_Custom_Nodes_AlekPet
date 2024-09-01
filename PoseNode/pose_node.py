@@ -22,7 +22,7 @@ class PoseNode(object):
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "output_pose"
-
+    DESCRIPTION = "PoseNode allows you to set a pose for subsequent use in ControlNet."
     CATEGORY = "AlekPet Nodes/image"
 
     def output_pose(self, image):
