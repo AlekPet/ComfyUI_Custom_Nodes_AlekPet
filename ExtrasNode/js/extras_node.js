@@ -17,6 +17,7 @@ import {
   speechRect,
   SpeechSynthesis,
 } from "./lib/extrasnode/extras_node_widgets.js";
+import { RecognationSpeechDialog } from "./lib/extrasnode/extras_node_dialogs.js";
 
 const convertIdClass = (text) => text.replaceAll(".", "_");
 const idExt = "alekpet.ExtrasNode";
@@ -32,9 +33,11 @@ const PreviewImageColorBgLS = localStorage.getItem(
   `Comfy.Settings.${idExt}.PreviewImageColorBg`
 );
 
+// Recognation & speech
 const SpeechAndRecognationSpeechLS = localStorage.getItem(
   `Comfy.Settings.${idExt}.SpeechAndRecognationSpeech`
 );
+// end - Recognation & speech
 
 // Settings set values from LS or default
 let PreviewImageSize = PreviewImageSizeLS
@@ -226,13 +229,15 @@ app.registerExtension({
                 }),
               ]
             ),
-            // $el("button", {
-            //   textContent: "Default reset",
-            //   onclick: () => {},
-            //   style: {
-            //     display: "block",
-            //   },
-            // }),
+            $el("button", {
+              textContent: "Speech settings",
+              onclick: () => {
+                new RecognationSpeechDialog().show();
+              },
+              style: {
+                display: "block",
+              },
+            }),
           ]),
         ]);
       },
@@ -448,85 +453,94 @@ app.registerExtension({
       }
 
       default: {
-        // -- Speech & Recognition speech widget
-        // If ui settings is true and SpeechSynthesis or speechRecognition is not undefined
-        if (SpeechAndRecognationSpeech && (speechRect || SpeechSynthesis)) {
-          let nodeIsMultiString = false;
-
-          if (nodeData?.input && nodeData?.input?.required) {
-            for (const inp of Object.keys(nodeData.input.required)) {
-              if (nodeData.input.required[inp][1]?.multiline) {
-                const type = nodeData.input.required[inp][0];
-
-                if (["STRING"].includes(type)) {
-                  nodeIsMultiString = true;
-                  break;
-                }
-              }
-            }
-          }
-
-          if (nodeIsMultiString) {
-            // Node Created
-            const onNodeCreated = nodeType.prototype.onNodeCreated;
-            nodeType.prototype.onNodeCreated = async function () {
-              const ret = onNodeCreated
-                ? onNodeCreated.apply(this, arguments)
-                : undefined;
-
-              // Find all widget type customtext
-              const widgetsTextMulti = this?.widgets?.filter((w) =>
-                ["customtext", "converted-widget"].includes(w.type)
-              );
-
-              await new Promise((res) =>
-                setTimeout(() => {
-                  res();
-                }, 16 * this.widgets.length)
-              );
-
-              if (widgetsTextMulti.length) {
-                widgetsTextMulti.forEach(async (w) => {
-                  this.addCustomWidget(
-                    SpeechWidget(this, "speak_and_recognation", true, w)
-                  );
-                });
-              }
-
-              return ret;
-            };
-
-            // onConfigure
-            const onConfigure = nodeType.prototype.onConfigure;
-            nodeType.prototype.onConfigure = async function (w) {
-              onConfigure?.apply(this, arguments);
-              if (w?.widgets_values?.length) {
-                await new Promise((res) =>
-                  setTimeout(() => {
-                    res();
-                  }, 16 * this.widgets.length)
-                );
-
-                const ids_speech_clear = this.widgets.reduce(function (
-                  arr,
-                  el,
-                  idx
-                ) {
-                  if (el.type === "speak_and_recognation_type") arr.push(idx);
-                  return arr;
-                },
-                []);
-
-                for (const id of ids_speech_clear)
-                  this?.widgets[id]?.callback(w.widgets_values[id]);
-              }
-            };
-          }
-        }
-        // -- end - Speech & Recognition speech widget
-
         break;
       }
     }
+
+    // -- Speech & Recognition speech widget
+    // If ui settings is true and SpeechSynthesis or speechRecognition is not undefined
+    if (SpeechAndRecognationSpeech && (speechRect || SpeechSynthesis)) {
+      let nodeIsMultiString = false;
+
+      if (nodeData?.input && nodeData?.input?.required) {
+        for (const inp of Object.keys(nodeData.input.required)) {
+          if (nodeData.input.required[inp][1]?.multiline) {
+            const type = nodeData.input.required[inp][0];
+
+            if (["STRING"].includes(type)) {
+              nodeIsMultiString = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (nodeData?.output) {
+        for (const out of nodeData.output) {
+          if (["STRING"].includes(out)) {
+            nodeIsMultiString = true;
+            break;
+          }
+        }
+      }
+
+      if (nodeIsMultiString) {
+        // Node Created
+        const onNodeCreated = nodeType.prototype.onNodeCreated;
+        nodeType.prototype.onNodeCreated = async function () {
+          const ret = onNodeCreated
+            ? onNodeCreated.apply(this, arguments)
+            : undefined;
+
+          // Find all widget type customtext
+          const widgetsTextMulti = this?.widgets?.filter((w) =>
+            ["customtext", "converted-widget"].includes(w.type)
+          );
+
+          await new Promise((res) =>
+            setTimeout(() => {
+              res();
+            }, 16 * this.widgets.length)
+          );
+
+          if (widgetsTextMulti.length) {
+            widgetsTextMulti.forEach(async (w) => {
+              this.addCustomWidget(
+                SpeechWidget(this, "speak_and_recognation", true, w)
+              );
+            });
+          }
+
+          return ret;
+        };
+
+        // onConfigure
+        const onConfigure = nodeType.prototype.onConfigure;
+        nodeType.prototype.onConfigure = async function (w) {
+          onConfigure?.apply(this, arguments);
+          if (w?.widgets_values?.length) {
+            await new Promise((res) =>
+              setTimeout(() => {
+                res();
+              }, 16 * this.widgets.length)
+            );
+
+            const ids_speech_clear = this.widgets.reduce(function (
+              arr,
+              el,
+              idx
+            ) {
+              if (el.type === "speak_and_recognation_type") arr.push(idx);
+              return arr;
+            },
+            []);
+
+            for (const id of ids_speech_clear)
+              this?.widgets[id]?.callback(w.widgets_values[id]);
+          }
+        };
+      }
+    }
+    // -- end - Speech & Recognition speech widget
   },
 });

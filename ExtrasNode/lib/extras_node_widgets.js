@@ -7,6 +7,7 @@
 import { app } from "../../../../scripts/app.js";
 import { $el } from "../../../../scripts/ui.js";
 import { rgbToHex, isValidStyle } from "../../utils.js";
+import { RecognationSpeechDialog } from "./extras_node_dialogs.js";
 
 const CONVERTED_TYPE = "converted-widget";
 
@@ -95,6 +96,29 @@ function getPostition(ctx, w_width, y, n_height, wInput) {
   };
 }
 
+function getVoiceAndSettings() {
+  const voices = speechSynthesis.getVoices();
+
+  const { voice, volume, pitch, rate } =
+    RecognationSpeechDialog.getSettingsRecSpeechLS();
+  const voiceSelected = voices.filter((v) => v.name === voice);
+
+  return {
+    voice: voiceSelected.length ? voiceSelected[0] : null,
+    volume,
+    pitch,
+    rate,
+  };
+}
+
+// Function return utterance
+function speakSynthesisUtterance(text, options = {}) {
+  const utterance = new SpeechSynthesisUtterance(text);
+
+  Object.assign(utterance, { ...options, ...getVoiceAndSettings() });
+  return utterance;
+}
+
 function SpeechWidget(node, inputName, inputData, widgetsText) {
   const widget = {
     type: "speak_and_recognation_type",
@@ -131,6 +155,8 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
       return [22, 1];
     },
     callback(v) {
+      if (widgetsText?.element?.hasAttribute("readonly")) return;
+
       widget.value = v ?? inputData;
       const checkbox = widget.element.querySelector(
         ".alekpet_extras_node_recognition_clear"
@@ -144,7 +170,7 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
 
   const buttons = [];
 
-  if (speechRect) {
+  if (speechRect && !widgetsText?.element?.hasAttribute("readonly")) {
     buttons.push(
       $el("div.alekpet_extras_node_recognition_icon_box", [
         $el("span.alekpet_extras_node_recognition_icon", {
@@ -185,14 +211,6 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
   }
 
   if (SpeechSynthesis && speechSynthesis) {
-    // Function return utterance
-    function speak(text, options = {}) {
-      const utterance = new SpeechSynthesisUtterance(text);
-
-      Object.assign(utterance, { ...options });
-      return utterance;
-    }
-
     function buttonsStyles(
       speechesButtons,
       action = "add",
@@ -201,6 +219,23 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
       speechesButtons?.forEach((speechButton) =>
         speechButton?.classList[action](className)
       );
+
+      const settingTestSpeech = document.querySelector(
+        ".panel_settings_recognation_speech_voice_test"
+      );
+      if (settingTestSpeech) {
+        if (action === "add") {
+          settingTestSpeech.style.opacity = 0.7;
+          settingTestSpeech.style.color = "var(--error-text)";
+          settingTestSpeech.title = "Cancel test speech";
+          settingTestSpeech.textContent = "Cancel test";
+        } else {
+          settingTestSpeech.style.opacity = 1;
+          settingTestSpeech.title = "Run test speech";
+          settingTestSpeech.textContent = "Test speech";
+          settingTestSpeech.style.color = "limegreen";
+        }
+      }
     }
 
     buttons.push(
@@ -228,11 +263,10 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
             }
 
             // Start playing text
-            const text = widgetsText?.inputEl.value;
+            const text = widgetsText?.element?.value;
             if (text.trim() !== "") {
-              const utterance = speak(text, {
+              const utterance = speakSynthesisUtterance(text, {
                 onend: (e) => {
-                  this.style.opacity = 1;
                   this.title = "Speak text";
                   info.textContent = "";
 
@@ -241,7 +275,6 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
               });
 
               if (utterance) {
-                this.style.opacity = 0.7;
                 this.title = "Cancel speech";
                 info.textContent = "saying now";
 
@@ -249,11 +282,10 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
                 SpeechSynthesis.speak(utterance);
               }
             } else {
-              const utterance = speak(
+              const utterance = speakSynthesisUtterance(
                 `${widgetsText?.name || "This"}}, field is empty!`,
                 {
                   onend: (e) => {
-                    this.style.opacity = 1;
                     this.title = "Speak text";
                     info.textContent = "";
 
@@ -263,7 +295,6 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
               );
 
               if (utterance) {
-                this.style.opacity = 0.7;
                 this.title = "Cancel speech";
                 info.textContent = "empty text!";
                 buttonsStyles(speechesButtons);
@@ -276,7 +307,6 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
         },
         textContent: "🔊",
         title: "Speak text",
-        style: { fontSize: "0.7em" },
       })
     );
   }
@@ -422,4 +452,5 @@ export {
   createPreiviewSize,
   speechRect,
   SpeechSynthesis,
+  speakSynthesisUtterance,
 };

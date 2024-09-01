@@ -182,8 +182,10 @@ function makeElement(tag, attrs = {}) {
             element.dataset[prop] = propval;
           });
         } else {
-          const [prop, propval] = Object.entries(currValue)[0];
-          element.dataset[prop] = propval;
+          Object.entries(currValue).forEach((datasetArr) => {
+            const [prop, propval] = datasetArr;
+            element.dataset[prop] = propval;
+          });
         }
       } catch (err) {
         console.log(err);

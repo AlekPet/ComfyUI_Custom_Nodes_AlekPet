@@ -64,6 +64,15 @@
   opacity: 0.5;
 }
 
+.alekpet_extras_node_speech_icon {
+  font-size: 0.7em;
+  opacity: 1;
+}
+
+.alekpet_extras_node_speech_icon_playing {
+  opacity: 0.7;
+}
+
 .alekpet_extras_node_speech_icon_playing::after {
   content: "✖";
   position: absolute;
