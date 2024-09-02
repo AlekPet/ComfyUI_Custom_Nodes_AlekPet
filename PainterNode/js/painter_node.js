@@ -659,7 +659,7 @@ class Painter {
 
       objectNames.push(o.type);
 
-      obEl.addEventListener("click", () => {
+      obEl.addEventListener("click", (e) => {
         // Style active
         this.setActiveElement(obEl, list_body);
         // Select element
@@ -1275,7 +1275,8 @@ class Painter {
                 this.canvas.freeDrawingBrush = new fabric.MyBrushPaintSymmetry(
                   this.canvas,
                   this.MyBrushPaintManager.range_brush_pressure,
-                  this.MyBrushPaintManager.currentBrushSettings
+                  this.MyBrushPaintManager.currentBrushSettings,
+                  this
                 );
               } // end BrushMyPaint
 
@@ -1704,14 +1705,7 @@ class Painter {
         }
       },
 
-      "object:added": (o) => {
-        if (["BrushMyPaint"].includes(this.type)) {
-          if (o.target.type !== "group") this.canvas.remove(o.target);
-          // this.addToHistory();
-          this.canvas.renderAll();
-          this.uploadPaintFile(this.node.name);
-        }
-      },
+      "object:added": (o) => {},
 
       // Object moving event
       "object:moving": (o) => {
@@ -2168,6 +2162,9 @@ function PainterWidget(node, inputName, inputData, app) {
           top: 0,
           angle: 0,
           strokeWidth: 1,
+          originX: "left",
+          originY: "top",
+          pipingImage: true,
         });
         res(img_);
       };
@@ -2418,6 +2415,9 @@ app.registerExtension({
         }
 
         PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
+        this.painter.canvas.renderAll();
+        this.painter.uploadPaintFile(nodeNamePNG);
+        this.title = `${this.type} - ${this.painter.currentCanvasSize.width}x${this.painter.currentCanvasSize.height}`;
 
         return r;
       };
@@ -2443,11 +2443,24 @@ app.registerExtension({
               top: 0,
               angle: 0,
               strokeWidth: 1,
-            }).scale(0.3);
+            });
+
+            if (confirm("Resize image for Painter size?")) {
+              img_.scaleToHeight(this.painter.currentCanvasSize.width);
+              img_.scaleToWidth(this.painter.currentCanvasSize.height);
+            }
+
             this.painter.canvas.add(img_).renderAll();
             this.painter.uploadPaintFile(this.painter.node.name);
             this.painter.canvas.isDrawingMode = false;
             this.painter.drawning = false;
+            this.painter.type = "Image";
+            this.painter.setActiveElement(
+              this.painter.painter_shapes_box.querySelector(
+                "[data-shape=Image]"
+              ),
+              this.painter.painter_shapes_box
+            );
           };
 
           // Past as background

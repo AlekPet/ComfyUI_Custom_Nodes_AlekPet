@@ -164,7 +164,8 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
   initialize: function (
     canvas,
     range_brush_pressure = null,
-    brushSettings = null
+    brushSettings = null,
+    painter
   ) {
     this.callSuper("initialize", canvas);
 
@@ -177,7 +178,7 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
     this.surface = new MypaintSurface(this.canvas);
     this.brush = new MypaintBrush(this.brushSettings, this.surface);
     this.range_brush_pressure = range_brush_pressure;
-
+    this.painter = painter;
     this.newGroup();
   },
 
@@ -292,8 +293,8 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
       this.canvas.clearContext(this.ctx);
       this.group.addWithUpdate(imageCanv);
       this.group.setCoords();
-      this.canvas.add(new fabric.Image("")); // empty object, hook
-      this.canvas.requestRenderAll();
+      this.canvas.renderAll();
+      this.painter.uploadPaintFile(this.painter.node.name);
     });
 
     Object.keys(this._options).forEach(
