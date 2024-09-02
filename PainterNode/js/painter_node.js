@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2024.08.21
+ * Version: 2024.09.02
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -20,6 +20,7 @@ import {
   animateClick,
   createWindowModal,
   isEmptyObject,
+  THEMES_MODAL_WINDOW,
 } from "./utils.js";
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
@@ -1834,6 +1835,131 @@ class Painter {
     }
   }
 
+  pastAsBackground(image, options = {}) {
+    if (!image) return;
+    const img_ = new fabric.Image(image, {
+      left: 0,
+      top: 0,
+      angle: 0,
+      strokeWidth: 1,
+      ...options,
+    });
+
+    this.canvas.setBackgroundImage(
+      img_,
+      () => {
+        this.canvas.renderAll();
+        this.uploadPaintFile(this.node.name);
+      },
+      {
+        scaleX: this.canvas.width / img_.width,
+        scaleY: this.canvas.height / img_.height,
+        strokeWidth: 0,
+      }
+    );
+  }
+
+  pastAsImage(image, options = {}) {
+    if (!image) return;
+    const img_ = new fabric.Image(image, {
+      left: 0,
+      top: 0,
+      angle: 0,
+      strokeWidth: 1,
+      ...options,
+    });
+
+    if (confirm("Resize image for Painter size?")) {
+      img_.scaleToHeight(this.currentCanvasSize.width);
+      img_.scaleToWidth(this.currentCanvasSize.height);
+    }
+
+    this.canvas.add(img_).renderAll();
+    this.uploadPaintFile(this.node.name);
+    this.canvas.isDrawingMode = false;
+    this.drawning = false;
+    this.type = "Image";
+    this.setActiveElement(
+      this.painter_shapes_box.querySelector("[data-shape=Image]"),
+      this.painter_shapes_box
+    );
+  }
+
+  async addImageToCanvas(image, options = {}) {
+    async function uploadFile(file) {
+      try {
+        const body = new FormData();
+        body.append("image", file);
+
+        const resp = await api.fetchApi("/upload/image", {
+          method: "POST",
+          body,
+        });
+
+        if (resp.status === 200) {
+          const data = await resp.json();
+          let path = data.name;
+          if (data.subfolder) path = data.subfolder + "/" + path;
+
+          const img = await new Promise((resolve, reject) => {
+            let img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = (e) => resolve(new Error("Image not load!"));
+
+            let name = path;
+            let folder_separator = name.lastIndexOf("/");
+            let subfolder = "";
+
+            if (folder_separator > -1) {
+              subfolder = name.substring(0, folder_separator);
+              name = name.substring(folder_separator + 1);
+            }
+
+            img.src = api.apiURL(
+              `/view?filename=${encodeURIComponent(
+                name
+              )}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}${app.getRandParam()}`
+            );
+          });
+
+          return img;
+        } else {
+          console.log(`${resp.status} - ${resp.statusText}`);
+          return resp.statusText;
+        }
+      } catch (err) {
+        console.log(err);
+        return err;
+      }
+    }
+
+    image = await uploadFile(image);
+
+    if (image?.tagName !== "IMG") {
+      createWindowModal({
+        textTitle: "ERROR",
+        textBody: [
+          makeElement("div", {
+            innerHTML: image ?? "Error load image",
+          }),
+        ],
+        ...THEMES_MODAL_WINDOW.error,
+        options: {
+          auto: { autohide: true, autoshow: true, autoremove: true },
+          close: { showClose: false },
+          parent: this.canvas.wrapperEl,
+        },
+      });
+      return;
+    }
+
+    if (confirm("Past as background?")) {
+      this.pastAsBackground(image, options);
+    } else if (confirm("Past as image?")) {
+      this.pastAsImage(image, options);
+    }
+  }
+
   showImage(name) {
     let img = new Image();
     img.onload = () => {
@@ -2129,6 +2255,29 @@ function PainterWidget(node, inputName, inputData, app) {
   };
 
   node.onConnectInput = () => console.log(`Connected input ${node.name}`);
+
+  // DragDrop past image
+  node.onDragOver = function (e) {
+    if (e.dataTransfer && e.dataTransfer.items) {
+      const image = [...e.dataTransfer.items].find((f) => f.kind === "file");
+      return !!image;
+    }
+
+    return false;
+  };
+
+  node.onDragDrop = function (e) {
+    let handled = false;
+    for (const file of e.dataTransfer.files) {
+      if (file.type.startsWith("image/")) {
+        node.painter.addImageToCanvas(file);
+        handled = true;
+      }
+    }
+
+    return handled;
+  };
+  // end - DragDrop past image
 
   // Get piping image input, when node executing...
   api.addEventListener("alekpet_get_image", async ({ detail }) => {
@@ -2438,29 +2587,7 @@ app.registerExtension({
             past_callback.apply(this, arguments);
             if (!this.imgs.length) return;
 
-            const img_ = new fabric.Image(this.imgs[0], {
-              left: 0,
-              top: 0,
-              angle: 0,
-              strokeWidth: 1,
-            });
-
-            if (confirm("Resize image for Painter size?")) {
-              img_.scaleToHeight(this.painter.currentCanvasSize.width);
-              img_.scaleToWidth(this.painter.currentCanvasSize.height);
-            }
-
-            this.painter.canvas.add(img_).renderAll();
-            this.painter.uploadPaintFile(this.painter.node.name);
-            this.painter.canvas.isDrawingMode = false;
-            this.painter.drawning = false;
-            this.painter.type = "Image";
-            this.painter.setActiveElement(
-              this.painter.painter_shapes_box.querySelector(
-                "[data-shape=Image]"
-              ),
-              this.painter.painter_shapes_box
-            );
+            this.painter.pastAsImage(this.imgs[0]);
           };
 
           // Past as background
@@ -2470,25 +2597,7 @@ app.registerExtension({
               past_callback.apply(this, arguments);
               if (!this.imgs.length) return;
 
-              const img_ = new fabric.Image(this.imgs[0], {
-                left: 0,
-                top: 0,
-                angle: 0,
-                strokeWidth: 1,
-              });
-
-              this.painter.canvas.setBackgroundImage(
-                img_,
-                () => {
-                  this.painter.canvas.renderAll();
-                  this.painter.uploadPaintFile(this.painter.node.name);
-                },
-                {
-                  scaleX: this.painter.canvas.width / img_.width,
-                  scaleY: this.painter.canvas.height / img_.height,
-                  strokeWidth: 0,
-                }
-              );
+              this.painter.pastAsBackground(this.imgs[0]);
             },
           });
         }
