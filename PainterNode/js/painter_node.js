@@ -1837,6 +1837,11 @@ class Painter {
 
   pastAsBackground(image, options = {}) {
     if (!image) return;
+
+    if (confirm("Resize Painter node canvas?")) {
+      this.setCanvasSize(image.naturalWidth, image.naturalHeight);
+    }
+
     const img_ = new fabric.Image(image, {
       left: 0,
       top: 0,
@@ -1861,6 +1866,12 @@ class Painter {
 
   pastAsImage(image, options = {}) {
     if (!image) return;
+
+    const painterSize = confirm("Resize Painter node canvas?");
+    if (painterSize) {
+      this.setCanvasSize(image.naturalWidth, image.naturalHeight);
+    }
+
     const img_ = new fabric.Image(image, {
       left: 0,
       top: 0,
@@ -1869,7 +1880,7 @@ class Painter {
       ...options,
     });
 
-    if (confirm("Resize image for Painter size?")) {
+    if (!painterSize && confirm("Stretch image to fit canvas Painter node?")) {
       img_.scaleToHeight(this.currentCanvasSize.width);
       img_.scaleToWidth(this.currentCanvasSize.height);
     }
