@@ -26,9 +26,7 @@ from deep_translator import (
 empty_str = re.compile(r"^\s*$", re.I | re.M)
 remove_brackets_reg = re.compile(r"[\[\]]*")
 key_val_reg = re.compile(r"^[\w-]+=[^=][.\w-]*$", re.I)
-key_val_proxy_reg = re.compile(
-    r"^[https]+=[^=]((?:\d{1,3}\.){1,3}\d{1,3}):(\d{1,5})$", re.I
-)
+key_val_proxy_reg = re.compile(r"^https?=\d{1,3}(?:\.\d{1,3}){3}:\d{1,5}$", re.I)
 service_correct_reg = re.compile(r"\s*\[.*\]")
 check_proxy_reg = re.compile(r"\d{1,3}\.\d{1,3}\.\d{1,3}\:\d+")
 
@@ -516,6 +514,8 @@ def deep_translator_function(
                             }
                         }
                     )
+                proxies_info = ", ".join([f"{prop}={val}" for prop, val in prop_data["proxies"].items()])
+                print(f"[Deep Translator] Proxy is enabled. Proxies: {proxies_info}")
             else:
                 print("[Deep Translator] Proxy disabled or input field is empty!")
 
