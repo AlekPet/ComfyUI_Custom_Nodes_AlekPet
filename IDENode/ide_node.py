@@ -102,7 +102,7 @@ result = runCode()"""
         }
 
     RETURN_TYPES = ByPassTypeTuple((PY_CODE,))
-    RETURN_NAMES =  ("result{ANY}",)
+    RETURN_NAMES =  ("result",)
     FUNCTION = "exec_py"
     DESCRIPTION = "IDE Node is an node that allows you to run code written in Python or Javascript directly in the node."
     CATEGORY = "AlekPet Nodes/experiments"
@@ -117,13 +117,13 @@ result = runCode()"""
         for node in extra_pnginfo['workflow']['nodes']:
             if node['id'] == int(unique_id):
                 outputs_valid = [ouput for ouput in node.get('outputs', []) if ouput.get('name','') != '' and ouput.get('type','') != '']
-                outputs = {re.sub(remove_type_name, "", ouput['name']): None for ouput in outputs_valid}
+                outputs = {ouput['name']: None for ouput in outputs_valid}
                 self.RETURN_TYPES = ByPassTypeTuple(out["type"] for out in outputs_valid)
                 self.RETURN_NAMES = tuple(name for name in outputs.keys())
 
         my_namespace = types.SimpleNamespace()
         my_namespace.__dict__.update(outputs)            
-        my_namespace.__dict__.update({re.sub(remove_type_name, "", prop): kwargs[prop] for prop in kwargs})
+        my_namespace.__dict__.update({prop: kwargs[prop] for prop in kwargs})
         my_namespace.__dict__.setdefault("result", "The result variable is not assigned")
 
         if language == "python":
