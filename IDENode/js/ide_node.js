@@ -598,7 +598,6 @@ app.registerExtension({
               content: `Remove Output ${output.name}`,
               callback: (e) => {
                 const currentWidth = this.size[0];
-                console.log(output);
                 if (output.link) {
                   app.graph.removeLink(output.link);
                 }
