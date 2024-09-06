@@ -308,14 +308,7 @@ app.registerExtension({
           onExecuted?.apply(this, arguments);
           outSet.call(this, texts?.string);
         };
-        // onConfigure
-        const onConfigure = nodeType.prototype.onConfigure;
-        nodeType.prototype.onConfigure = function (w) {
-          onConfigure?.apply(this, arguments);
-          if (w?.widgets_values?.length) {
-            outSet.call(this, w.widgets_values);
-          }
-        };
+
         break;
       }
       // --- Preview Text Node
@@ -461,6 +454,7 @@ app.registerExtension({
     // If ui settings is true and SpeechSynthesis or speechRecognition is not undefined
     if (SpeechAndRecognationSpeech && (speechRect || SpeechSynthesis)) {
       let nodeIsMultiString = false;
+      let outputNode = false;
 
       if (nodeData?.input && nodeData?.input?.required) {
         for (const inp of Object.keys(nodeData.input.required)) {
@@ -479,6 +473,7 @@ app.registerExtension({
         for (const out of nodeData.output) {
           if (["STRING"].includes(out)) {
             nodeIsMultiString = true;
+            outputNode = true;
             break;
           }
         }
@@ -494,7 +489,12 @@ app.registerExtension({
 
           // Find all widget type customtext
           const widgetsTextMulti = this?.widgets?.filter((w) =>
-            ["customtext", "converted-widget"].includes(w.type)
+            !outputNode
+              ? ["customtext", "converted-widget"].includes(w.type)
+              : ["customtext"].includes(w.type)
+          );
+          const isIncludesSpeech = this?.widgets?.some(
+            (w) => w.type === "speak_and_recognation_type"
           );
 
           await new Promise((res) =>
@@ -503,7 +503,7 @@ app.registerExtension({
             }, 16 * this.widgets.length)
           );
 
-          if (widgetsTextMulti.length) {
+          if (!isIncludesSpeech && widgetsTextMulti.length) {
             widgetsTextMulti.forEach(async (w) => {
               this.addCustomWidget(
                 SpeechWidget(this, "speak_and_recognation", true, w)
