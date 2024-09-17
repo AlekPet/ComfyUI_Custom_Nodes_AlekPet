@@ -666,6 +666,10 @@ class Painter {
         // Select element
         this.canvas.discardActiveObject();
         this.canvas.setActiveObject(o);
+
+        // Get position and size object
+        this.getPositionAndSize(o);
+
         this.canvas.renderAll();
       });
 
@@ -678,6 +682,19 @@ class Painter {
       boxOb.append(obEl, itemRemove);
       list_body.append(boxOb);
     });
+  }
+
+  getPositionAndSize(object) {
+    if (!this.elemX || !this.elemY) {
+      [this.elemX, this.elemY] = this.position_sizes_box.querySelectorAll(
+        "input[class*=painter_position]"
+      );
+    }
+    this.elemX.value = object.left;
+    this.elemY.value = object.top;
+
+    this.elemX.title = "Position X:" + object.left.toFixed(2);
+    this.elemY.title = "Position Y:" + object.top.toFixed(2);
   }
 
   clearLocks() {
@@ -737,8 +754,72 @@ class Painter {
       });
 
       this.clearLocks();
-      this.painter_shapes_box_modify.appendChild(this.painter_colors_box);
-      this.painter_shapes_box_modify.appendChild(this.painter_stroke_box);
+
+      // Make XY pos and scale
+      this.position_sizes_box = makeElement("div", {
+        class: ["painter_position_sizes_box", "fieldset_box"],
+        style: {
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        },
+        children: [
+          makeElement("label", {
+            children: [
+              makeElement("span", {
+                textContent: "X:",
+                style: { padding: "2px" },
+              }),
+              makeElement("input", {
+                class: ["painter_position_element_x"],
+                title: "Position X",
+                type: "number",
+                value: 0,
+                onchange: (e) => {
+                  const object = this.canvas.getActiveObject();
+                  if (+e.target.value) {
+                    e.target.title = "Position X: " + e.target.value;
+                    object.set({ left: +e.target.value });
+                    object?.setCoords();
+                    this.canvas.requestRenderAll();
+                  }
+                },
+              }),
+            ],
+          }),
+          makeElement("label", {
+            children: [
+              makeElement("span", {
+                textContent: "Y:",
+                style: { padding: "2px" },
+              }),
+              makeElement("input", {
+                class: ["painter_position_element_y"],
+                title: "Position Y",
+                type: "number",
+                value: 0,
+                onchange: (e) => {
+                  const object = this.canvas.getActiveObject();
+                  if (+e.target.value) {
+                    e.target.title = "Position Y: " + e.target.value;
+                    object.set({ top: +e.target.value });
+                    object?.setCoords();
+                    this.canvas.requestRenderAll();
+                  }
+                },
+              }),
+            ],
+          }),
+        ],
+      });
+
+      this.position_sizes_box.setAttribute("f_name", "Position");
+
+      this.painter_shapes_box_modify.append(
+        this.position_sizes_box,
+        this.painter_colors_box,
+        this.painter_stroke_box
+      );
     } else {
       target.textContent = "Selection";
       target.title = "Enable selection mode";
@@ -759,7 +840,12 @@ class Painter {
         "afterend",
         this.painter_stroke_box
       );
+      // Position and scale remove
+      this.position_sizes_box.remove();
     }
+
+    this.canvas.discardActiveObject();
+    this.canvas.renderAll();
 
     this.mode = !this.mode;
   }
@@ -1714,8 +1800,13 @@ class Painter {
       },
 
       // Object modify event
-      "object:modified": () => {
+      "object:modified": (o) => {
         this.canvas.isDrawingMode = false;
+
+        if (this.position_sizes_box) {
+          this.getPositionAndSize(o.target);
+        }
+
         this.canvas.renderAll();
         this.uploadPaintFile(this.node.name);
       },
@@ -2202,7 +2293,8 @@ function PainterWidget(node, inputName, inputData, app) {
   node.addCustomWidget(widget);
 
   node.onRemoved = () => {
-    this.LS_Cls.removeData();
+    //this.LS_Cls.removeData();
+
     // When removing this node we need to remove the input from the DOM
     for (let y in node.widgets) {
       if (node.widgets[y].painter_wrap) {
@@ -2508,34 +2600,8 @@ app.registerExtension({
     if (PainerNode.length) {
       PainerNode.map(async (n) => {
         console.log(`Setup PainterNode: ${n.name}`);
-        const widgetImage = n.widgets.find((w) => w.name == "image");
-        await n.LS_Cls.LS_Init(n);
-        let painter_ls = n.LS_Cls.LS_Painters;
-
-        if (painter_ls && typeof lsData === "string") {
-          painter_ls = JSON.parse(painter_ls);
-        }
-
-        if (widgetImage && painter_ls && !isEmptyObject(painter_ls)) {
-          // Load settings elements
-          n.painter.setValueElementsLS();
-
-          painter_ls.hasOwnProperty("objects_canvas") &&
-            delete painter_ls.objects_canvas; // remove old property
-
-          if (painter_ls?.settings?.currentCanvasSize) {
-            n.painter.currentCanvasSize = painter_ls.settings.currentCanvasSize;
-
-            n.painter.setCanvasSize(
-              n.painter.currentCanvasSize.width,
-              n.painter.currentCanvasSize.height
-            );
-          }
-          n.painter.canvasLoadSettingPainter();
-
-          // Resize window
-          window.addEventListener("resize", (e) => resizeCanvas(n), false);
-        }
+        // Resize window
+        window.addEventListener("resize", (e) => resizeCanvas(n), false);
       });
     }
   },
@@ -2574,7 +2640,35 @@ app.registerExtension({
           }
         }
 
-        PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
+        await PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
+        await this.LS_Cls.LS_Init(this);
+        let painter_ls = this.LS_Cls.LS_Painters;
+
+        const widgetImage = this.widgets.find((w) => w.name == "image");
+
+        if (painter_ls && typeof lsData === "string") {
+          painter_ls = JSON.parse(painter_ls);
+        }
+
+        if (widgetImage && painter_ls && !isEmptyObject(painter_ls)) {
+          // Load settings elements
+          this.painter.setValueElementsLS();
+
+          painter_ls.hasOwnProperty("objects_canvas") &&
+            delete painter_ls.objects_canvas; // remove old property
+
+          if (painter_ls?.settings?.currentCanvasSize) {
+            this.painter.currentCanvasSize =
+              painter_ls.settings.currentCanvasSize;
+
+            this.painter.setCanvasSize(
+              this.painter.currentCanvasSize.width,
+              this.painter.currentCanvasSize.height
+            );
+          }
+          this.painter.canvasLoadSettingPainter();
+        }
+
         this.painter.canvas.renderAll();
         this.painter.uploadPaintFile(nodeNamePNG);
         this.title = `${this.type} - ${this.painter.currentCanvasSize.width}x${this.painter.currentCanvasSize.height}`;
@@ -2584,8 +2678,10 @@ app.registerExtension({
 
       // ExtraMenuOptions
       const getExtraMenuOptions = nodeType.prototype.getExtraMenuOptions;
-      nodeType.prototype.getExtraMenuOptions = function (_, options) {
+      nodeType.prototype.getExtraMenuOptions = async function (_, options) {
         getExtraMenuOptions?.apply(this, arguments);
+        await this.getTitle();
+
         const past_index = options.findIndex(
             (m) => m?.content === "Paste (Clipspace)"
           ),
@@ -2611,6 +2707,20 @@ app.registerExtension({
               this.painter.pastAsBackground(this.imgs[0]);
             },
           });
+        }
+
+        const removeIndex = options.findIndex((m) => m?.content === "Remove"),
+          removeButton = options[removeIndex];
+        if (!!removeButton) {
+          const remove_callback = removeButton.callback;
+          const self = this;
+          removeButton.callback = function () {
+            remove_callback.apply(this, arguments);
+
+            if (confirm("Remove storage data?")) {
+              self.LS_Cls.removeData();
+            }
+          };
         }
       };
       // end - ExtraMenuOptions

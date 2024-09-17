@@ -137,6 +137,8 @@
   flex-direction: column;
   align-items: center;
   overflow-y: auto;
+  scrollbar-color: var(--descrip-text) var(--bg-color);
+  scrollbar-width: thin;
   max-height: 350px;
 }
 .list_objects_panel__items button {
