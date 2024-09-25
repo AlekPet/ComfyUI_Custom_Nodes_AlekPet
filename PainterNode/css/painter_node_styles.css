@@ -1,3 +1,8 @@
+.canvas-container-painter {
+  position: absolute !important;
+  left: 0;
+  top: 0;
+}
 .panelPaintBox {
   position: absolute;
   width: 100%;

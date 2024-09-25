@@ -1,7 +1,7 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2024.09.02
+ * Version: 2024.09.25
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -75,7 +75,10 @@ function resizeCanvas(node, sizes) {
   node.painter.canvas.getElement().height = height;
 
   node.painter.canvas.renderAll();
-  app.graph.setDirtyCanvas(true, false);
+  setTimeout(() => {
+    node.onResize();
+    app.graph.setDirtyCanvas(true, false);
+  }, 1000);
 }
 // ================= END FUNCTIONS ================
 
@@ -161,6 +164,7 @@ class Painter {
       width: 512,
       height: 512,
       enablePointerEvents: true,
+      containerClass: "canvas-container-painter",
     });
 
     this.canvas.backgroundColor = "#000000";
@@ -2200,7 +2204,7 @@ function PainterWidget(node, inputName, inputData, app) {
         width: `${w * transform.a}px`,
         height: `${w * transform.d}px`,
         position: "absolute",
-        zIndex: app.graph._nodes.indexOf(node),
+        zIndex: 9,
       });
 
       Object.assign(this.painter_wrap.children[0].style, {
@@ -2266,7 +2270,10 @@ function PainterWidget(node, inputName, inputData, app) {
   };
 
   // Fabric canvas
-  let canvasPainter = document.createElement("canvas");
+  let canvasPainter = makeElement("canvas", {
+    width: 512,
+    height: 512,
+  });
   node.painter = new Painter(node, canvasPainter);
 
   node.painter.canvas.setWidth(node.painter.currentCanvasSize.width);
@@ -2276,6 +2283,7 @@ function PainterWidget(node, inputName, inputData, app) {
 
   widget.painter_wrap = node.painter.canvas.wrapperEl;
   widget.parent = node;
+  widget.painter_wrap.hidden = true;
 
   node.painter.image.value = node.name;
 
@@ -2320,6 +2328,8 @@ function PainterWidget(node, inputName, inputData, app) {
     if (w < 600) w = 600;
 
     h = w * aspect_ratio + buffer;
+
+    if (h < 600) h = 600 + h / 2;
 
     this.size = [w, h];
   };
@@ -2502,8 +2512,8 @@ function PainterWidget(node, inputName, inputData, app) {
     }
   };
 
-  app.graph.setDirtyCanvas(true, false);
   node.onResize();
+  app.graph.setDirtyCanvas(true, false);
 
   return { widget: widget };
 }
