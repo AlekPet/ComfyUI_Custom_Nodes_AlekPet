@@ -423,7 +423,6 @@ function createPreiviewSize(node, name, options) {
 
   const res = $el("div", {
     style: {
-      height: "25px",
       fontSize: "0.8rem",
       color: color,
       fontFamily: "monospace",
@@ -441,6 +440,8 @@ function createPreiviewSize(node, name, options) {
       res.innerHTML = v;
     },
   });
+
+  widget.computeSize = () => [node.size[0], 40];
 
   return widget;
 }
