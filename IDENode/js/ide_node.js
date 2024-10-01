@@ -482,6 +482,8 @@ app.registerExtension({
       nodeType.prototype.onDrawForeground = function (ctx) {
         const r = onDrawForeground?.apply?.(this, arguments);
 
+        if (this.flags?.collapsed) return r;
+
         if (this?.outputs?.length) {
           for (let o = 0; o < this.outputs.length; o++) {
             const { name, type } = this.outputs[o];
