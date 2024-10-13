@@ -2,7 +2,7 @@
  * Title: Set Poses in ComflyUI from ControlNet
  * Author: AlekPet
  * Description: I rewrote the main.js file as a class, from fkunn1326's openpose-editor (https://github.com/fkunn1326/openpose-editor/blob/master/javascript/main.js)
- * Version: 2024.07.21
+ * Version: 2024.10.13
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -492,7 +492,7 @@ class OpenPose {
       let formData = new FormData();
       formData.append("image", blob, fileName);
       formData.append("overwrite", "true");
-      formData.append("type", "temp");
+      formData.append("type", "input");
       uploadFile(formData);
     }, "image/png");
     // - end
