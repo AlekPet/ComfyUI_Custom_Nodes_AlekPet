@@ -9,15 +9,15 @@ import folder_paths
 class PoseNode(object):
     @classmethod
     def INPUT_TYPES(self):
-        temp_dir = folder_paths.get_temp_directory()
+        input_dir = folder_paths.get_input_directory()
 
-        if not os.path.isdir(temp_dir):
-            os.makedirs(temp_dir)
+        if not os.path.isdir(input_dir):
+            os.makedirs(input_dir)
 
-        temp_dir = folder_paths.get_temp_directory()
+        input_dir = folder_paths.get_input_directory()
 
         return {
-            "required": {"image": (sorted(os.listdir(temp_dir)),)},
+            "required": {"image": (sorted(os.listdir(input_dir)),)},
         }
 
     RETURN_TYPES = ("IMAGE",)
@@ -26,8 +26,7 @@ class PoseNode(object):
     CATEGORY = "AlekPet Nodes/image"
 
     def output_pose(self, image):
-        image_path = os.path.join(folder_paths.get_temp_directory(), image)
-        # print(f"Create: {image_path}")
+        image_path = os.path.join(folder_paths.get_input_directory(), image)
 
         i = Image.open(image_path)
         image = i.convert("RGB")
@@ -38,8 +37,7 @@ class PoseNode(object):
 
     @classmethod
     def IS_CHANGED(self, image):
-        image_path = os.path.join(folder_paths.get_temp_directory(), image)
-        # print(f'Change: {image_path}')
+        image_path = os.path.join(folder_paths.get_input_directory(), image)
 
         m = hashlib.sha256()
         with open(image_path, "rb") as f:
