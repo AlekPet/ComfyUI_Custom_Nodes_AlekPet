@@ -4,20 +4,22 @@ Custom nodes that extend the capabilities of [ComfyUI](https://github.com/comfya
 
 # List Nodes:
 
-| Name                                |                                                     Description                                                      |     ComfyUI category      |
-| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------: | :-----------------------: |
-| _PoseNode_                          |                                             The node set pose ControlNet                                             |    AlekPet Node/image     |
-| _PainterNode_                       |                            The node set sketch, scrumble image ControlNet and other nodes                            |    AlekPet Node/image     |
-| _GoogleTranslateTextNode_           |       The node translate promt uses module **googletrans** from other languages into english and return string       | AlekPet Node/conditioning |
-| _GoogleTranslateCLIPTextEncodeNode_ |   The node translate promt uses module **googletrans** from other languages into english, and return conditioning    |     AlekPet Node/text     |
-| _DeepTranslatorTextNode_            |     The node translate promt uses module **Deep Translator** from other languages into english and return string     |     AlekPet Node/text     |
-| _DeepTranslatorCLIPTextEncodeNode_  | The node translate promt uses module **Deep Translator** from other languages into english, and return conditioning  | AlekPet Node/conditioning |
-| _ArgosTranslateTextNode_            |    The node translate promt uses module **Argos Translator** from other languages into english and return string     |     AlekPet Node/text     |
-| _ArgosTranslateCLIPTextEncodeNode_  | The node translate promt uses module **Argos Translator** from other languages into english, and return conditioning | AlekPet Node/conditioning |
-| _PreviewTextNode_                   |                                           The node displays the input text                                           |    AlekPet Node/extras    |
-| _ColorsCorrectNode_                 |                                         The node for correcting image colors                                         |    AlekPet Node/extras    |
-| _HexToHueNode_                      |                          The node convert HEX color to HUE (degrees and normal [-0.5, 0.5])                          |    AlekPet Node/extras    |
-| _IDENode_                           |          The node that allows you to run code written in **Python** or **Javascript** directly in the node           | AlekPet Node/experiments  |
+| Name                                  |                                                     Description                                                      |     ComfyUI category      |
+| :------------------------------------ | :------------------------------------------------------------------------------------------------------------------: | :-----------------------: |
+| _PoseNode_                            |                                             The node set pose ControlNet                                             |    AlekPet Node/image     |
+| _PainterNode_                         |                            The node set sketch, scrumble image ControlNet and other nodes                            |    AlekPet Node/image     |
+| _GoogleTranslateTextNode_             |       The node translate promt uses module **googletrans** from other languages into english and return string       | AlekPet Node/conditioning |
+| _GoogleTranslateCLIPTextEncodeNode_   |   The node translate promt uses module **googletrans** from other languages into english, and return conditioning    |     AlekPet Node/text     |
+| _DeepTranslatorTextNode_              |     The node translate promt uses module **Deep Translator** from other languages into english and return string     |     AlekPet Node/text     |
+| _DeepTranslatorCLIPTextEncodeNode_    | The node translate promt uses module **Deep Translator** from other languages into english, and return conditioning  | AlekPet Node/conditioning |
+| _ArgosTranslateTextNode_              |    The node translate promt uses module **Argos Translator** from other languages into english and return string     |     AlekPet Node/text     |
+| _ArgosTranslateCLIPTextEncodeNode_    | The node translate promt uses module **Argos Translator** from other languages into english, and return conditioning | AlekPet Node/conditioning |
+| _ChatGLM4TranslateTextNode_           |               This translator node uses artificial intelligence to translate prompts and return string               |     AlekPet Node/text     |
+| _ChatGLM4TranslateCLIPTextEncodeNode_ |            This translator node uses artificial intelligence to translate prompts and return conditioning            | AlekPet Node/conditioning |
+| _PreviewTextNode_                     |                                           The node displays the input text                                           |    AlekPet Node/extras    |
+| _ColorsCorrectNode_                   |                                         The node for correcting image colors                                         |    AlekPet Node/extras    |
+| _HexToHueNode_                        |                          The node convert HEX color to HUE (degrees and normal [-0.5, 0.5])                          |    AlekPet Node/extras    |
+| _IDENode_                             |          The node that allows you to run code written in **Python** or **Javascript** directly in the node           | AlekPet Node/experiments  |
 
 # Installing
 

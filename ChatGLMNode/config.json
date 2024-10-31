@@ -1,0 +1,4 @@
+{
+  "__comment": "Register on the site https://bigmodel.cn and get a key and add it to the field ZHIPUAI_API_KEY",
+  "ZHIPUAI_API_KEY": "your_api_key"
+}
