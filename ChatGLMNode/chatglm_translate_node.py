@@ -25,50 +25,52 @@ else:
 
 
 def translate(prompt, srcTrans, toTrans, model, max_tokens, temperature, top_p):
-    if prompt and prompt.strip() != "":
+    # Check prompt exist
+    if prompt is None or prompt.strip() == "":
+        return ""
 
-        # Create body request
-        payload = {
-            "model": model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": f"Translate from {srcTrans} to {toTrans}: {prompt}",
-                },
-            ],
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "top_p": top_p,
-        }
+    # Create body request
+    payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "user",
+                "content": f"Translate from {srcTrans} to {toTrans}: {prompt}",
+            },
+        ],
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "top_p": top_p,
+    }
 
-        # Header
-        headers = {
-            "Authorization": f"Bearer {ZHIPUAI_API_KEY}",
-            "Content-Type": "application/json",
-        }
+    # Headers
+    headers = {
+        "Authorization": f"Bearer {ZHIPUAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
 
-        try:
-            response = requests.post(ENDPOINT_URL, headers=headers, json=payload)
-            response.raise_for_status()
+    try:
+        response = requests.post(ENDPOINT_URL, headers=headers, json=payload)
+        response.raise_for_status()
 
-            if response.status_code == 200:
-                json_data = response.json()
-                translate_text_prompt = json_data.get("choices")[0]["message"][
-                    "content"
-                ].strip()
+        if response.status_code == 200:
+            json_data = response.json()
+            translate_text_prompt = json_data.get("choices")[0]["message"][
+                "content"
+            ].strip()
 
-                return (
-                    translate_text_prompt if translate_text_prompt and not None else ""
-                )
-
-        except requests.HTTPError as e:
-            print(
-                f"Error translate text ChatGLM: {response.status_code}, {response.text}"
+            return (
+                translate_text_prompt if translate_text_prompt and not None else ""
             )
-            raise e
-        except Exception as e:
-            print(f"Error translate text ChatGLM: {e}")
-            raise e
+
+    except requests.HTTPError as e:
+        print(
+            f"Error translate text ChatGLM: {response.status_code}, {response.text}"
+        )
+        raise e
+    except Exception as e:
+        print(f"Error translate text ChatGLM: {e}")
+        raise e
 
 
 class ChatGLM4TranslateCLIPTextEncodeNode:

@@ -5,6 +5,7 @@ Translation is carried out with the help of artificial intelligence using GLM mo
 ### Note: To use it, you need to register on the site [bigmodel.cn](https://bigmodel.cn/) and get an API key. Free model is the 'glm-4-flash'!
 
 > Includes:
+
 > **ChatGLM4TranslateCLIPTextEncodeNode** - translate text, and return CONDITIONING
 >
 > **ChatGLM4TranslateTextNode** - translate text and return text (STRING)
