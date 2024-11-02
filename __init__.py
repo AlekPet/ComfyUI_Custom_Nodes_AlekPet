@@ -1,6 +1,6 @@
 # Title: ComfyUI Install Customs Nodes and javascript files
 # Author: AlekPet
-# Version: 2024.08.08
+# Version: 2024.11.02
 import os
 import importlib.util
 import subprocess
