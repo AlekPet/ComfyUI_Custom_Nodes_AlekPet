@@ -11,7 +11,7 @@
       "active": true,
       "nodes": {
         "ChatGLM4TranslateCLIPTextEncodeNode": true,
-        "ChatGLM4TranslateTextNode": false
+        "ChatGLM4TranslateTextNode": true
       }
     },
     "DeepTranslatorNode": {
@@ -30,7 +30,7 @@
       }
     },
     "GoogleTranslateNode": {
-      "active": false,
+      "active": true,
       "nodes": {
         "GoogleTranslateCLIPTextEncodeNode": true,
         "GoogleTranslateTextNode": true
