@@ -250,11 +250,11 @@ def checkModules(nodeElement):
 
 def install_node(nodeElement):
     currentNodeSettings = NODES_SETTINGS.get(nodeElement)
-    isActiveNode = None
+    isActiveNode = True
     nodesOptions = {}
 
     if (currentNodeSettings is not None):
-        isActiveNode = currentNodeSettings.get("active")
+        isActiveNode = currentNodeSettings.get("active", True)
         nodesOptions = currentNodeSettings.get("nodes", {})
 
     if is_check_enabled_nodes and isActiveNode == False:
