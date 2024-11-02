@@ -1,0 +1,15 @@
+{
+  "nodes_settings": {
+    "ArgosTranslateNode": true,
+    "ChatGLMNode": true,
+    "DeepTranslatorNode": true,
+    "ExtrasNode": true,
+    "GoogleTranslateNode": true,
+    "IDENode": true,
+    "PainterNode": true,
+    "PoseNode": true
+  },
+  "global_settings": {
+    "check_enabled_nodes": false
+  }
+}

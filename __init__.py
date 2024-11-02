@@ -7,6 +7,7 @@ import subprocess
 import sys
 import shutil
 import __main__
+import json
 
 # import pkgutil
 import re
@@ -20,7 +21,8 @@ python = sys.executable
 extension_folder = os.path.dirname(os.path.realpath(__file__))
 
 # ComfyUI folders web
-folder_web = os.path.join(os.path.dirname(os.path.realpath(__main__.__file__)), "web")
+folder_web = os.path.join(os.path.dirname(
+    os.path.realpath(__main__.__file__)), "web")
 folder_comfyui_web_extensions = os.path.join(folder_web, "extensions")
 
 folder__web_lib = os.path.join(folder_web, "lib")
@@ -34,25 +36,64 @@ DEBUG = False
 # NODE_CLASS_MAPPINGS = dict()  # dynamic class nodes append in mappings
 # NODE_DISPLAY_NAME_MAPPINGS = dict()  # dynamic display names nodes append mappings names
 
-humanReadableTextReg = re.compile("(?<=[a-z0-9])([A-Z])|(?<=[A-Z0-9])([A-Z][a-z]+)")
+humanReadableTextReg = re.compile(
+    "(?<=[a-z0-9])([A-Z])|(?<=[A-Z0-9])([A-Z][a-z]+)")
 module_name_cut_version = re.compile("[>=<]")
 
 installed_modules = {}
 # installed_modules = {m[1] for m in pkgutil.iter_modules()}
 
+# -- Config settings --
+CONFIG = {}
+NODES_SETTINGS = {}
+GLOBAL_SETTINGS = {}
+is_check_enabled_nodes = True
+
+# List nodes dirs
+ALL_NODES_DIRS = [dir.name for dir in os.scandir(extension_folder) if dir.is_dir(
+) and not dir.name.startswith(".") and not dir.name.startswith("_")]
+
+# Directory config file
+config_path = os.path.join(extension_folder, "config.json")
+
+# Load config.js file
+if not os.path.exists(config_path):
+    print("File config.js file not found! Reinstall extensions! Used default settings!")
+    is_check_enabled_nodes = False
+else:
+    with open(config_path, "r") as f:
+        CONFIG = json.load(f)
+
+        NODES_SETTINGS = CONFIG.get("nodes_settings")
+        GLOBAL_SETTINGS = CONFIG.get("global_settings")
+
+        # Global settings
+        if GLOBAL_SETTINGS is not None:
+            is_check_enabled_nodes = GLOBAL_SETTINGS.get(
+                "check_enabled_nodes", True)
+
+        # Nodes settings
+        if NODES_SETTINGS is None:
+            is_check_enabled_nodes = False
+
+
+# -- end - Config settings --
+
 def get_version_extension():
     version = ''
     toml_file = os.path.join(extension_folder, 'pyproject.toml')
-    if(os.path.isfile(toml_file)):
+    if (os.path.isfile(toml_file)):
         try:
             with open(toml_file, "r") as v:
-                version = list(filter(lambda l: l.startswith("version"),v.readlines()))[0]
-                version = version.split("=")[1].replace("\"","").strip()
+                version = list(
+                    filter(lambda l: l.startswith("version"), v.readlines()))[0]
+                version = version.split("=")[1].replace("\"", "").strip()
                 return f" \033[1;34mv{version}\033[0m\033[1;35m"
         except Exception as e:
             print(e)
 
     return version
+
 
 def log(*text):
     if DEBUG:
@@ -101,7 +142,8 @@ def addComfyUINodesToMapping(nodeElement):
             spec.loader.exec_module(module)
             classes_names = list(
                 filter(
-                    lambda p: callable(getattr(module, p)) and p.find("Node") != -1,
+                    lambda p: callable(getattr(module, p)
+                                       ) and p.find("Node") != -1,
                     dir(module),
                 )
             )
@@ -182,7 +224,8 @@ def get_installed_modules():
 
 
 def checkModules(nodeElement):
-    file_requir = os.path.join(extension_folder, nodeElement, "requirements.txt")
+    file_requir = os.path.join(
+        extension_folder, nodeElement, "requirements.txt")
     if os.path.exists(file_requir):
         log("  -> File 'requirements.txt' found!")
         with open(file_requir) as f:
@@ -201,6 +244,10 @@ def checkModules(nodeElement):
 
 
 def install_node(nodeElement):
+    if is_check_enabled_nodes and NODES_SETTINGS.get(nodeElement, True) == False:
+        printColorInfo(f"Node -> {nodeElement}: \033[1;35m[Disabled]\033[0m ")
+        return
+
     log(f"* Node <{nodeElement}> is found, installing...")
     web_extensions_dir = os.path.join(extension_folder, extension_dirs[0])
 
@@ -216,7 +263,8 @@ def install_node(nodeElement):
             shutil.copytree(folder_curr, folder_curr_dist, dirs_exist_ok=True)
 
     clsNodes = getNamesNodesInsidePyFile(nodeElement)
-    clsNodesText = "\033[93m" + ", ".join(clsNodes) + "\033[0m" if clsNodes else ""
+    clsNodesText = "\033[93m" + \
+        ", ".join(clsNodes) + "\033[0m" if clsNodes else ""
     printColorInfo(f"Node -> {nodeElement}: {clsNodesText} \033[92m[Loading] ")
 
     checkModules(nodeElement)
@@ -226,7 +274,8 @@ def install_node(nodeElement):
 def installNodes():
     global installed_modules
     log(f"\n-------> AlekPet Node Installing [DEBUG] <-------")
-    printColorInfo(f"### [START] ComfyUI AlekPet Nodes{get_version_extension()} ###", "\033[1;35m")
+    printColorInfo(
+        f"### [START] ComfyUI AlekPet Nodes{get_version_extension()} ###", "\033[1;35m")
 
     # Remove files in lib directory
     libfiles = ["fabric.js"]
@@ -270,61 +319,127 @@ WEB_DIRECTORY = f"./{extension_dirs[0]}"
 # Install nodes
 installNodes()
 
+NODE_CLASS_MAPPINGS = {}
+NODE_DISPLAY_NAME_MAPPINGS = {}
+
 
 # Import classes nodes and add in mappings
-from .ArgosTranslateNode.argos_translate_node import (
-    ArgosTranslateCLIPTextEncodeNode,
-    ArgosTranslateTextNode,
-)
-from .ChatGLMNode.chatglm_translate_node import (
-    ChatGLM4TranslateCLIPTextEncodeNode,
-    ChatGLM4TranslateTextNode,
-)
-from .DeepTranslatorNode.deep_translator_node import (
-    DeepTranslatorCLIPTextEncodeNode,
-    DeepTranslatorTextNode,
-)
-from .ExtrasNode.extras_node import PreviewTextNode, HexToHueNode, ColorsCorrectNode
-from .GoogleTranslateNode.google_translate_node import (
-    GoogleTranslateCLIPTextEncodeNode,
-    GoogleTranslateTextNode,
-)
-from .PainterNode.painter_node import PainterNode
-from .PoseNode.pose_node import PoseNode
-from .IDENode.ide_node import IDENode
+if is_check_enabled_nodes:
+    if NODES_SETTINGS["ArgosTranslateNode"] == True:
+        from .ArgosTranslateNode.argos_translate_node import (
+            ArgosTranslateCLIPTextEncodeNode,
+            ArgosTranslateTextNode,
+        )
+        NODE_CLASS_MAPPINGS.update({"ArgosTranslateCLIPTextEncodeNode": ArgosTranslateCLIPTextEncodeNode,
+                                    "ArgosTranslateTextNode": ArgosTranslateTextNode, })
+        NODE_DISPLAY_NAME_MAPPINGS.update({"ArgosTranslateCLIPTextEncodeNode": "Argos Translate CLIP Text Encode Node",
+                                           "ArgosTranslateTextNode": "Argos Translate Text Node", })
 
+    if NODES_SETTINGS["ChatGLMNode"] == True:
+        from .ChatGLMNode.chatglm_translate_node import (
+            ChatGLM4TranslateCLIPTextEncodeNode,
+            ChatGLM4TranslateTextNode,
+        )
+        NODE_CLASS_MAPPINGS.update({"ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
+                                    "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode, })
+        NODE_DISPLAY_NAME_MAPPINGS.update({"ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
+                                           "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node", })
 
-NODE_CLASS_MAPPINGS = {
-    "ArgosTranslateCLIPTextEncodeNode": ArgosTranslateCLIPTextEncodeNode,
-    "ArgosTranslateTextNode": ArgosTranslateTextNode,
-    "ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
-    "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
-    "DeepTranslatorCLIPTextEncodeNode": DeepTranslatorCLIPTextEncodeNode,
-    "DeepTranslatorTextNode": DeepTranslatorTextNode,
-    "PreviewTextNode": PreviewTextNode,
-    "HexToHueNode": HexToHueNode,
-    "ColorsCorrectNode": ColorsCorrectNode,
-    "GoogleTranslateCLIPTextEncodeNode": GoogleTranslateCLIPTextEncodeNode,
-    "GoogleTranslateTextNode": GoogleTranslateTextNode,
-    "PainterNode": PainterNode,
-    "PoseNode": PoseNode,
-    "IDENode": IDENode,
-}
+    if NODES_SETTINGS["DeepTranslatorNode"] == True:
+        from .DeepTranslatorNode.deep_translator_node import (
+            DeepTranslatorCLIPTextEncodeNode,
+            DeepTranslatorTextNode,
+        )
+        NODE_CLASS_MAPPINGS.update({"DeepTranslatorCLIPTextEncodeNode": DeepTranslatorCLIPTextEncodeNode,
+                                    "DeepTranslatorTextNode": DeepTranslatorTextNode, })
+        NODE_DISPLAY_NAME_MAPPINGS.update({"DeepTranslatorCLIPTextEncodeNode": "Deep Translator CLIP Text Encode Node",
+                                           "DeepTranslatorTextNode": "Deep Translator Text Node", })
 
+    if NODES_SETTINGS["ExtrasNode"] == True:
+        from .ExtrasNode.extras_node import PreviewTextNode, HexToHueNode, ColorsCorrectNode
+        NODE_CLASS_MAPPINGS.update({"PreviewTextNode": PreviewTextNode,
+                                    "HexToHueNode": HexToHueNode,
+                                    "ColorsCorrectNode": ColorsCorrectNode, })
+        NODE_DISPLAY_NAME_MAPPINGS.update({"PreviewTextNode": "Preview Text Node",
+                                           "HexToHueNode": "HEX to HUE Node",
+                                           "ColorsCorrectNode": "Colors Correct Node", })
 
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "ArgosTranslateCLIPTextEncodeNode": "Argos Translate CLIP Text Encode Node",
-    "ArgosTranslateTextNode": "Argos Translate Text Node",
-    "ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
-    "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node",
-    "DeepTranslatorCLIPTextEncodeNode": "Deep Translator CLIP Text Encode Node",
-    "DeepTranslatorTextNode": "Deep Translator Text Node",
-    "PreviewTextNode": "Preview Text Node",
-    "HexToHueNode": "HEX to HUE Node",
-    "ColorsCorrectNode": "Colors Correct Node",
-    "GoogleTranslateCLIPTextEncodeNode": "Google Translate CLIP Text Encode Node",
-    "GoogleTranslateTextNode": "Google Translate Text Node",
-    "PainterNode": "Painter Node",
-    "PoseNode": "Pose Node",
-    "IDENode": "IDE Node",
-}
+    if NODES_SETTINGS["GoogleTranslateNode"] == True:
+        from .GoogleTranslateNode.google_translate_node import (
+            GoogleTranslateCLIPTextEncodeNode,
+            GoogleTranslateTextNode,
+        )
+        NODE_CLASS_MAPPINGS.update({"GoogleTranslateCLIPTextEncodeNode": GoogleTranslateCLIPTextEncodeNode,
+                                    "GoogleTranslateTextNode": GoogleTranslateTextNode, })
+        NODE_DISPLAY_NAME_MAPPINGS.update({"GoogleTranslateCLIPTextEncodeNode": "Google Translate CLIP Text Encode Node",
+                                           "GoogleTranslateTextNode": "Google Translate Text Node", })
+
+    if NODES_SETTINGS["PainterNode"] == True:
+        from .PainterNode.painter_node import PainterNode
+        NODE_CLASS_MAPPINGS.update({"PainterNode": PainterNode, })
+        NODE_DISPLAY_NAME_MAPPINGS.update({"PainterNode": "Painter Node", })
+
+    if NODES_SETTINGS["PoseNode"] == True:
+        from .PoseNode.pose_node import PoseNode
+        NODE_CLASS_MAPPINGS.update({"PoseNode": PoseNode, })
+        NODE_DISPLAY_NAME_MAPPINGS.update({"PoseNode": "Pose Node", })
+
+    if NODES_SETTINGS["IDENode"] == True:
+        from .IDENode.ide_node import IDENode
+        NODE_CLASS_MAPPINGS.update({"IDENode": IDENode, })
+        NODE_DISPLAY_NAME_MAPPINGS.update({"IDENode": "IDE Node", })
+else:
+    from .ArgosTranslateNode.argos_translate_node import (
+        ArgosTranslateCLIPTextEncodeNode,
+        ArgosTranslateTextNode,
+    )
+    from .ChatGLMNode.chatglm_translate_node import (
+        ChatGLM4TranslateCLIPTextEncodeNode,
+        ChatGLM4TranslateTextNode,
+    )
+    from .DeepTranslatorNode.deep_translator_node import (
+        DeepTranslatorCLIPTextEncodeNode,
+        DeepTranslatorTextNode,
+    )
+    from .ExtrasNode.extras_node import PreviewTextNode, HexToHueNode, ColorsCorrectNode
+    from .GoogleTranslateNode.google_translate_node import (
+        GoogleTranslateCLIPTextEncodeNode,
+        GoogleTranslateTextNode,
+    )
+    from .PainterNode.painter_node import PainterNode
+    from .PoseNode.pose_node import PoseNode
+    from .IDENode.ide_node import IDENode
+
+    NODE_CLASS_MAPPINGS = {
+        "ArgosTranslateCLIPTextEncodeNode": ArgosTranslateCLIPTextEncodeNode,
+        "ArgosTranslateTextNode": ArgosTranslateTextNode,
+        "ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
+        "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
+        "DeepTranslatorCLIPTextEncodeNode": DeepTranslatorCLIPTextEncodeNode,
+        "DeepTranslatorTextNode": DeepTranslatorTextNode,
+        "PreviewTextNode": PreviewTextNode,
+        "HexToHueNode": HexToHueNode,
+        "ColorsCorrectNode": ColorsCorrectNode,
+        "GoogleTranslateCLIPTextEncodeNode": GoogleTranslateCLIPTextEncodeNode,
+        "GoogleTranslateTextNode": GoogleTranslateTextNode,
+        "PainterNode": PainterNode,
+        "PoseNode": PoseNode,
+        "IDENode": IDENode,
+    }
+
+    NODE_DISPLAY_NAME_MAPPINGS = {
+        "ArgosTranslateCLIPTextEncodeNode": "Argos Translate CLIP Text Encode Node",
+        "ArgosTranslateTextNode": "Argos Translate Text Node",
+        "ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
+        "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node",
+        "DeepTranslatorCLIPTextEncodeNode": "Deep Translator CLIP Text Encode Node",
+        "DeepTranslatorTextNode": "Deep Translator Text Node",
+        "PreviewTextNode": "Preview Text Node",
+        "HexToHueNode": "HEX to HUE Node",
+        "ColorsCorrectNode": "Colors Correct Node",
+        "GoogleTranslateCLIPTextEncodeNode": "Google Translate CLIP Text Encode Node",
+        "GoogleTranslateTextNode": "Google Translate Text Node",
+        "PainterNode": "Painter Node",
+        "PoseNode": "Pose Node",
+        "IDENode": "IDE Node",
+    }
