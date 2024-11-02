@@ -38,7 +38,7 @@ NODE_CLASS_MAPPINGS = dict()  # dynamic class nodes append in mappings
 NODE_DISPLAY_NAME_MAPPINGS = dict()
 
 humanReadableTextReg = re.compile(
-    "(?<=[a-z0-9])([A-Z])|(?<=[A-Z0-9])([A-Z][a-z]+)")
+    "(?<=[a-z0-9])([A-Z])|(?<=[A-Z0-9])([A-Z][a-z][0-9]+)")
 module_name_cut_version = re.compile("[>=<]")
 
 installed_modules = {}
