@@ -33,8 +33,9 @@ extension_dirs = [
 # Debug mode
 DEBUG = False
 
-# NODE_CLASS_MAPPINGS = dict()  # dynamic class nodes append in mappings
-# NODE_DISPLAY_NAME_MAPPINGS = dict()  # dynamic display names nodes append mappings names
+NODE_CLASS_MAPPINGS = dict()  # dynamic class nodes append in mappings
+# dynamic display names nodes append mappings names
+NODE_DISPLAY_NAME_MAPPINGS = dict()
 
 humanReadableTextReg = re.compile(
     "(?<=[a-z0-9])([A-Z])|(?<=[A-Z0-9])([A-Z][a-z]+)")
@@ -108,7 +109,7 @@ def information(datas):
 
 def printColorInfo(text, color="\033[92m"):
     CLEAR = "\033[0m"
-    print(f"{color}{text}{CLEAR}")
+    print(f"{color}{text}{CLEAR}", end="\r\n")
 
 
 def get_classes(code):
@@ -120,52 +121,56 @@ def get_classes(code):
     ]
 
 
-def addComfyUINodesToMapping(nodeElement):
+def addComfyUINodesToMapping(nodeElement, nodesOptions):
     log(f"  -> Find class execute node <{nodeElement}>, add NODE_CLASS_MAPPINGS ...")
     node_folder = os.path.join(extension_folder, nodeElement)
+    classesNames = []
+
     for f in os.listdir(node_folder):
         ext = os.path.splitext(f)
         # Find files extensions .py
-        if (
-            os.path.isfile(os.path.join(node_folder, f))
-            and not f.startswith("__")
-            and ext[1] == ".py"
-            and ext[0] != "__init__"
-        ):
+        if os.path.isfile(os.path.join(node_folder, f)) and not f.startswith('__') and ext[1] == '.py' and ext[0] != '__init__':
             # remove extensions .py
-            module_without_py = f.replace(ext[1], "")
+            module_without_py = f.replace(ext[1], '')
             # Import module
             spec = importlib.util.spec_from_file_location(
-                module_without_py, os.path.join(node_folder, f)
-            )
+                module_without_py, os.path.join(node_folder, f))
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            classes_names = list(
-                filter(
-                    lambda p: callable(getattr(module, p)
-                                       ) and p.find("Node") != -1,
-                    dir(module),
-                )
-            )
+            classes_names = list(filter(lambda p: callable(
+                getattr(module, p)) and p.find('Node') != -1, dir(module)))
+
             for class_module_name in classes_names:
                 # Check module
-                if (
-                    class_module_name
-                    and class_module_name not in NODE_CLASS_MAPPINGS.keys()
-                ):
-                    log(
-                        f"    [*] Class node found '{class_module_name}' add to NODE_CLASS_MAPPINGS..."
-                    )
-                    NODE_CLASS_MAPPINGS.update(
-                        {class_module_name: getattr(module, class_module_name)}
-                    )
-                    NODE_DISPLAY_NAME_MAPPINGS.update(
-                        {
+                if class_module_name and class_module_name not in NODE_CLASS_MAPPINGS.keys():
+
+                    classesNames.append(class_module_name)
+
+                    if (is_check_enabled_nodes and class_module_name in nodesOptions):
+                        if nodesOptions[class_module_name]:
+                            log(
+                                f"    [*] Class node found '{class_module_name}' add to NODE_CLASS_MAPPINGS...")
+                            NODE_CLASS_MAPPINGS.update({
+                                class_module_name: getattr(
+                                    module, class_module_name)
+                            })
+                            NODE_DISPLAY_NAME_MAPPINGS.update({
+                                class_module_name: humanReadableTextReg.sub(
+                                    " \\1\\2", class_module_name)
+                            })
+                    else:
+                        log(
+                            f"    [*] Class node found '{class_module_name}' add to NODE_CLASS_MAPPINGS...")
+                        NODE_CLASS_MAPPINGS.update({
+                            class_module_name: getattr(
+                                module, class_module_name)
+                        })
+                        NODE_DISPLAY_NAME_MAPPINGS.update({
                             class_module_name: humanReadableTextReg.sub(
-                                " \\1\\2", class_module_name
-                            )
-                        }
-                    )
+                                " \\1\\2", class_module_name)
+                        })
+
+    return classesNames
 
 
 def getNamesNodesInsidePyFile(nodeElement):
@@ -244,11 +249,40 @@ def checkModules(nodeElement):
 
 
 def install_node(nodeElement):
-    if is_check_enabled_nodes and NODES_SETTINGS.get(nodeElement, True) == False:
-        printColorInfo(f"Node -> {nodeElement}: \033[1;35m[Disabled]\033[0m ")
+    currentNodeSettings = NODES_SETTINGS.get(nodeElement)
+    isActiveNode = None
+    nodesOptions = {}
+
+    if (currentNodeSettings is not None):
+        isActiveNode = currentNodeSettings.get("active")
+        nodesOptions = currentNodeSettings.get("nodes", {})
+
+    if is_check_enabled_nodes and isActiveNode == False:
+        printColorInfo(
+            f"Node -> \033[93m{nodeElement}\033[0m: : [\033[91moff\033[0m] ")
         return
 
     log(f"* Node <{nodeElement}> is found, installing...")
+
+    # -- Add to mapping
+    # dynamic class nodes append in mappings
+    namesNodes = addComfyUINodesToMapping(nodeElement, nodesOptions)
+    lenNodesNames = len(namesNodes)-1
+    listNodes = f"Node -> \033[93m{nodeElement}\033[0m: "
+
+    for k, n in enumerate(namesNodes):
+        sep = "" if k == lenNodesNames else ", "
+        active = "off"
+        if n in nodesOptions:
+            active = ('\033[94mon' if nodesOptions[n]
+                      else '\033[91moff')+'\033[0m'
+        else:
+            active = '\033[94mon\033[0m'
+
+        listNodes += f"\033[92m{n}\033[0m [{active}]{sep}"
+    # -- end Add to mapping
+
+    # -- Copy tree folders
     web_extensions_dir = os.path.join(extension_folder, extension_dirs[0])
 
     extensions_dirs_copy = ["js", "css", "assets", "lib"]
@@ -262,18 +296,21 @@ def install_node(nodeElement):
             )
             shutil.copytree(folder_curr, folder_curr_dist, dirs_exist_ok=True)
 
-    clsNodes = getNamesNodesInsidePyFile(nodeElement)
-    clsNodesText = "\033[93m" + \
-        ", ".join(clsNodes) + "\033[0m" if clsNodes else ""
-    printColorInfo(f"Node -> {nodeElement}: {clsNodesText} \033[92m[Loading] ")
+    # Old method views nodes
+    # clsNodes = getNamesNodesInsidePyFile(nodeElement)
+    # clsNodesText = "\033[93m" + \
+    #     ", ".join(clsNodes) + "\033[0m" if clsNodes else ""
+    # printColorInfo(f"Node -> {nodeElement}: {clsNodesText} \033[92m[Loading] ")
 
     checkModules(nodeElement)
-    # addComfyUINodesToMapping(nodeElement) # dynamic class nodes append in mappings
+
+    # Show list nodes
+    printColorInfo(listNodes)
 
 
 def installNodes():
     global installed_modules
-    log(f"\n-------> AlekPet Node Installing [DEBUG] <-------")
+    log("\n-------> AlekPet Node Installing [DEBUG] <-------")
     printColorInfo(
         f"### [START] ComfyUI AlekPet Nodes{get_version_extension()} ###", "\033[1;35m")
 
@@ -319,127 +356,39 @@ WEB_DIRECTORY = f"./{extension_dirs[0]}"
 # Install nodes
 installNodes()
 
-NODE_CLASS_MAPPINGS = {}
-NODE_DISPLAY_NAME_MAPPINGS = {}
+# For ComfyUI Manager 😄
+'''
+NODE_CLASS_MAPPINGS = {
+    "ArgosTranslateCLIPTextEncodeNode": ArgosTranslateCLIPTextEncodeNode,
+    "ArgosTranslateTextNode": ArgosTranslateTextNode,
+    "ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
+    "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
+    "DeepTranslatorCLIPTextEncodeNode": DeepTranslatorCLIPTextEncodeNode,
+    "DeepTranslatorTextNode": DeepTranslatorTextNode,
+    "PreviewTextNode": PreviewTextNode,
+    "HexToHueNode": HexToHueNode,
+    "ColorsCorrectNode": ColorsCorrectNode,
+    "GoogleTranslateCLIPTextEncodeNode": GoogleTranslateCLIPTextEncodeNode,
+    "GoogleTranslateTextNode": GoogleTranslateTextNode,
+    "PainterNode": PainterNode,
+    "PoseNode": PoseNode,
+    "IDENode": IDENode,
+}
 
-
-# Import classes nodes and add in mappings
-if is_check_enabled_nodes:
-    if NODES_SETTINGS["ArgosTranslateNode"] == True:
-        from .ArgosTranslateNode.argos_translate_node import (
-            ArgosTranslateCLIPTextEncodeNode,
-            ArgosTranslateTextNode,
-        )
-        NODE_CLASS_MAPPINGS.update({"ArgosTranslateCLIPTextEncodeNode": ArgosTranslateCLIPTextEncodeNode,
-                                    "ArgosTranslateTextNode": ArgosTranslateTextNode, })
-        NODE_DISPLAY_NAME_MAPPINGS.update({"ArgosTranslateCLIPTextEncodeNode": "Argos Translate CLIP Text Encode Node",
-                                           "ArgosTranslateTextNode": "Argos Translate Text Node", })
-
-    if NODES_SETTINGS["ChatGLMNode"] == True:
-        from .ChatGLMNode.chatglm_translate_node import (
-            ChatGLM4TranslateCLIPTextEncodeNode,
-            ChatGLM4TranslateTextNode,
-        )
-        NODE_CLASS_MAPPINGS.update({"ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
-                                    "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode, })
-        NODE_DISPLAY_NAME_MAPPINGS.update({"ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
-                                           "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node", })
-
-    if NODES_SETTINGS["DeepTranslatorNode"] == True:
-        from .DeepTranslatorNode.deep_translator_node import (
-            DeepTranslatorCLIPTextEncodeNode,
-            DeepTranslatorTextNode,
-        )
-        NODE_CLASS_MAPPINGS.update({"DeepTranslatorCLIPTextEncodeNode": DeepTranslatorCLIPTextEncodeNode,
-                                    "DeepTranslatorTextNode": DeepTranslatorTextNode, })
-        NODE_DISPLAY_NAME_MAPPINGS.update({"DeepTranslatorCLIPTextEncodeNode": "Deep Translator CLIP Text Encode Node",
-                                           "DeepTranslatorTextNode": "Deep Translator Text Node", })
-
-    if NODES_SETTINGS["ExtrasNode"] == True:
-        from .ExtrasNode.extras_node import PreviewTextNode, HexToHueNode, ColorsCorrectNode
-        NODE_CLASS_MAPPINGS.update({"PreviewTextNode": PreviewTextNode,
-                                    "HexToHueNode": HexToHueNode,
-                                    "ColorsCorrectNode": ColorsCorrectNode, })
-        NODE_DISPLAY_NAME_MAPPINGS.update({"PreviewTextNode": "Preview Text Node",
-                                           "HexToHueNode": "HEX to HUE Node",
-                                           "ColorsCorrectNode": "Colors Correct Node", })
-
-    if NODES_SETTINGS["GoogleTranslateNode"] == True:
-        from .GoogleTranslateNode.google_translate_node import (
-            GoogleTranslateCLIPTextEncodeNode,
-            GoogleTranslateTextNode,
-        )
-        NODE_CLASS_MAPPINGS.update({"GoogleTranslateCLIPTextEncodeNode": GoogleTranslateCLIPTextEncodeNode,
-                                    "GoogleTranslateTextNode": GoogleTranslateTextNode, })
-        NODE_DISPLAY_NAME_MAPPINGS.update({"GoogleTranslateCLIPTextEncodeNode": "Google Translate CLIP Text Encode Node",
-                                           "GoogleTranslateTextNode": "Google Translate Text Node", })
-
-    if NODES_SETTINGS["PainterNode"] == True:
-        from .PainterNode.painter_node import PainterNode
-        NODE_CLASS_MAPPINGS.update({"PainterNode": PainterNode, })
-        NODE_DISPLAY_NAME_MAPPINGS.update({"PainterNode": "Painter Node", })
-
-    if NODES_SETTINGS["PoseNode"] == True:
-        from .PoseNode.pose_node import PoseNode
-        NODE_CLASS_MAPPINGS.update({"PoseNode": PoseNode, })
-        NODE_DISPLAY_NAME_MAPPINGS.update({"PoseNode": "Pose Node", })
-
-    if NODES_SETTINGS["IDENode"] == True:
-        from .IDENode.ide_node import IDENode
-        NODE_CLASS_MAPPINGS.update({"IDENode": IDENode, })
-        NODE_DISPLAY_NAME_MAPPINGS.update({"IDENode": "IDE Node", })
-else:
-    from .ArgosTranslateNode.argos_translate_node import (
-        ArgosTranslateCLIPTextEncodeNode,
-        ArgosTranslateTextNode,
-    )
-    from .ChatGLMNode.chatglm_translate_node import (
-        ChatGLM4TranslateCLIPTextEncodeNode,
-        ChatGLM4TranslateTextNode,
-    )
-    from .DeepTranslatorNode.deep_translator_node import (
-        DeepTranslatorCLIPTextEncodeNode,
-        DeepTranslatorTextNode,
-    )
-    from .ExtrasNode.extras_node import PreviewTextNode, HexToHueNode, ColorsCorrectNode
-    from .GoogleTranslateNode.google_translate_node import (
-        GoogleTranslateCLIPTextEncodeNode,
-        GoogleTranslateTextNode,
-    )
-    from .PainterNode.painter_node import PainterNode
-    from .PoseNode.pose_node import PoseNode
-    from .IDENode.ide_node import IDENode
-
-    NODE_CLASS_MAPPINGS = {
-        "ArgosTranslateCLIPTextEncodeNode": ArgosTranslateCLIPTextEncodeNode,
-        "ArgosTranslateTextNode": ArgosTranslateTextNode,
-        "ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
-        "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
-        "DeepTranslatorCLIPTextEncodeNode": DeepTranslatorCLIPTextEncodeNode,
-        "DeepTranslatorTextNode": DeepTranslatorTextNode,
-        "PreviewTextNode": PreviewTextNode,
-        "HexToHueNode": HexToHueNode,
-        "ColorsCorrectNode": ColorsCorrectNode,
-        "GoogleTranslateCLIPTextEncodeNode": GoogleTranslateCLIPTextEncodeNode,
-        "GoogleTranslateTextNode": GoogleTranslateTextNode,
-        "PainterNode": PainterNode,
-        "PoseNode": PoseNode,
-        "IDENode": IDENode,
-    }
-
-    NODE_DISPLAY_NAME_MAPPINGS = {
-        "ArgosTranslateCLIPTextEncodeNode": "Argos Translate CLIP Text Encode Node",
-        "ArgosTranslateTextNode": "Argos Translate Text Node",
-        "ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
-        "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node",
-        "DeepTranslatorCLIPTextEncodeNode": "Deep Translator CLIP Text Encode Node",
-        "DeepTranslatorTextNode": "Deep Translator Text Node",
-        "PreviewTextNode": "Preview Text Node",
-        "HexToHueNode": "HEX to HUE Node",
-        "ColorsCorrectNode": "Colors Correct Node",
-        "GoogleTranslateCLIPTextEncodeNode": "Google Translate CLIP Text Encode Node",
-        "GoogleTranslateTextNode": "Google Translate Text Node",
-        "PainterNode": "Painter Node",
-        "PoseNode": "Pose Node",
-        "IDENode": "IDE Node",
-    }
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "ArgosTranslateCLIPTextEncodeNode": "Argos Translate CLIP Text Encode Node",
+    "ArgosTranslateTextNode": "Argos Translate Text Node",
+    "ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
+    "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node",
+    "DeepTranslatorCLIPTextEncodeNode": "Deep Translator CLIP Text Encode Node",
+    "DeepTranslatorTextNode": "Deep Translator Text Node",
+    "PreviewTextNode": "Preview Text Node",
+    "HexToHueNode": "HEX to HUE Node",
+    "ColorsCorrectNode": "Colors Correct Node",
+    "GoogleTranslateCLIPTextEncodeNode": "Google Translate CLIP Text Encode Node",
+    "GoogleTranslateTextNode": "Google Translate Text Node",
+    "PainterNode": "Painter Node",
+    "PoseNode": "Pose Node",
+    "IDENode": "IDE Node",
+}
+'''
