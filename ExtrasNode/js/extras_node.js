@@ -58,6 +58,10 @@ let PreviewImageSize = PreviewImageSizeLS
   SpeechAndRecognationSpeech = SpeechAndRecognationSpeechLS
     ? JSON.parse(SpeechAndRecognationSpeechLS)
     : true,
+  SpeechAndRecognationSpeechSaveAs = JSON.parse(
+    localStorage.getItem(`${idExt}.SpeechAndRecognationSpeechSaveAs`),
+    false
+  ),
   // Preview image, video and audio select list combo
   PreviewImageVideoCombo = PreviewImageVideoComboLS
     ? JSON.parse(PreviewImageVideoComboLS)
@@ -429,6 +433,31 @@ app.registerExtension({
                 $el("span", {
                   textContent: "(Then reload the page)",
                   style: { fontSize: "0.6rem", color: "yellow" },
+                }),
+              ]
+            ),
+            $el(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  gap: "5px",
+                  margin: "5px 0",
+                },
+                title: "Show modal window when saving recorded audio.",
+              },
+              [
+                $el("span", { textContent: "Output Save as?" }),
+                $el("input", {
+                  type: "checkbox",
+                  checked: SpeechAndRecognationSpeechSaveAs,
+                  onchange: (e) => {
+                    localStorage.setItem(
+                      `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+                      !!e.target.checked
+                    );
+                    SpeechAndRecognationSpeechSaveAs = !!e.target.checked;
+                  },
                 }),
               ]
             ),

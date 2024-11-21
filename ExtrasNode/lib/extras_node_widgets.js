@@ -4,11 +4,13 @@
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/tree/master/ExtrasNode
  */
 
+import { api } from "../../../../scripts/api.js";
 import { app } from "../../../../scripts/app.js";
 import { $el } from "../../../../scripts/ui.js";
 import { rgbToHex, isValidStyle } from "../../utils.js";
 import { RecognationSpeechDialog } from "./extras_node_dialogs.js";
 
+const idExt = "alekpet.ExtrasNode";
 const CONVERTED_TYPE = "converted-widget";
 
 /* ~~~ Speech & Recognition speech Widget ~~~ */
@@ -16,10 +18,18 @@ const spRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
 const SpeechSynthesis = window.speechSynthesis;
 
+const regExpFileName = /[^\p{L}\d]+/gu;
+const maxLenAudioFileName = 50;
+
 let speechRect;
+let mediaRecorder = null;
+let audioChunks = [];
+
 if (spRecognition) {
   speechRect = new spRecognition();
   speechRect.elements = null;
+  speechRect.isRecognition = false;
+  speechRect.lastText = "";
 
   speechRect.addEventListener("result", (event) => {
     const results = event?.results[0][0]?.transcript;
@@ -47,10 +57,27 @@ if (spRecognition) {
 
       info.textContent = "";
       icon_rec.classList.remove("alekpet_extras_node_recognition_icon_active");
-
-      speechRect.elements = null;
     }
+
+    setStylesAllElements(".alekpet_extras_node_recognition_icon", null, {
+      display: "inline-block",
+    });
+
+    if (mediaRecorder) {
+      speechRect.lastText = speechRect?.elements[1].value;
+      mediaRecorder.stop();
+    }
+
+    mediaRecorder = null;
+    audioChunks = [];
+    speechRect.isRecognition = false;
+
+    speechRect.elements = null;
   };
+
+  speechRect.addEventListener("audiostart", (e) => {
+    speechRect.isRecognition = true;
+  });
 
   speechRect.addEventListener("speechend", () => {
     resetSpeechRecognition();
@@ -124,18 +151,28 @@ async function checkPremissions(
   device = { name: "microphone" },
   update = null
 ) {
-  return navigator.permissions.query(device).then((result) => {
-    const state = result.state;
-    if (state == "granted") {
-      return { device, state, status: true };
-    } else if (state == "prompt") {
-      return { device, state, status: false };
-    } else if (state == "denied") {
-      return { device, state, status: false };
-    }
-    result.onchange = update;
-  });
+  return navigator.permissions
+    .query(device)
+    .then((result) => {
+      const state = result.state;
+      if (state == "granted") {
+        return { device, state, status: true };
+      } else if (state == "prompt") {
+        return { device, state, status: false };
+      } else if (state == "denied") {
+        return { device, state, status: false };
+      }
+      result.onchange = update;
+    })
+    .catch((e) => ({ device, state: "error", status: false }));
 }
+
+// Set styles
+const setStylesAllElements = (selector, exclude = null, styles = {}) => {
+  let elements = Array.from(document.querySelectorAll(selector));
+  if (exclude) elements = elements.filter((r) => r !== exclude);
+  elements = elements.map((r) => Object.assign(r.style, styles));
+};
 
 function SpeechWidget(node, inputName, inputData, widgetsText) {
   const widget = {
@@ -176,6 +213,7 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
       if (widgetsText?.element?.hasAttribute("readonly")) return;
 
       widget.value = v ?? inputData ?? [false, true];
+
       const checkboxSave = widget.element.querySelector(
         ".alekpet_extras_node_recognition_save"
       );
@@ -183,13 +221,18 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
         ".alekpet_extras_node_recognition_clear"
       );
 
-      checkboxClear.checked = widget.value[1] ?? false;
+      if (checkboxClear) checkboxClear.checked = widget.value[1] ?? false;
 
-      const isCheckedSave = widget.value[1] ?? true;
+      if (checkboxSave) {
+        const isCheckedSave = widget.value[0] ?? false;
 
-      if (isCheckedSave) {
-        const premission = await checkPremissions();
-        checkboxSave.checked = premission.status ?? false;
+        if (isCheckedSave) {
+          const premission = await checkPremissions();
+          checkboxSave.checked =
+            premission?.status && isCheckedSave ? true : false;
+        } else {
+          checkboxSave.checked = isCheckedSave;
+        }
       }
     },
     onRemove() {
@@ -204,20 +247,90 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
       $el("div.alekpet_extras_node_recognition_icon_box", [
         $el("span.alekpet_extras_node_recognition_icon", {
           title: "Speech recognition",
-          onclick: function () {
+          onclick: async function (e) {
             const info = widget.element.querySelector(
               ".alekpet_extras_node_info span"
             );
+            const checkboxSave = widget.element.querySelector(
+              ".alekpet_extras_node_recognition_save"
+            );
 
-            if (!speechRect.elements) {
+            // Hide other recognitions buttons
+            setStylesAllElements(
+              ".alekpet_extras_node_recognition_icon",
+              e.currentTarget,
+              {
+                display: "none",
+              }
+            );
+
+            // Recognition
+            if (speechRect.elements === null) {
+              // Record audio
+              if (checkboxSave.checked) {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                  audio: true,
+                });
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = (event) => {
+                  audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                  const saveAsWindow = JSON.parse(
+                    localStorage.getItem(
+                      `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+                      false
+                    )
+                  );
+
+                  // Filename
+                  let nameFile = "recording.webm";
+                  if (speechRect?.lastText?.length) {
+                    nameFile = `${speechRect.lastText
+                      .slice(0, maxLenAudioFileName)
+                      .replaceAll(regExpFileName, "_")}.webm`;
+                  }
+
+                  // Get audio
+                  const audioBlob = new Blob(audioChunks, {
+                    type: "audio/webm",
+                  });
+
+                  if (!saveAsWindow) {
+                    const body = new FormData();
+                    body.append("image", audioBlob, nameFile);
+                    body.append("overwrite", "true");
+                    const resp = await api.fetchApi("/upload/image", {
+                      method: "POST",
+                      body,
+                    });
+
+                    if (resp.status !== 200)
+                      console.error("[ExtrasNode] Recording audio not saved!");
+                    console.log(
+                      `[ExtrasNode] Recording audio "${nameFile}" saved successfully!`
+                    );
+                  } else {
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const linkDown = document.createElement("a");
+                    linkDown.href = audioUrl;
+                    linkDown.download = nameFile;
+                    linkDown.click();
+                  }
+                };
+              }
+              // end - Record audio
+
               speechRect.elements = [widget.element, widgetsText.inputEl];
               info.textContent = "recognition";
               this.classList.add("alekpet_extras_node_recognition_icon_active");
               speechRect.start();
+              mediaRecorder && mediaRecorder.start();
             } else {
               speechRect.abort();
               info.textContent = "aborted";
-              speechRect.elements = null;
               this.classList.remove(
                 "alekpet_extras_node_recognition_icon_active"
               );
@@ -232,40 +345,39 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
             checked: widget.value[0] ?? false,
             title: "Save in audio file after recognition",
             onchange: async (e) => {
-              const checkValue = !!e.target.checked;
               const premission = await checkPremissions();
+              let checkValue = !!e.target.checked;
+
               if (!premission?.status && premission.state != "prompt") {
                 alert(
                   `Access to the device "${premission.device.name}" is denied!\nAllow access to the device!`
                 );
+                checkValue = false;
               }
 
-              checkValue &&
-                navigator.mediaDevices
-                  .getUserMedia({ audio: true })
-                  .then(() => widget?.callback([checkValue, widget.value[1]]))
-                  .catch((e) => {
-                    alert(
-                      `Access to the device "${premission.device.name}" is denied!\nAllow access to the device!`
-                    );
-                    widget?.callback([false, widget.value[1]]);
-                  });
+              navigator.mediaDevices
+                .getUserMedia({ audio: true })
+                .then(() => widget?.callback([checkValue, widget.value[1]]))
+                .catch((e) => {
+                  widget?.callback([false, widget.value[1]]);
+                  alert(
+                    `Access to the device "${premission.device.name}" is denied!\nAllow access to the device!`
+                  );
+                });
             },
           }
         ),
-        $el("label.alekpet_extras_node_recognition_clear_label", [
-          $el(
-            "input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_clear",
-            {
-              type: "checkbox",
-              checked: widget.value[1] ?? true,
-              title: "Clear text after recognition",
-              onchange: (e) => {
-                widget?.callback([widget.value[0], !!e.target.checked]);
-              },
-            }
-          ),
-        ]),
+        $el(
+          "input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_clear",
+          {
+            type: "checkbox",
+            checked: widget.value[1] ?? true,
+            title: "Clear text after recognition",
+            onchange: (e) => {
+              widget?.callback([widget.value[0], !!e.target.checked]);
+            },
+          }
+        ),
       ])
     );
   }
