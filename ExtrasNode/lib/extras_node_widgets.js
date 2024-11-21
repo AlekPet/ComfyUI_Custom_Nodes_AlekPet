@@ -86,7 +86,7 @@ function getPostition(ctx, w_width, y, n_height, wInput) {
     transformOrigin: "0 0",
     transform: scale,
     transform: transform,
-    left: `${transform.a * w_width - 65 * scale.a + rect.left}px`,
+    left: `${transform.a * w_width - 70 * scale.a + rect.left}px`,
     top: `${(wInput.last_y - 15) * scale.d + scale.f + rect.top}px`,
     maxWidth: `${w_width - MARGIN * 2}px`,
     maxHeight: `${n_height - MARGIN * 2}px`,
@@ -117,6 +117,24 @@ function speakSynthesisUtterance(text, options = {}) {
 
   Object.assign(utterance, { ...options, ...getVoiceAndSettings() });
   return utterance;
+}
+
+// Check premissions
+async function checkPremissions(
+  device = { name: "microphone" },
+  update = null
+) {
+  return navigator.permissions.query(device).then((result) => {
+    const state = result.state;
+    if (state == "granted") {
+      return { device, state, status: true };
+    } else if (state == "prompt") {
+      return { device, state, status: false };
+    } else if (state == "denied") {
+      return { device, state, status: false };
+    }
+    result.onchange = update;
+  });
 }
 
 function SpeechWidget(node, inputName, inputData, widgetsText) {
@@ -154,14 +172,25 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
     computeSize(...args) {
       return [22, 1];
     },
-    callback(v) {
+    async callback(v) {
       if (widgetsText?.element?.hasAttribute("readonly")) return;
 
-      widget.value = v ?? inputData;
-      const checkbox = widget.element.querySelector(
+      widget.value = v ?? inputData ?? [false, true];
+      const checkboxSave = widget.element.querySelector(
+        ".alekpet_extras_node_recognition_save"
+      );
+      const checkboxClear = widget.element.querySelector(
         ".alekpet_extras_node_recognition_clear"
       );
-      checkbox.checked = widget.value;
+
+      checkboxClear.checked = widget.value[1] ?? false;
+
+      const isCheckedSave = widget.value[1] ?? true;
+
+      if (isCheckedSave) {
+        const premission = await checkPremissions();
+        checkboxSave.checked = premission.status ?? false;
+      }
     },
     onRemove() {
       widget.element?.remove();
@@ -196,15 +225,46 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
             }
           },
         }),
-        $el("label.alekpet_extras_node_recognition_clear_label", [
-          $el("input.alekpet_extras_node_recognition_clear", {
+        $el(
+          "input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_save",
+          {
             type: "checkbox",
-            checked: widget.value,
-            title: "Clear text after recognition",
-            onchange: (e) => {
-              widget?.callback(!!e.target.checked);
+            checked: widget.value[0] ?? false,
+            title: "Save in audio file after recognition",
+            onchange: async (e) => {
+              const checkValue = !!e.target.checked;
+              const premission = await checkPremissions();
+              if (!premission?.status && premission.state != "prompt") {
+                alert(
+                  `Access to the device "${premission.device.name}" is denied!\nAllow access to the device!`
+                );
+              }
+
+              checkValue &&
+                navigator.mediaDevices
+                  .getUserMedia({ audio: true })
+                  .then(() => widget?.callback([checkValue, widget.value[1]]))
+                  .catch((e) => {
+                    alert(
+                      `Access to the device "${premission.device.name}" is denied!\nAllow access to the device!`
+                    );
+                    widget?.callback([false, widget.value[1]]);
+                  });
             },
-          }),
+          }
+        ),
+        $el("label.alekpet_extras_node_recognition_clear_label", [
+          $el(
+            "input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_clear",
+            {
+              type: "checkbox",
+              checked: widget.value[1] ?? true,
+              title: "Clear text after recognition",
+              onchange: (e) => {
+                widget?.callback([widget.value[0], !!e.target.checked]);
+              },
+            }
+          ),
         ]),
       ])
     );

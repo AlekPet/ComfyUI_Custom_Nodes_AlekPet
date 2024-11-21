@@ -720,7 +720,7 @@ app.registerExtension({
           if (!isIncludesSpeech && widgetsTextMulti.length) {
             widgetsTextMulti.forEach(async (w) => {
               this.addCustomWidget(
-                SpeechWidget(this, "speak_and_recognation", true, w)
+                SpeechWidget(this, "speak_and_recognation", [false, true], w)
               );
             });
           }
