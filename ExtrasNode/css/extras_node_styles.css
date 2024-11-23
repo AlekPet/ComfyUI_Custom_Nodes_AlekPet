@@ -16,7 +16,7 @@
 .alekpet_extras_node_speechrecognition_row {
   position: relative;
   display: flex;
-  gap: 1px;
+  gap: 3px;
   justify-content: center;
   align-items: center;
 }
@@ -28,7 +28,7 @@
   background: transparent;
   border-radius: 50%;
   padding: 0;
-  margin: 0;
+  margin: 0px 5px 0px 0px;
   display: inline-block;
 }
 
@@ -42,10 +42,22 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  line-height: 1;
+  gap: 3px;
+  transition: all 0.7s;
 }
 
 .alekpet_extras_node_recognition_icon:hover {
   background: var(--error-text);
+}
+
+.alekpet_extras_node_recognition_aborted {
+  transition: all 0.3s;
+  font-size: 0.6rem;
+}
+
+.alekpet_extras_node_recognition_aborted:hover {
+  color: var(--error-text);
 }
 
 .alekpet_extras_node_info {
@@ -57,6 +69,8 @@
   width: 10px;
   height: 10px;
   accent-color: var(--input-text);
+  padding: 0;
+  margin: 0;
 }
 
 .alekpet_extras_node_speech_recognition_checkbox:not(:checked) {

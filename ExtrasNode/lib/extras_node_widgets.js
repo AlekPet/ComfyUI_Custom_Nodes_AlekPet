@@ -29,6 +29,7 @@ if (spRecognition) {
   speechRect = new spRecognition();
   speechRect.elements = null;
   speechRect.isRecognition = false;
+  speechRect.isRecognitionAbort = false;
   speechRect.lastText = "";
 
   speechRect.addEventListener("result", (event) => {
@@ -55,8 +56,12 @@ if (spRecognition) {
         ".alekpet_extras_node_recognition_icon"
       );
 
-      info.textContent = "";
+      speechRect.elements[0].querySelector(
+        ".alekpet_extras_node_recognition_aborted"
+      ).style.display = "none";
+
       icon_rec.classList.remove("alekpet_extras_node_recognition_icon_active");
+      setTimeout(() => (info.textContent = ""), 1000);
     }
 
     setStylesAllElements(".alekpet_extras_node_recognition_icon", null, {
@@ -66,6 +71,9 @@ if (spRecognition) {
     if (mediaRecorder) {
       speechRect.lastText = speechRect?.elements[1].value;
       mediaRecorder.stop();
+    } else {
+      speechRect.lastText = "";
+      speechRect.isRecognitionAbort = false;
     }
 
     mediaRecorder = null;
@@ -79,12 +87,23 @@ if (spRecognition) {
     speechRect.isRecognition = true;
   });
 
+  speechRect.addEventListener("end", () => {
+    resetSpeechRecognition();
+    speechRect.stop();
+  });
+
   speechRect.addEventListener("speechend", () => {
     resetSpeechRecognition();
     speechRect.stop();
   });
 
   speechRect.addEventListener("error", (event) => {
+    if (speechRect?.elements?.length) {
+      const info = speechRect.elements[0].querySelector(
+        ".alekpet_extras_node_info span"
+      );
+      info.textContent = event.error;
+    }
     resetSpeechRecognition();
     console.log(">> Error recognition: " + event.error);
   });
@@ -245,11 +264,35 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
   if (speechRect && !widgetsText?.element?.hasAttribute("readonly")) {
     buttons.push(
       $el("div.alekpet_extras_node_recognition_icon_box", [
+        $el("span.alekpet_extras_node_recognition_aborted", {
+          title: "Speech recognition abort",
+          textContent: "✖",
+          style: { display: "none" },
+          onclick: async function (e) {
+            const info = widget.element.querySelector(
+              ".alekpet_extras_node_info span"
+            );
+
+            if (speechRect.isRecognition) {
+              e.currentTarget.style.display = "none";
+              speechRect.isRecognitionAbort = true;
+              speechRect.abort();
+              info.textContent = "aborted";
+              this.classList.remove(
+                "alekpet_extras_node_recognition_icon_active"
+              );
+              setTimeout(() => (info.textContent = ""), 2000);
+            }
+          },
+        }),
         $el("span.alekpet_extras_node_recognition_icon", {
           title: "Speech recognition",
           onclick: async function (e) {
             const info = widget.element.querySelector(
               ".alekpet_extras_node_info span"
+            );
+            const abort = widget.element.querySelector(
+              ".alekpet_extras_node_recognition_aborted"
             );
             const checkboxSave = widget.element.querySelector(
               ".alekpet_extras_node_recognition_save"
@@ -278,6 +321,12 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
                 };
 
                 mediaRecorder.onstop = async () => {
+                  if (speechRect.isRecognitionAbort) {
+                    speechRect.lastText = "";
+                    speechRect.isRecognitionAbort = false;
+                    return;
+                  }
+
                   const saveAsWindow = JSON.parse(
                     localStorage.getItem(
                       `${idExt}.SpeechAndRecognationSpeechSaveAs`,
@@ -307,8 +356,11 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
                       body,
                     });
 
-                    if (resp.status !== 200)
+                    if (resp.status !== 200) {
                       console.error("[ExtrasNode] Recording audio not saved!");
+                      return;
+                    }
+
                     console.log(
                       `[ExtrasNode] Recording audio "${nameFile}" saved successfully!`
                     );
@@ -319,6 +371,8 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
                     linkDown.download = nameFile;
                     linkDown.click();
                   }
+
+                  speechRect.lastText = "";
                 };
               }
               // end - Record audio
@@ -328,9 +382,11 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
               this.classList.add("alekpet_extras_node_recognition_icon_active");
               speechRect.start();
               mediaRecorder && mediaRecorder.start();
+              abort.style.display = "inline-block";
             } else {
-              speechRect.abort();
-              info.textContent = "aborted";
+              speechRect.stop();
+              abort.style.display = "none";
+              info.textContent = "stoped";
               this.classList.remove(
                 "alekpet_extras_node_recognition_icon_active"
               );
