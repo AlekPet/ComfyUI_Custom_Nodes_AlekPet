@@ -16,6 +16,7 @@ import {
   createPreiviewSize,
   speechRect,
   SpeechSynthesis,
+  checkboxLSCheckedByKey,
 } from "./lib/extrasnode/extras_node_widgets.js";
 import { RecognationSpeechDialog } from "./lib/extrasnode/extras_node_dialogs.js";
 
@@ -457,6 +458,10 @@ app.registerExtension({
                       !!e.target.checked
                     );
                     SpeechAndRecognationSpeechSaveAs = !!e.target.checked;
+                    checkboxLSCheckedByKey(
+                      `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+                      ".alekpet_extras_node_recognition_saveAs"
+                    );
                   },
                 }),
               ]

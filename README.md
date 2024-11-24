@@ -2,6 +2,10 @@
 
 Custom nodes that extend the capabilities of [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
 
+## Supporting me 💖
+
+If you enjoy my work, consider **[supporting me](https://alekpet.github.io/support)**. Your help means a lot and allows me to keep creating new and exciting projects. Thank you!
+
 # List Nodes:
 
 | Name                                  |                                                     Description                                                      |     ComfyUI category      |

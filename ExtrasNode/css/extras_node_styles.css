@@ -11,6 +11,7 @@
   width: 45px;
   font-family: monospace;
   align-items: center;
+  margin-top: 3px;
 }
 
 .alekpet_extras_node_speechrecognition_row {
@@ -41,10 +42,10 @@
 .alekpet_extras_node_recognition_icon_box {
   display: flex;
   justify-content: center;
-  align-items: center;
-  line-height: 1;
+  align-items: baseline;
   gap: 3px;
   transition: all 0.7s;
+  margin-top: 2px;
 }
 
 .alekpet_extras_node_recognition_icon:hover {
@@ -82,8 +83,10 @@
 }
 
 .alekpet_extras_node_speech_icon {
-  font-size: 0.7em;
+  font-size: 0.6em;
   opacity: 1;
+  line-height: 1;
+  margin-top: 2px;
 }
 
 .alekpet_extras_node_speech_icon_playing {
@@ -95,4 +98,33 @@
   position: absolute;
   right: 3px;
   color: var(--error-text);
+}
+
+/* Settings */
+.alekpet_extras_node_speech_recognition_settings_props_label {
+  background: #646363;
+  color: #cdcbcb;
+  border-radius: 5px;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+
+.alekpet_extras_node_speech_recognition_settings_props_label:hover {
+  background: darkgrey;
+  color: white;
+}
+
+.alekpet_extras_node_speech_recognition_settings_props_input {
+  max-width: 10px;
+  padding: 0;
+  margin: 0;
+  outline: 0;
+}
+
+.alekpet_extras_node_speech_recognition_settings_button {
+  display: flex;
+  font-size: 0.6rem;
 }

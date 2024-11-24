@@ -2590,7 +2590,6 @@ app.registerExtension({
                 makeElement("button", {
                   textContent: "Managing Data",
                   onclick: () => {
-                    app.ui.settings.element.close();
                     new PainterStorageDialog().show(painters_settings_json);
                   },
                   style: {
