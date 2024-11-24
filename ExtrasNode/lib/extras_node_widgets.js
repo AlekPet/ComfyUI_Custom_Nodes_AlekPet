@@ -7,7 +7,12 @@
 import { api } from "../../../../scripts/api.js";
 import { app } from "../../../../scripts/app.js";
 import { $el } from "../../../../scripts/ui.js";
-import { rgbToHex, isValidStyle } from "../../utils.js";
+import {
+  rgbToHex,
+  isValidStyle,
+  createWindowModal,
+  animateClick,
+} from "../../utils.js";
 import { RecognationSpeechDialog } from "./extras_node_dialogs.js";
 
 const idExt = "alekpet.ExtrasNode";
@@ -186,6 +191,15 @@ async function checkPremissions(
     .catch((e) => ({ device, state: "error", status: false }));
 }
 
+// Check checkbox
+function checkboxLSCheckedByKey(lsKey, selector, defaultVal = false) {
+  const currValue = JSON.parse(localStorage.getItem(lsKey, defaultVal));
+
+  Array.from(document.querySelectorAll(selector)).forEach(
+    (saveAs) => (saveAs.checked = currValue)
+  );
+}
+
 // Set styles
 const setStylesAllElements = (selector, exclude = null, styles = {}) => {
   let elements = Array.from(document.querySelectorAll(selector));
@@ -241,18 +255,7 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
       );
 
       if (checkboxClear) checkboxClear.checked = widget.value[1] ?? false;
-
-      if (checkboxSave) {
-        const isCheckedSave = widget.value[0] ?? false;
-
-        if (isCheckedSave) {
-          const premission = await checkPremissions();
-          checkboxSave.checked =
-            premission?.status && isCheckedSave ? true : false;
-        } else {
-          checkboxSave.checked = isCheckedSave;
-        }
-      }
+      if (checkboxSave) checkboxSave.checked = widget.value[0] ?? false;
     },
     onRemove() {
       widget.element?.remove();
@@ -311,69 +314,78 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
             if (speechRect.elements === null) {
               // Record audio
               if (checkboxSave.checked) {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                  audio: true,
-                });
-                mediaRecorder = new MediaRecorder(stream);
-
-                mediaRecorder.ondataavailable = (event) => {
-                  audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = async () => {
-                  if (speechRect.isRecognitionAbort) {
-                    speechRect.lastText = "";
-                    speechRect.isRecognitionAbort = false;
-                    return;
-                  }
-
-                  const saveAsWindow = JSON.parse(
-                    localStorage.getItem(
-                      `${idExt}.SpeechAndRecognationSpeechSaveAs`,
-                      false
-                    )
-                  );
-
-                  // Filename
-                  let nameFile = "recording.webm";
-                  if (speechRect?.lastText?.length) {
-                    nameFile = `${speechRect.lastText
-                      .slice(0, maxLenAudioFileName)
-                      .replaceAll(regExpFileName, "_")}.webm`;
-                  }
-
-                  // Get audio
-                  const audioBlob = new Blob(audioChunks, {
-                    type: "audio/webm",
+                try {
+                  const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true,
                   });
 
-                  if (!saveAsWindow) {
-                    const body = new FormData();
-                    body.append("image", audioBlob, nameFile);
-                    body.append("overwrite", "true");
-                    const resp = await api.fetchApi("/upload/image", {
-                      method: "POST",
-                      body,
-                    });
+                  mediaRecorder = new MediaRecorder(stream);
 
-                    if (resp.status !== 200) {
-                      console.error("[ExtrasNode] Recording audio not saved!");
+                  mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                  };
+
+                  mediaRecorder.onstop = async () => {
+                    if (speechRect.isRecognitionAbort) {
+                      speechRect.lastText = "";
+                      speechRect.isRecognitionAbort = false;
                       return;
                     }
 
-                    console.log(
-                      `[ExtrasNode] Recording audio "${nameFile}" saved successfully!`
+                    const saveAsWindow = JSON.parse(
+                      localStorage.getItem(
+                        `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+                        false
+                      )
                     );
-                  } else {
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    const linkDown = document.createElement("a");
-                    linkDown.href = audioUrl;
-                    linkDown.download = nameFile;
-                    linkDown.click();
-                  }
 
-                  speechRect.lastText = "";
-                };
+                    // Filename
+                    let nameFile = "recording.webm";
+                    if (speechRect?.lastText?.length) {
+                      nameFile = `${speechRect.lastText
+                        .slice(0, maxLenAudioFileName)
+                        .replaceAll(regExpFileName, "_")}.webm`;
+                    }
+
+                    // Get audio
+                    const audioBlob = new Blob(audioChunks, {
+                      type: "audio/webm",
+                    });
+
+                    if (!saveAsWindow) {
+                      const body = new FormData();
+                      body.append("image", audioBlob, nameFile);
+                      body.append("overwrite", "true");
+                      const resp = await api.fetchApi("/upload/image", {
+                        method: "POST",
+                        body,
+                      });
+
+                      if (resp.status !== 200) {
+                        console.error(
+                          "[ExtrasNode] Recording audio not saved!"
+                        );
+                        return;
+                      }
+
+                      console.log(
+                        `[ExtrasNode] Recording audio "${nameFile}" saved successfully!`
+                      );
+                    } else {
+                      const audioUrl = URL.createObjectURL(audioBlob);
+                      const linkDown = document.createElement("a");
+                      linkDown.href = audioUrl;
+                      linkDown.download = nameFile;
+                      linkDown.click();
+                    }
+
+                    speechRect.lastText = "";
+                  };
+                } catch (err) {
+                  alert(
+                    `Device "Microphone" - ${err.message}!\n\nCheck device or allow access!`
+                  );
+                }
               }
               // end - Record audio
 
@@ -394,46 +406,145 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
             }
           },
         }),
-        $el(
-          "input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_save",
-          {
-            type: "checkbox",
-            checked: widget.value[0] ?? false,
-            title: "Save in audio file after recognition",
-            onchange: async (e) => {
-              const premission = await checkPremissions();
-              let checkValue = !!e.target.checked;
-
-              if (!premission?.status && premission.state != "prompt") {
-                alert(
-                  `Access to the device "${premission.device.name}" is denied!\nAllow access to the device!`
+        // Settings elements
+        $el("div.alekpet_extras_node_speech_recognition_settings", [
+          $el(
+            "div.alekpet_extras_node_speech_recognition_settings_button.pi.pi-cog",
+            {
+              title: "Settings",
+              onclick: (e) => {
+                checkboxLSCheckedByKey(
+                  `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+                  ".alekpet_extras_node_recognition_saveAs"
                 );
-                checkValue = false;
-              }
+                animateClick(e.currentTarget.nextElementSibling);
+              },
+            }
+          ),
+          createWindowModal({
+            textTitle: null,
+            stylesClose: {
+              top: "-4px",
+              right: "4px",
+              width: "auto",
+              height: "auto",
+              padding: "2px",
+              fontSize: "0.4rem",
+              lineHeight: 1,
+            },
+            stylesBox: {
+              background: "transparent",
+              border: 0,
+              padding: 0,
+              boxShadow: "none",
+            },
+            stylesBody: {
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "stretch",
+              gap: "3px",
+              textWrap: "wrap",
+              background: "rgb(131, 131, 131)",
+              color: "white",
+              padding: "2px",
+              marginTop: "2px",
+              borderRadius: "6px",
+              fontSize: "0.4rem",
+              minWidth: "85px",
+            },
+            stylesWrapper: {
+              minWidth: "100px",
+              transform: "translate(0%, 0%)",
+            },
+            textBody: [
+              $el(
+                "label.alekpet_extras_node_speech_recognition_settings_props_label",
+                [
+                  $el(
+                    "span.alekpet_extras_node_speech_recognition_settings_props_name",
+                    {
+                      textContent: "Recoding audio",
+                      title: "Save in audio file after recognition",
+                    }
+                  ),
+                  $el(
+                    "input.alekpet_extras_node_speech_recognition_settings_props_input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_save",
+                    {
+                      type: "checkbox",
+                      checked: widget.value[0] ?? false,
+                      onchange: (e) =>
+                        widget?.callback([!!e.target.checked, widget.value[1]]),
+                    }
+                  ),
+                ]
+              ),
+              $el(
+                "label.alekpet_extras_node_speech_recognition_settings_props_label",
+                [
+                  $el(
+                    "span.alekpet_extras_node_speech_recognition_settings_props_name",
+                    {
+                      textContent: "Clear text",
+                      title: "Clear text after recognition",
+                    }
+                  ),
+                  $el(
+                    "input.alekpet_extras_node_speech_recognition_settings_props_input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_clear",
+                    {
+                      type: "checkbox",
+                      checked: widget.value[1] ?? true,
+                      onchange: (e) =>
+                        widget?.callback([widget.value[0], !!e.target.checked]),
+                    }
+                  ),
+                ]
+              ),
+              $el("hr", { style: { padding: 0, margin: 0 } }),
+              $el(
+                "label.alekpet_extras_node_speech_recognition_settings_props_label",
+                [
+                  $el(
+                    "span.alekpet_extras_node_speech_recognition_settings_props_name",
+                    {
+                      textContent: "'Save as' window?",
+                      title: "Show modal window when saving recorded audio.",
+                    }
+                  ),
+                  $el(
+                    "input.alekpet_extras_node_speech_recognition_settings_props_input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_saveAs",
+                    {
+                      type: "checkbox",
+                      checked: JSON.parse(
+                        localStorage.getItem(
+                          `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+                          false
+                        )
+                      ),
+                      onchange: (e) => {
+                        const check = !!e.target.checked;
+                        const settCheck = document.body.querySelector(
+                          "[id$='.SpeechAndRecognationSpeech'] div input"
+                        );
+                        settCheck && (settCheck.checked = check);
 
-              navigator.mediaDevices
-                .getUserMedia({ audio: true })
-                .then(() => widget?.callback([checkValue, widget.value[1]]))
-                .catch((e) => {
-                  widget?.callback([false, widget.value[1]]);
-                  alert(
-                    `Access to the device "${premission.device.name}" is denied!\nAllow access to the device!`
-                  );
-                });
-            },
-          }
-        ),
-        $el(
-          "input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_clear",
-          {
-            type: "checkbox",
-            checked: widget.value[1] ?? true,
-            title: "Clear text after recognition",
-            onchange: (e) => {
-              widget?.callback([widget.value[0], !!e.target.checked]);
-            },
-          }
-        ),
+                        localStorage.setItem(
+                          `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+                          check
+                        );
+
+                        checkboxLSCheckedByKey(
+                          `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+                          ".alekpet_extras_node_recognition_saveAs"
+                        );
+                      },
+                    }
+                  ),
+                ]
+              ),
+            ],
+          }),
+        ]),
+        // end -- Settings elements
       ])
     );
   }
@@ -682,4 +793,5 @@ export {
   speechRect,
   SpeechSynthesis,
   speakSynthesisUtterance,
+  checkboxLSCheckedByKey,
 };
