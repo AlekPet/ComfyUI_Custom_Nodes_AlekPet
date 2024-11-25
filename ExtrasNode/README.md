@@ -18,7 +18,7 @@
 
 - Dispaly image size node "Preview Image"
 
-- Speech & Recognition speech
+- Speech & Recognition speech and save reocording audio
 
 - Preview image, video and sound select list combo
 

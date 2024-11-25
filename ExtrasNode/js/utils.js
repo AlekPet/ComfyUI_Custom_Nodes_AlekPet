@@ -138,13 +138,16 @@ function animateTransitionProps(
   });
 }
 
-function animateClick(target, opacityVal = 0.9) {
+function animateClick(target, params = {}) {
+  const { opacityVal = 0.9, callback = () => {} } = params;
   if (target?.isAnimating) return;
 
   const hide = +target.style.opacity === 0;
   return animateTransitionProps(target, {
     opacity: hide ? opacityVal : 0,
-  }).then(() => showHide({ elements: [target], hide: !hide }));
+  })
+    .then(() => showHide({ elements: [target], hide: !hide }))
+    .then(() => callback());
 }
 
 function showHide({ elements = [], hide = null, displayProp = "block" } = {}) {
@@ -448,7 +451,11 @@ function createWindowModal({
       case "object":
       default:
         if (Array.isArray(text)) {
-          text.forEach((element) => parent.append(element));
+          text.forEach(
+            (element) =>
+              (element.nodeType === 1 || element.nodeType === 3) &&
+              parent.append(element)
+          );
         } else if (text.nodeType === 1 || text.nodeType === 3)
           parent.append(text);
     }
@@ -496,34 +503,39 @@ function createWindowModal({
   });
 
   // Title
-  const box_settings_title = makeElement("div", {
-    class: ["alekpet__window__title", ...classesTitle],
-  });
+  let box_settings_title = "";
+  if (textTitle) {
+    box_settings_title = makeElement("div", {
+      class: ["alekpet__window__title", ...classesTitle],
+    });
 
-  Object.assign(box_settings_title.style, {
-    ...THEME_MODAL_WINDOW_BASE.stylesTitle,
-    ...stylesTitle,
-  });
+    Object.assign(box_settings_title.style, {
+      ...THEME_MODAL_WINDOW_BASE.stylesTitle,
+      ...stylesTitle,
+    });
 
-  // Add text (html) to title
-  addText(textTitle, box_settings_title);
-
+    // Add text (html) to title
+    addText(textTitle, box_settings_title);
+  }
   // Body
-  const box_settings_body = makeElement("div", {
-    class: ["alekpet__window__body", ...classesBody],
-  });
+  let box_settings_body = "";
+  if (textBody) {
+    box_settings_body = makeElement("div", {
+      class: ["alekpet__window__body", ...classesBody],
+    });
 
-  Object.assign(box_settings_body.style, {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "flex-end",
-    gap: "5px",
-    textWrap: "wrap",
-    ...stylesBody,
-  });
+    Object.assign(box_settings_body.style, {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "flex-end",
+      gap: "5px",
+      textWrap: "wrap",
+      ...stylesBody,
+    });
 
-  // Add text (html) to body
-  addText(textBody, box_settings_body);
+    // Add text (html) to body
+    addText(textBody, box_settings_body);
+  }
 
   // Close button
   const close__box__button = makeElement("div", {
