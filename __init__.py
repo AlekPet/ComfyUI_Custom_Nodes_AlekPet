@@ -276,9 +276,9 @@ from .ArgosTranslateNode.argos_translate_node import (
     ArgosTranslateCLIPTextEncodeNode,
     ArgosTranslateTextNode,
 )
-from .ChatGLMNode.chatglm_translate_node import (
+from .ChatGLMNode.chatglm_node import (
     ChatGLM4TranslateCLIPTextEncodeNode,
-    ChatGLM4TranslateTextNode,
+    ChatGLM4TranslateTextNode, ChatGLM4InstructNode
 )
 from .DeepTranslatorNode.deep_translator_node import (
     DeepTranslatorCLIPTextEncodeNode,
@@ -299,6 +299,7 @@ NODE_CLASS_MAPPINGS = {
     "ArgosTranslateTextNode": ArgosTranslateTextNode,
     "ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
     "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
+    "ChatGLM4InstructNode": ChatGLM4InstructNode,
     "DeepTranslatorCLIPTextEncodeNode": DeepTranslatorCLIPTextEncodeNode,
     "DeepTranslatorTextNode": DeepTranslatorTextNode,
     "PreviewTextNode": PreviewTextNode,
@@ -317,6 +318,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ArgosTranslateTextNode": "Argos Translate Text Node",
     "ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
     "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node",
+    "ChatGLM4InstructNode": "ChatGLM-4 Instruct Node",
     "DeepTranslatorCLIPTextEncodeNode": "Deep Translator CLIP Text Encode Node",
     "DeepTranslatorTextNode": "Deep Translator Text Node",
     "PreviewTextNode": "Preview Text Node",

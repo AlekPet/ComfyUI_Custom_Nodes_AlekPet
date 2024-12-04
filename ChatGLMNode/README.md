@@ -14,6 +14,8 @@ Translation is carried out with the help of artificial intelligence using GLM mo
 > **ChatGLM4TranslateCLIPTextEncodeNode** - translate text, and return CONDITIONING
 >
 > **ChatGLM4TranslateTextNode** - translate text and return text (STRING)
+>
+> **ChatGLM4InstructNode** - Generate prompt from instruct
 
 ## Image:
 
