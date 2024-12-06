@@ -16,6 +16,8 @@ Translation is carried out with the help of artificial intelligence using GLM mo
 > **ChatGLM4TranslateTextNode** - translate text and return text (STRING)
 >
 > **ChatGLM4InstructNode** - Generate prompt from instruct
+>
+> **ChatGLM4InstructMediaNode** - Generate prompt from instruct to describe what is shown in the media
 
 ## Image:
 
