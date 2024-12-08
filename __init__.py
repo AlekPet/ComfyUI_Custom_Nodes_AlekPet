@@ -356,13 +356,40 @@ WEB_DIRECTORY = f"./{extension_dirs[0]}"
 # Install nodes
 installNodes()
 
+
 # For ComfyUI Manager 😄
 '''
+=======
+
+# Import classes nodes and add in mappings
+from .ArgosTranslateNode.argos_translate_node import (
+    ArgosTranslateCLIPTextEncodeNode,
+    ArgosTranslateTextNode,
+)
+from .ChatGLMNode.chatglm_node import (
+    ChatGLM4TranslateCLIPTextEncodeNode,
+    ChatGLM4TranslateTextNode, ChatGLM4InstructNode, ChatGLM4InstructMediaNode
+)
+from .DeepTranslatorNode.deep_translator_node import (
+    DeepTranslatorCLIPTextEncodeNode,
+    DeepTranslatorTextNode,
+)
+from .ExtrasNode.extras_node import PreviewTextNode, HexToHueNode, ColorsCorrectNode
+from .GoogleTranslateNode.google_translate_node import (
+    GoogleTranslateCLIPTextEncodeNode,
+    GoogleTranslateTextNode,
+)
+from .PainterNode.painter_node import PainterNode
+from .PoseNode.pose_node import PoseNode
+from .IDENode.ide_node import IDENode
+
 NODE_CLASS_MAPPINGS = {
     "ArgosTranslateCLIPTextEncodeNode": ArgosTranslateCLIPTextEncodeNode,
     "ArgosTranslateTextNode": ArgosTranslateTextNode,
     "ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
     "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
+    "ChatGLM4InstructNode": ChatGLM4InstructNode,
+    "ChatGLM4InstructMediaNode": ChatGLM4InstructMediaNode,
     "DeepTranslatorCLIPTextEncodeNode": DeepTranslatorCLIPTextEncodeNode,
     "DeepTranslatorTextNode": DeepTranslatorTextNode,
     "PreviewTextNode": PreviewTextNode,
@@ -380,6 +407,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ArgosTranslateTextNode": "Argos Translate Text Node",
     "ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
     "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node",
+    "ChatGLM4InstructNode": "ChatGLM-4 Instruct Node",
+    "ChatGLM4InstructMediaNode": "ChatGLM-4 Instruct Media Node",
     "DeepTranslatorCLIPTextEncodeNode": "Deep Translator CLIP Text Encode Node",
     "DeepTranslatorTextNode": "Deep Translator Text Node",
     "PreviewTextNode": "Preview Text Node",

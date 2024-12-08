@@ -20,6 +20,8 @@ If you enjoy my work, consider **[supporting me](https://alekpet.github.io/suppo
 | _ArgosTranslateCLIPTextEncodeNode_    | The node translate promt uses module **Argos Translator** from other languages into english, and return conditioning | AlekPet Node/conditioning |
 | _ChatGLM4TranslateTextNode_           |               This translator node uses artificial intelligence to translate prompts and return string               |     AlekPet Node/text     |
 | _ChatGLM4TranslateCLIPTextEncodeNode_ |            This translator node uses artificial intelligence to translate prompts and return conditioning            | AlekPet Node/conditioning |
+| ChatGLM4InstructNode                  |                              This node uses artificial intelligence to generate prompt                               |   AlekPet Node/Instruct   |
+| ChatGLM4InstructMediaNode             |                    This node uses artificial intelligence to describe what is shown in the media                     |   AlekPet Node/Instruct   |
 | _PreviewTextNode_                     |                                           The node displays the input text                                           |    AlekPet Node/extras    |
 | _ColorsCorrectNode_                   |                                         The node for correcting image colors                                         |    AlekPet Node/extras    |
 | _HexToHueNode_                        |                          The node convert HEX color to HUE (degrees and normal [-0.5, 0.5])                          |    AlekPet Node/extras    |
