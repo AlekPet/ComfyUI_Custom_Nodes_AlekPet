@@ -204,7 +204,7 @@ def install_node(nodeElement):
     log(f"* Node <{nodeElement}> is found, installing...")
     web_extensions_dir = os.path.join(extension_folder, extension_dirs[0])
 
-    extensions_dirs_copy = ["js", "css", "assets", "lib"]
+    extensions_dirs_copy = ["js", "css", "assets", "lib", "fonts"]
     for dir_name in extensions_dirs_copy:
         folder_curr = os.path.join(extension_folder, nodeElement, dir_name)
         if os.path.exists(folder_curr):

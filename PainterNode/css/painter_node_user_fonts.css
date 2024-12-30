@@ -1,0 +1,26 @@
+/* Example add font file for different formats, and supports old browsers: */
+/*
+@font-face {
+    font-family: 'MyNameFont';
+    src: url('webfont.eot');
+    src: url('webfont.eot?#iefix') format('embedded-opentype'),
+         url('webfont.woff') format('woff'), 
+         url('webfont.ttf')  format('truetype'), 
+         url("webfont.otf") format("opentype");            
+         url('webfont.svg#svgFontName') format('svg'); 
+} 
+*/
+
+/* User fonts files */
+
+/* Pricedown font */
+@font-face {
+  font-family: "Pricedown";
+  src: url("../../fonts/pricedown.otf") format("opentype");
+}
+
+/* Harry_font__YOURSSINCERELYLARRY_ font */
+@font-face {
+  font-family: "Harry_font__YOURSSINCERELYLARRY_";
+  src: url("../../fonts/HarryFontYourssincerelylarry.ttf") format("truetype");
+}

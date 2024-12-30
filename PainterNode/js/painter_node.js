@@ -372,9 +372,29 @@ class Painter {
     });
 
     this.painter_bg_setting.appendChild(this.bgImageFile);
+
+    this.getLoadedFonts();
+
     this.changePropertyBrush();
     this.createBrushesToolbar();
     this.bindEvents();
+  }
+
+  async getLoadedFonts() {
+    const getListFonts = async () => {
+      const fontFaces = await document.fonts.ready;
+      const loadedFonts = [];
+
+      document.fonts.forEach((font) => {
+        loadedFonts.push(font.family);
+      });
+      console.log("Loaded fonts");
+      return [...new Set(loadedFonts)];
+    };
+
+    await getListFonts().then((fonts) => {
+      fonts.forEach((font) => (this.fonts[font] = font));
+    });
   }
 
   setValueElementsLS() {
@@ -993,8 +1013,10 @@ class Painter {
 
     // Select front event
     selectFontFamily.onchange = (e) => {
-      if (this.getActiveStyle("fontFamily") != selectFontFamily.value)
+      if (this.getActiveStyle("fontFamily") != selectFontFamily.value) {
         this.setActiveStyle("fontFamily", selectFontFamily.value);
+        this.uploadPaintFile(this.node.name);
+      }
     };
 
     property_textbox.append(
@@ -2528,6 +2550,7 @@ app.registerExtension({
   async init(app) {
     // Add styles
     addStylesheet("css/painternode/painter_node_styles.css", import.meta.url);
+    addStylesheet("css/painternode/painter_node_fonts.css", import.meta.url);
 
     // Add settings params painter node
     app.ui.settings.addSetting({
