@@ -109,15 +109,15 @@ class Painter {
     // this.undo_history = this.node.LS_Cls.LS_Painters.undo_history || [];
     // this.redo_history = this.node.LS_Cls.LS_Painters.redo_history || [];
 
-    this.fonts = {
-      Arial: "arial",
-      "Times New Roman": "Times New Roman",
-      Verdana: "verdana",
-      Georgia: "georgia",
-      Courier: "courier",
-      "Comic Sans MS": "comic sans ms",
-      Impact: "impact",
-    };
+    this.fonts = [
+      "Arial",
+      "Times New Roman",
+      "Verdana",
+      "Georgia",
+      "Courier",
+      "Comic Sans MS",
+      "Impact",
+    ];
 
     this.bringFrontSelected = true;
 
@@ -373,7 +373,7 @@ class Painter {
 
     this.painter_bg_setting.appendChild(this.bgImageFile);
 
-    this.getLoadedFonts();
+    this.getLoadedFonts(); // dev users fonts
 
     this.changePropertyBrush();
     this.createBrushesToolbar();
@@ -393,7 +393,7 @@ class Painter {
     };
 
     await getListFonts().then((fonts) => {
-      fonts.forEach((font) => (this.fonts[font] = font));
+      this.fonts = this.fonts.concat(fonts);
     });
   }
 
@@ -1000,14 +1000,15 @@ class Painter {
     });
     const separator = makeElement("div", { class: ["separator"] });
     const selectFontFamily = makeElement("select", {
+      dataset: { prop: "prop_fontFamily" },
       class: ["font_family_select"],
     });
 
-    for (let f in this.fonts) {
+    for (let font of this.fonts) {
       const option = makeElement("option");
-      if (f === "Arial") option.setAttribute("selected", true);
-      option.value = this.fonts[f];
-      option.textContent = f;
+      if (font === "Arial") option.setAttribute("selected", true);
+      option.value = font;
+      option.textContent = font;
       selectFontFamily.appendChild(option);
     }
 
@@ -1599,12 +1600,20 @@ class Painter {
       if (!targets || targets.length == 0) return;
 
       // Selected tools
-      const setProps = (style, check) => {
+      const setProps = (style, value) => {
         const propEl = this.painter_drawning_box_property.querySelector(
-          `#prop_${style}`
+          `[data-prop=prop_${style}]`
         );
 
-        if (propEl) propEl.classList[check ? "remove" : "add"]("active");
+        if (propEl) {
+          switch (propEl.dataset.prop) {
+            case "prop_fontFamily": {
+              propEl.value = value;
+            }
+            default:
+              propEl.classList[value ? "remove" : "add"]("active");
+          }
+        }
       };
 
       targets.forEach((target) => {
@@ -1624,6 +1633,8 @@ class Painter {
             "underline",
             Boolean(this.getActiveStyle("underline", target)) == false
           );
+
+          setProps("fontFamily", this.getActiveStyle("fontFamily", target));
         }
 
         if (
@@ -2128,7 +2139,7 @@ class Painter {
     await new Promise((res) => {
       const uploadFile = async (blobFile) => {
         try {
-          const resp = await fetch("/upload/image", {
+          const resp = await api.fetchApi("/upload/image", {
             method: "POST",
             body: blobFile,
           });

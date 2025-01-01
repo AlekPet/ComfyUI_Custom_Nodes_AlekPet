@@ -16,11 +16,12 @@
 /* Pricedown font */
 @font-face {
   font-family: "Pricedown";
-  src: url("../../fonts/pricedown.otf") format("opentype");
+  src: url("./../../fonts/painternode/pricedown.otf") format("opentype");
 }
 
 /* Harry_font__YOURSSINCERELYLARRY_ font */
 @font-face {
   font-family: "Harry_font__YOURSSINCERELYLARRY_";
-  src: url("../../fonts/HarryFontYourssincerelylarry.ttf") format("truetype");
+  src: url("./../../fonts/painternode/HarryFontYourssincerelylarry.ttf")
+    format("truetype");
 }

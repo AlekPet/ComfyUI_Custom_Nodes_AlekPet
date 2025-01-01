@@ -113,3 +113,24 @@ npm run brushes
 - Update image (not update the images of the node with piping in image (**Note:** you must enable this option so that the mask does not change))
 
 ![Screenshot Piping](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/PainterNode/pipingImage.jpg)
+
+# User custom fonts
+
+> To add custom fonts, they must be written in the css file: `PainterNode\css\painter_node_user_fonts.css`
+
+### Two variants:
+
+**Variant 1**: Path to fonts, fonts puts in the `PainterNode\fonts`, adn add to the code in the css.
+
+```css
+@font-face {
+  font-family: "Pricedown";
+  src: url("./../../fonts/painternode/pricedown.otf") format("opentype");
+}
+```
+
+**Variant 2**: Add url to font in the `painter_node_user_fonts.css`, example used link [google fonts.](https://fonts.google.com/)
+
+```css
+@import url("https://fonts.googleapis.com/css2?family=Jacquard+12&display=swap");
+```

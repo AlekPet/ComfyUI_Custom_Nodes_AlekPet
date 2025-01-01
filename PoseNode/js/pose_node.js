@@ -2,10 +2,11 @@
  * Title: Set Poses in ComflyUI from ControlNet
  * Author: AlekPet
  * Description: I rewrote the main.js file as a class, from fkunn1326's openpose-editor (https://github.com/fkunn1326/openpose-editor/blob/master/javascript/main.js)
- * Version: 2024.10.13
+ * Version: 2025.01.01
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
+import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
 import { $el } from "../../scripts/ui.js";
 import { addStylesheet } from "../../scripts/utils.js";
@@ -105,8 +106,13 @@ class OpenPose {
     this.visibleEyes = true;
     this.flipped = false;
     this.node = node;
+
+    this.maxSizeNodeW = 1024;
+    this.maxSizehNodeH = 200;
+
     this.undo_history = LS_Poses[node.name].undo_history || [];
     this.redo_history = LS_Poses[node.name].redo_history || [];
+
     this.history_change = false;
     this.currentCanvasSize = { width: 512, height: 512 };
 
@@ -123,8 +129,11 @@ class OpenPose {
     this.currentCanvasSize = { width: new_width, height: new_height };
 
     // Check isset local storage key currentCanvasSize
-    if (!LS_Poses[this.node.name].hasOwnProperty("currentCanvasSize"))
-      LS_Poses[this.node.name]["currentCanvasSize"] = {};
+    if (!Object.hasOwn(LS_Poses, this.node.name)) {
+      LS_Poses[this.node.name] = {
+        currentCanvasSize: {},
+      };
+    }
 
     LS_Poses[this.node.name]["currentCanvasSize"] = this.currentCanvasSize;
 
@@ -248,6 +257,7 @@ class OpenPose {
     this.canvas = new fabric.Canvas(this.canvas, {
       backgroundColor: "#000",
       preserveObjectStacking: true,
+      containerClass: "canvas-container-pose",
     });
 
     const updateLines = (target) => {
@@ -458,7 +468,7 @@ class OpenPose {
 
     const uploadFile = async (blobFile) => {
       try {
-        const resp = await fetch("/upload/image", {
+        const resp = await api.fetchApi("/upload/image", {
           method: "POST",
           body: blobFile,
         });
@@ -623,9 +633,9 @@ function createOpenPose(node, inputName, inputData, app) {
             height: `${20.0 * transform.d}px`,
           });
         }
-
-        element.hidden = !visible;
       });
+
+      this.openpose.hidden = !visible;
     },
   };
 
@@ -641,6 +651,7 @@ function createOpenPose(node, inputName, inputData, app) {
 
   widget.openpose = node.openPose.canvas.wrapperEl;
   widget.parent = node;
+  widget.openpose.hidden = true;
 
   // Create elements undo, redo, clear history
   let panelButtons = $el("div.pose_panelButtons.comfy-menu-btns", [
@@ -786,6 +797,54 @@ function createOpenPose(node, inputName, inputData, app) {
     widget.openpose?.remove();
   };
 
+  node.onResize = function () {
+    let [w, h] = this.size;
+    let aspect_ratio = 1;
+
+    if (node?.imgs && typeof this.imgs !== undefined) {
+      aspect_ratio = this.imgs[0].naturalHeight / this.imgs[0].naturalWidth;
+    }
+    let buffer = 90;
+
+    if (w > this.openPose.maxSizeNodeW)
+      w = w - (w - this.openPose.maxSizeNodeW);
+    if (w < 200) w = 200;
+
+    h = w * aspect_ratio + buffer;
+
+    if (h < this.openPose.maxSizeNodeH) h = this.openPose.maxSizeNodeH + h / 2;
+
+    this.size = [w, h];
+  };
+
+  node.onDrawBackground = function (ctx) {
+    if (!this.flags.collapsed) {
+      node.openPose.canvas.wrapperEl.hidden = false;
+      if (this.imgs && this.imgs.length) {
+        if (app.canvas.ds.scale > 0.8) {
+          let [dw, dh] = this.size;
+
+          let w = this.imgs[0].naturalWidth;
+          let h = this.imgs[0].naturalHeight;
+
+          const scaleX = dw / w;
+          const scaleY = dh / h;
+          const scale = Math.min(scaleX, scaleY, 1);
+
+          w *= scale / 8;
+          h *= scale / 8;
+
+          let x = 5;
+          let y = dh - h - 5;
+
+          ctx.drawImage(this.imgs[0], x, y, w, h);
+        }
+      }
+    } else {
+      node.openPose.canvas.wrapperEl.hidden = true;
+    }
+  };
+
   app.canvas.onDrawBackground = function () {
     // Draw node isnt fired once the node is off the screen
     // if it goes off screen quickly, the input may not be removed
@@ -832,16 +891,16 @@ app.registerExtension({
     if (nodeData.name === "PoseNode") {
       const onNodeCreated = nodeType.prototype.onNodeCreated;
 
-      nodeType.prototype.onNodeCreated = function () {
+      nodeType.prototype.onNodeCreated = async function () {
         const r = onNodeCreated
           ? onNodeCreated.apply(this, arguments)
           : undefined;
 
-        let openPoseNode = app.graph._nodes.filter(
-            (wi) => wi.type == "PoseNode"
-          ),
-          nodeName = `Pose_${openPoseNode.length}`,
-          nodeNamePNG = `${nodeName}.png`;
+        const node_title = await this.getTitle();
+        const node_id = this.id;
+
+        const nodeName = `Pose_${node_id}`;
+        const nodeNamePNG = `${nodeName}.png`;
 
         console.log(`Create PoseNode: ${nodeNamePNG}`);
 
@@ -859,6 +918,7 @@ app.registerExtension({
             redo_history: [],
             currentCanvasSize: { width: 512, height: 512 },
           };
+
           LS_Save();
         }
 
