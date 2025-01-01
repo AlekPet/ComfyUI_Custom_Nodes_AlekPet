@@ -22,6 +22,7 @@ import {
   isEmptyObject,
   THEMES_MODAL_WINDOW,
 } from "./utils.js";
+import "./lib/painternode/fontfaceobserver.js";
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
@@ -80,6 +81,17 @@ function resizeCanvas(node, sizes) {
     app.graph.setDirtyCanvas(true, false);
   }, 1000);
 }
+
+const getListFonts = async () => {
+  const fontFaces = await document.fonts.ready;
+  const loadedFonts = [];
+
+  document.fonts.forEach((font) => {
+    loadedFonts.push(font.family);
+  });
+  console.log("PainterNode: Loading fonts completed");
+  return [...new Set(loadedFonts)];
+};
 // ================= END FUNCTIONS ================
 
 // ================= CLASS PAINTER ================
@@ -109,15 +121,15 @@ class Painter {
     // this.undo_history = this.node.LS_Cls.LS_Painters.undo_history || [];
     // this.redo_history = this.node.LS_Cls.LS_Painters.redo_history || [];
 
-    this.fonts = [
-      "Arial",
-      "Times New Roman",
-      "Verdana",
-      "Georgia",
-      "Courier",
-      "Comic Sans MS",
-      "Impact",
-    ];
+    this.fonts = {
+      Arial: { type: "default" },
+      "Times New Roman": { type: "default" },
+      Verdana: { type: "default" },
+      Georgia: { type: "default" },
+      Courier: { type: "default" },
+      "Comic Sans MS": { type: "default" },
+      Impact: { type: "default" },
+    };
 
     this.bringFrontSelected = true;
 
@@ -388,12 +400,14 @@ class Painter {
       document.fonts.forEach((font) => {
         loadedFonts.push(font.family);
       });
-      console.log("Loaded fonts");
+      console.log("PainterNode: Loading fonts completed");
       return [...new Set(loadedFonts)];
     };
 
     await getListFonts().then((fonts) => {
-      this.fonts = this.fonts.concat(fonts);
+      fonts.forEach((font) => {
+        this.fonts[font] = { type: "custom" };
+      });
     });
   }
 
@@ -1004,7 +1018,7 @@ class Painter {
       class: ["font_family_select"],
     });
 
-    for (let font of this.fonts) {
+    for (let font in this.fonts) {
       const option = makeElement("option");
       if (font === "Arial") option.setAttribute("selected", true);
       option.value = font;
@@ -1015,7 +1029,22 @@ class Painter {
     // Select front event
     selectFontFamily.onchange = (e) => {
       if (this.getActiveStyle("fontFamily") != selectFontFamily.value) {
-        this.setActiveStyle("fontFamily", selectFontFamily.value);
+        if (this.fonts[selectFontFamily.value].type == "default") {
+          this.setActiveStyle("fontFamily", selectFontFamily.value);
+          return;
+        }
+
+        const font = new FontFaceObserver(selectFontFamily.value);
+        font.load().then(
+          () => {
+            // console.log("Font is available");
+            this.setActiveStyle("fontFamily", selectFontFamily.value);
+          },
+          () => {
+            // console.log("Font not is available");
+          }
+        );
+
         this.uploadPaintFile(this.node.name);
       }
     };
