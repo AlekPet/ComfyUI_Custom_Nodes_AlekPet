@@ -82,16 +82,29 @@ function resizeCanvas(node, sizes) {
   }, 1000);
 }
 
-const getListFonts = async () => {
-  const fontFaces = await document.fonts.ready;
-  const loadedFonts = [];
-
-  document.fonts.forEach((font) => {
-    loadedFonts.push(font.family);
-  });
-  console.log("PainterNode: Loading fonts completed");
-  return [...new Set(loadedFonts)];
+const FONTS = {};
+const STATES = {
+  fontsLoaded: false,
 };
+
+async function getLoadedFonts() {
+  const getListFonts = async () => {
+    const fontFaces = await document.fonts.ready;
+    const loadedFonts = [];
+
+    document.fonts.forEach((font) => {
+      loadedFonts.push(font.family);
+    });
+
+    return [...new Set(loadedFonts)];
+  };
+
+  await getListFonts().then((fonts) => {
+    fonts.forEach((font) => {
+      FONTS[font] = { type: "custom" };
+    });
+  });
+}
 // ================= END FUNCTIONS ================
 
 // ================= CLASS PAINTER ================
@@ -129,6 +142,7 @@ class Painter {
       Courier: { type: "default" },
       "Comic Sans MS": { type: "default" },
       Impact: { type: "default" },
+      ...FONTS,
     };
 
     this.bringFrontSelected = true;
@@ -385,30 +399,9 @@ class Painter {
 
     this.painter_bg_setting.appendChild(this.bgImageFile);
 
-    this.getLoadedFonts(); // dev users fonts
-
     this.changePropertyBrush();
     this.createBrushesToolbar();
     this.bindEvents();
-  }
-
-  async getLoadedFonts() {
-    const getListFonts = async () => {
-      const fontFaces = await document.fonts.ready;
-      const loadedFonts = [];
-
-      document.fonts.forEach((font) => {
-        loadedFonts.push(font.family);
-      });
-      console.log("PainterNode: Loading fonts completed");
-      return [...new Set(loadedFonts)];
-    };
-
-    await getListFonts().then((fonts) => {
-      fonts.forEach((font) => {
-        this.fonts[font] = { type: "custom" };
-      });
-    });
   }
 
   setValueElementsLS() {
@@ -2679,6 +2672,13 @@ app.registerExtension({
   },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === "PainterNode") {
+      if (!STATES.fontsLoaded) {
+        await getLoadedFonts().then(() => {
+          STATES.fontsLoaded = true;
+          console.log("PainterNode: Loading fonts completed");
+        });
+      }
+
       // Create node
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = async function () {

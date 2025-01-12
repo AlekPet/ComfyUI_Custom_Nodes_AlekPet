@@ -145,7 +145,6 @@ app.registerExtension({
             style: {
               position: "absolute",
               maxWidth: "160px",
-              // right: "calc(-1% - 160px)",
               zIndex: 9999999,
             },
             parent: document.body,
@@ -193,10 +192,6 @@ app.registerExtension({
         }
       };
 
-      this.root.addEventListener("blur", () => {
-        console.log("ok");
-      });
-
       LiteGraph.pointerListenerAdd(element, "enter", (e) => {
         if (element?.dataset?.value) {
           const body_rect = document.body.getBoundingClientRect();
@@ -239,12 +234,10 @@ app.registerExtension({
               this.root.preview_content_combo.style.left = `${
                 root_rect.left - previewWidth - 10
               }px`;
-              // this.root.preview_content_combo.style.right = "auto";
             } else {
               this.root.preview_content_combo.style.left = `${
                 root_rect.left + root_rect.width + 10
               }px`;
-              // this.root.preview_content_combo.style.right = `calc(-1% - ${this.root.preview_content_combo.style.maxWidth})`;
             }
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
