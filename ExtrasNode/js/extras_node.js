@@ -168,16 +168,25 @@ app.registerExtension({
         this.root.preview_content_combo = preview_content_combo;
       }
 
-      LiteGraph.pointerListenerAdd(element, "enter", (e) => {
+      LiteGraph.pointerListenerAdd(element, "enter", (event) => {
         if (element?.dataset?.value) {
-          const body_rect = document.body.getBoundingClientRect();
-          const root_rect = this.root.getBoundingClientRect();
-          const { x, y } = element.getBoundingClientRect();
+          let previewContainer = document.getElementById(
+            "preview-content-combo"
+          );
+          if (!previewContainer) {
+            previewContainer = document.createElement("div");
+            previewContainer.id = "preview-content-combo";
+            previewContainer.style.position = "absolute";
+            previewContainer.style.zIndex = "1000";
+            previewContainer.style.pointerEvents = "none";
+            previewContainer.style.display = "none";
+            document.body.appendChild(previewContainer);
+          }
 
-          const scale = app.graph.extra.ds.scale;
-
-          const canvas = this.root.preview_content_combo.children[0];
+          const canvas = document.createElement("canvas");
           const ctx = canvas.getContext("2d");
+          previewContainer.innerHTML = "";
+          previewContainer.appendChild(canvas);
 
           loadingContent(
             api.apiURL(
@@ -185,85 +194,94 @@ app.registerExtension({
                 element.dataset.value
               )}&type=input`
             )
-          ).then(({ raw, type, src }) => {
-            this.root.preview_content_combo.style.maxWidth =
-              type === "audio" ? "300px" : "160px";
+          ).then(({ raw, type }) => {
+            const rect = element.getBoundingClientRect();
+            let left = rect.right + 10;
+            let top = event.clientY;
 
-            const previewWidth = parseInt(
-              this.root.preview_content_combo.style.maxWidth
+            const maxWidth = 300;
+            const maxHeight = 300;
+            let canvasWidth = raw.naturalWidth || raw.videoWidth || maxWidth;
+            let canvasHeight =
+              raw.naturalHeight || raw.videoHeight || maxHeight;
+
+            const scale = Math.min(
+              1,
+              Math.min(maxWidth / canvasWidth, maxHeight / canvasHeight),
+              window.innerWidth / (left + canvasWidth + 10)
             );
+            canvasWidth *= scale;
+            canvasHeight *= scale;
 
-            if (scale >= 1) {
-              this.root.preview_content_combo.style.top = `${
-                (y - root_rect.top) / scale
-              }px`;
-            } else {
-              this.root.preview_content_combo.style.top = `${
-                y - root_rect.top
-              }px`;
-            }
-
-            if (
-              body_rect.width &&
-              root_rect.right + previewWidth > body_rect.width
-            ) {
-              this.root.preview_content_combo.style.left = `${
-                -previewWidth - 10
-              }px`;
-              this.root.preview_content_combo.style.right = "auto";
-            } else {
-              this.root.preview_content_combo.style.left = "auto";
-              this.root.preview_content_combo.style.right = `calc(-1% - ${this.root.preview_content_combo.style.maxWidth})`;
-            }
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (left + canvasWidth > window.innerWidth) {
+              left = rect.left - canvasWidth - 10;
+            }
+            previewContainer.style.left = `${left}px`;
+
+            const maxBottom = top + canvasHeight;
+            if (maxBottom > window.innerHeight) {
+              top = window.innerHeight - canvasHeight - 10;
+            }
+            previewContainer.style.top = `${top}px`;
+
+            previewContainer.style.display = "block";
+
             const video = document.querySelector(".preview_vid");
             const audio = document.querySelector(".preview_audio");
 
             if (type === "image") {
-              canvas.width = raw.naturalWidth;
-              canvas.height = raw.naturalHeight;
               if (!video.paused) {
                 video.pause();
                 video.currentTime = 0;
               }
               cancelAnimationFrame(canvas.requanim);
+              ctx.drawImage(raw, 0, 0, canvas.width, canvas.height);
             } else if (type === "video") {
-              canvas.width = raw.videoWidth;
-              canvas.height = raw.videoHeight;
               video.play();
+              ctx.drawImage(raw, 0, 0, canvas.width, canvas.height);
+              canvas.requanim = requestAnimationFrame(
+                drawVid.bind(this, raw, canvas, ctx, type)
+              );
             } else if (type === "audio") {
-              Object.assign(audio.style, {
-                opacity: 1,
-              });
+              Object.assign(audio.style, { opacity: 1 });
               audio.play();
             }
 
             if (type === "video" || type === "image") {
-              Object.assign(audio.style, {
-                opacity: 0,
-              });
-              !audio.paused && audio.pause();
-              ctx.drawImage(raw, 0, 0, canvas.width, canvas.height);
+              Object.assign(audio.style, { opacity: 0 });
+              if (!audio.paused) audio.pause();
             }
-
-            if (type === "video")
-              canvas.requanim = requestAnimationFrame(
-                drawVid.bind(this, raw, canvas, ctx, type)
-              );
           });
         }
       });
 
-      LiteGraph.pointerListenerAdd(element, "leave", (e) => {
-        if (element?.dataset?.value) {
-          const canvas = this.root.preview_content_combo.children[0];
+      LiteGraph.pointerListenerAdd(element, "leave", () => {
+        const previewContainer = document.getElementById(
+          "preview-content-combo"
+        );
+        if (previewContainer) {
+          previewContainer.style.display = "none";
+          previewContainer.innerHTML = "";
+          const canvas = previewContainer.querySelector("canvas");
+          if (canvas) {
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
+
           const video = document.querySelector(".preview_vid");
-          if (!video.paused) {
+          if (video && !video.paused) {
             video.pause();
             video.currentTime = 0;
           }
-          cancelAnimationFrame(canvas.requanim);
+          const audio = document.querySelector(".preview_audio");
+          if (audio && !audio.paused) {
+            audio.pause();
+          }
         }
       });
     };
