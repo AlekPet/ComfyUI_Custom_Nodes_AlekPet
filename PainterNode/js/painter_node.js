@@ -1042,12 +1042,36 @@ class Painter {
       }
     };
 
+    const infoFontsButton = makeElement("button", {
+      style: {},
+      textContent: "?",
+      title: "Info for fonts",
+      onclick: (e) =>
+        createWindowModal({
+          textTitle: "NOTE",
+          textBody:
+            "<b>If fonts not loaded in the canvas, refresh page browser!😅</b>",
+          ...THEMES_MODAL_WINDOW.warning,
+          options: {
+            auto: { autohide: true, autoshow: true, autoremove: true },
+            parent: this.canvas.wrapperEl,
+            overlay: {
+              overlay_enabled: true,
+              overlayStyles: {
+                position: "absolute",
+              },
+            },
+          },
+        }),
+    });
+
     property_textbox.append(
       buttonItalic,
       buttonBold,
       buttonUnderline,
       separator,
-      selectFontFamily
+      selectFontFamily,
+      infoFontsButton
     );
     this.painter_drawning_box_property.append(property_textbox);
   }

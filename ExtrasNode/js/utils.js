@@ -118,6 +118,13 @@ function animateTransitionProps(
   preStyles = { display: "block" }
 ) {
   Object.assign(el.style, preStyles);
+
+  el.style.transition =
+    !el.style.transition ||
+    !window.getComputedStyle(el).getPropertyValue("transition")
+      ? "all .8s"
+      : el.style.transition;
+
   return new Promise((res) => {
     setTimeout(() => {
       Object.assign(el.style, props);
@@ -145,9 +152,12 @@ function animateClick(target, params = {}) {
   const hide = +target.style.opacity === 0;
   return animateTransitionProps(target, {
     opacity: hide ? opacityVal : 0,
-  })
-    .then(() => showHide({ elements: [target], hide: !hide }))
-    .then(() => callback());
+  }).then((el) => {
+    const isHide = hide || el.style.display === "none";
+    showHide({ elements: [target], hide: !hide });
+    callback();
+    return isHide;
+  });
 }
 
 function showHide({ elements = [], hide = null, displayProp = "block" } = {}) {
@@ -442,8 +452,8 @@ function createWindowModal({
 
     switch (typeof text) {
       case "string":
-        if (/^\<*.\/?\>$/.test(text)) {
-          parent.innerHTML(text);
+        if (/^\<.*\/?\>$/.test(text)) {
+          parent.innerHTML = text;
         } else {
           parent.textContent = text;
         }
