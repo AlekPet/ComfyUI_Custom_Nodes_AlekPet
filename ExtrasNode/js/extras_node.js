@@ -174,12 +174,14 @@ app.registerExtension({
         this.root.preview_content_combo = preview_content_combo;
       }
 
-      const closeAllContextMenus = LiteGraph.closeAllContextMenus;
+      const originalCloseAllContextMenus = LiteGraph.closeAllContextMenus;
       LiteGraph.closeAllContextMenus = function () {
-        closeAllContextMenus?.apply(this, arguments);
+        originalCloseAllContextMenus?.apply(this, arguments);
 
-        if (document.querySelector(".preview_content_combo"))
-          document.querySelector(".preview_content_combo").remove();
+        const previewCombo = document.querySelector(".preview_content_combo");
+        if (previewCombo) {
+          previewCombo.remove();
+        }
       };
 
       const closeItem = LiteGraph.ContextMenu.prototype.close;
