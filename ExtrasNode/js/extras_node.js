@@ -174,16 +174,6 @@ app.registerExtension({
         this.root.preview_content_combo = preview_content_combo;
       }
 
-      const originalCloseAllContextMenus = LiteGraph.closeAllContextMenus;
-      LiteGraph.closeAllContextMenus = function () {
-        originalCloseAllContextMenus?.apply(this, arguments);
-
-        const previewCombo = document.querySelector(".preview_content_combo");
-        if (previewCombo) {
-          previewCombo.remove();
-        }
-      };
-
       const closeItem = LiteGraph.ContextMenu.prototype.close;
       LiteGraph.ContextMenu.prototype.close = function () {
         closeItem?.apply(this, arguments);
@@ -292,6 +282,16 @@ app.registerExtension({
           cancelAnimationFrame(canvas.requanim);
         }
       });
+    };
+
+    const originalCloseAllContextMenus = LiteGraph.closeAllContextMenus;
+    LiteGraph.closeAllContextMenus = function () {
+      originalCloseAllContextMenus?.apply(this, arguments);
+
+      const previewCombo = document.querySelector(".preview_content_combo");
+      if (previewCombo) {
+        previewCombo.remove();
+      }
     };
 
     // PreviewImage settings ui

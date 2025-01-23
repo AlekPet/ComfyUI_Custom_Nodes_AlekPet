@@ -2070,6 +2070,29 @@ class Painter {
     );
   }
 
+  getImageByName(image_name) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = (e) => resolve(new Error("Image not load!"));
+
+      let name = image_name;
+      let folder_separator = name.lastIndexOf("/");
+      let subfolder = "";
+
+      if (folder_separator > -1) {
+        subfolder = name.substring(0, folder_separator);
+        name = name.substring(folder_separator + 1);
+      }
+
+      img.src = api.apiURL(
+        `/view?filename=${encodeURIComponent(
+          name
+        )}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}${app.getRandParam()}`
+      );
+    });
+  }
+
   async addImageToCanvas(image, options = {}) {
     async function uploadFile(file) {
       try {
@@ -2086,28 +2109,7 @@ class Painter {
           let path = data.name;
           if (data.subfolder) path = data.subfolder + "/" + path;
 
-          const img = await new Promise((resolve, reject) => {
-            let img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = (e) => resolve(new Error("Image not load!"));
-
-            let name = path;
-            let folder_separator = name.lastIndexOf("/");
-            let subfolder = "";
-
-            if (folder_separator > -1) {
-              subfolder = name.substring(0, folder_separator);
-              name = name.substring(folder_separator + 1);
-            }
-
-            img.src = api.apiURL(
-              `/view?filename=${encodeURIComponent(
-                name
-              )}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}${app.getRandParam()}`
-            );
-          });
-
-          return img;
+          return await getImageByName(path);
         } else {
           console.log(`${resp.status} - ${resp.statusText}`);
           return resp.statusText;
@@ -2776,7 +2778,6 @@ app.registerExtension({
       const getExtraMenuOptions = nodeType.prototype.getExtraMenuOptions;
       nodeType.prototype.getExtraMenuOptions = async function (_, options) {
         getExtraMenuOptions?.apply(this, arguments);
-        await this.getTitle();
 
         const past_index = options.findIndex(
             (m) => m?.content === "Paste (Clipspace)"
