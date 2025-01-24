@@ -399,21 +399,23 @@ class OpenPose {
   }
 
   resetCanvas(reset_size = false) {
-    if (confirm("Clear undo/redo?")) {
-      this.settings.undo_history = [];
-      this.settings.redo_history = [];
-    }
+    if (reset_size) {
+      if (confirm("Clear undo/redo?")) {
+        this.settings.undo_history = [];
+        this.settings.redo_history = [];
+      }
 
-    if (reset_size && confirm("Reset canvas size?")) {
-      this.setCanvasSize(512, 512);
+      if (confirm("Reset canvas size?")) {
+        this.setCanvasSize(512, 512);
 
-      const backgroundImg = this.canvas.backgroundImage;
-      this.canvas.clear();
-      this.canvas.backgroundColor = "#000";
-      this.addPose();
+        const backgroundImg = this.canvas.backgroundImage;
+        this.canvas.clear();
+        this.canvas.backgroundColor = "#000";
+        this.addPose();
 
-      this.setBackground(backgroundImg);
-      this.uploadPoseFile(this.node.name);
+        this.setBackground(backgroundImg);
+        this.uploadPoseFile(this.node.name);
+      }
     }
   }
 
@@ -446,43 +448,33 @@ class OpenPose {
 
     hideShowControls(false);
 
-    const uploadFile = async (blobFile) => {
-      try {
-        const resp = await api.fetchApi("/upload/image", {
-          method: "POST",
-          body: blobFile,
-        });
-
-        if (resp.status === 200) {
-          const data = await resp.json();
-
-          if (!this.image.options.values.includes(data.name)) {
-            this.image.options.values.push(data.name);
-          }
-
-          this.image.value = data.name;
-
-          hideShowControls(true);
-        } else {
-          alert(resp.status + " - " + resp.statusText);
-        }
-      } catch (error) {
-        hideShowControls(true);
-        console.log(error);
-      }
-    };
-
     //Temporarily hide background image
     let tmp_BackgroundImg = this.canvas.backgroundImage;
     this.canvas.backgroundImage = null;
     this.canvas.renderAll();
 
-    this.canvas.lowerCanvasEl.toBlob(function (blob) {
-      let formData = new FormData();
+    this.canvas.lowerCanvasEl.toBlob((blob) => {
+      const formData = new FormData();
       formData.append("image", blob, fileName);
       formData.append("overwrite", "true");
       formData.append("type", "input");
-      uploadFile(formData);
+
+      this.uploadFileToServer(formData)
+        .then((jsonData) => {
+          if (!jsonData.success) {
+            throw new Error(data.error);
+          }
+
+          const { name } = jsonData.data;
+
+          if (!this.image.options.values.includes(name)) {
+            this.image.options.values.push(name);
+          }
+
+          this.image.value = name;
+          hideShowControls(true);
+        })
+        .catch(() => hideShowControls(true));
     }, "image/png");
     // - end
 
@@ -499,28 +491,80 @@ class OpenPose {
     };
   }
 
+  async uploadFileToServer(formData) {
+    try {
+      const resp = await api.fetchApi("/upload/image", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (resp.status !== 200) {
+        return { success: false, error: `${resp.status} - ${resp.statusText}` };
+      }
+
+      return { success: true, data: await resp.json() };
+    } catch (error) {
+      return { success: false, error };
+    }
+  }
+
+  getImageUrlByName(jsonData) {
+    return {
+      url: api.apiURL(
+        `/view?filename=${encodeURIComponent(
+          jsonData.name
+        )}&type=input&subfolder=${
+          jsonData.subfolder
+        }${app.getPreviewFormatParam()}${app.getRandParam()}`
+      ),
+      name: jsonData.name,
+      subfolder: jsonData.subfolder,
+    };
+  }
+
   onLoadBackground(e) {
     try {
       const file = this.backgroundInput.files[0];
 
-      const url = URL.createObjectURL(file);
-      fabric.Image.fromURL(url, (img) => {
-        img.set({
-          originX: "left",
-          originY: "top",
-          opacity: 0.5,
-        });
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("overwrite", "true");
+      formData.append("type", "input");
 
-        this.canvas.setBackgroundImage(
-          img,
-          this.canvas.renderAll.bind(this.canvas),
-          {
-            scaleX: this.canvas.width / img.width,
-            scaleY: this.canvas.height / img.height,
+      this.uploadFileToServer(formData)
+        .then((jsonData) => {
+          if (!jsonData.success) {
+            throw new Error(jsonData.error);
           }
-        );
-      });
-    } catch (err) {}
+          return this.getImageUrlByName(jsonData.data);
+        })
+        .then((image_data) => {
+          if (!image_data) {
+            console.log("Invalid data image!");
+            return;
+          }
+          this.settings.background = image_data.url;
+
+          fabric.Image.fromURL(image_data.url, (img) => {
+            img.set({
+              originX: "left",
+              originY: "top",
+              opacity: 0.5,
+            });
+
+            this.canvas.setBackgroundImage(
+              img,
+              this.canvas.renderAll.bind(this.canvas),
+              {
+                scaleX: this.canvas.width / img.width,
+                scaleY: this.canvas.height / img.height,
+              }
+            );
+          });
+        });
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   getJSON() {
@@ -670,7 +714,7 @@ function createOpenPose(node, inputName, inputData, app) {
 
   node.openPose = new OpenPose(node, canvasOpenPose);
   const widget = node.addDOMWidget(
-    `w${inputName}`,
+    "widget_openpose",
     "openpose",
     openPoseWrapper,
     {
@@ -750,6 +794,9 @@ app.registerExtension({
         createOpenPose.apply(this, [this, nodeNamePNG, {}, app]);
 
         this.setSize([530, 620]);
+
+        this.openPose.uploadPoseFile(nodeNamePNG);
+
         // Resize window
         window.addEventListener("resize", (e) => resizeCanvas(this), false);
         return r;
@@ -779,6 +826,25 @@ app.registerExtension({
                 ? undo_history[undo_history.length - 1]
                 : { keypoints: default_keypoints }
             );
+
+            if (background) {
+              fabric.Image.fromURL(background, (img) => {
+                img.set({
+                  originX: "left",
+                  originY: "top",
+                  opacity: 0.5,
+                });
+
+                this.openPose.canvas.setBackgroundImage(
+                  img,
+                  this.openPose.canvas.renderAll.bind(this.openPose.canvas),
+                  {
+                    scaleX: this.openPose.canvas.width / img.width,
+                    scaleY: this.openPose.canvas.height / img.height,
+                  }
+                );
+              });
+            }
 
             this.openPose.settings = data;
             this.openPose.value = data;
