@@ -22,6 +22,7 @@ import {
   isEmptyObject,
   THEMES_MODAL_WINDOW,
 } from "./utils.js";
+import "./lib/painternode/fontfaceobserver.js";
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
@@ -80,6 +81,30 @@ function resizeCanvas(node, sizes) {
     app.graph.setDirtyCanvas(true, false);
   }, 1000);
 }
+
+const FONTS = {};
+const STATES = {
+  fontsLoaded: false,
+};
+
+async function getLoadedFonts() {
+  const getListFonts = async () => {
+    const fontFaces = await document.fonts.ready;
+    const loadedFonts = [];
+
+    document.fonts.forEach((font) => {
+      loadedFonts.push(font.family);
+    });
+
+    return [...new Set(loadedFonts)];
+  };
+
+  await getListFonts().then((fonts) => {
+    fonts.forEach((font) => {
+      FONTS[font] = { type: "custom" };
+    });
+  });
+}
 // ================= END FUNCTIONS ================
 
 // ================= CLASS PAINTER ================
@@ -110,13 +135,14 @@ class Painter {
     // this.redo_history = this.node.LS_Cls.LS_Painters.redo_history || [];
 
     this.fonts = {
-      Arial: "arial",
-      "Times New Roman": "Times New Roman",
-      Verdana: "verdana",
-      Georgia: "georgia",
-      Courier: "courier",
-      "Comic Sans MS": "comic sans ms",
-      Impact: "impact",
+      Arial: { type: "default" },
+      "Times New Roman": { type: "default" },
+      Verdana: { type: "default" },
+      Georgia: { type: "default" },
+      Courier: { type: "default" },
+      "Comic Sans MS": { type: "default" },
+      Impact: { type: "default" },
+      ...FONTS,
     };
 
     this.bringFrontSelected = true;
@@ -372,6 +398,7 @@ class Painter {
     });
 
     this.painter_bg_setting.appendChild(this.bgImageFile);
+
     this.changePropertyBrush();
     this.createBrushesToolbar();
     this.bindEvents();
@@ -980,29 +1007,71 @@ class Painter {
     });
     const separator = makeElement("div", { class: ["separator"] });
     const selectFontFamily = makeElement("select", {
+      dataset: { prop: "prop_fontFamily" },
       class: ["font_family_select"],
     });
 
-    for (let f in this.fonts) {
+    for (let font in this.fonts) {
       const option = makeElement("option");
-      if (f === "Arial") option.setAttribute("selected", true);
-      option.value = this.fonts[f];
-      option.textContent = f;
+      if (font === "Arial") option.setAttribute("selected", true);
+      option.value = font;
+      option.textContent = font;
       selectFontFamily.appendChild(option);
     }
 
     // Select front event
     selectFontFamily.onchange = (e) => {
-      if (this.getActiveStyle("fontFamily") != selectFontFamily.value)
-        this.setActiveStyle("fontFamily", selectFontFamily.value);
+      if (this.getActiveStyle("fontFamily") != selectFontFamily.value) {
+        if (this.fonts[selectFontFamily.value].type == "default") {
+          this.setActiveStyle("fontFamily", selectFontFamily.value);
+          return;
+        }
+
+        const font = new FontFaceObserver(selectFontFamily.value);
+        font.load().then(
+          () => {
+            // console.log("Font is available");
+            this.setActiveStyle("fontFamily", selectFontFamily.value);
+          },
+          () => {
+            // console.log("Font not is available");
+          }
+        );
+
+        this.uploadPaintFile(this.node.name);
+      }
     };
+
+    const infoFontsButton = makeElement("button", {
+      style: {},
+      textContent: "?",
+      title: "Info for fonts",
+      onclick: (e) =>
+        createWindowModal({
+          textTitle: "NOTE",
+          textBody:
+            "<b>If fonts not loaded in the canvas, refresh page browser!😅</b>",
+          ...THEMES_MODAL_WINDOW.warning,
+          options: {
+            auto: { autohide: true, autoshow: true, autoremove: true },
+            parent: this.canvas.wrapperEl,
+            overlay: {
+              overlay_enabled: true,
+              overlayStyles: {
+                position: "absolute",
+              },
+            },
+          },
+        }),
+    });
 
     property_textbox.append(
       buttonItalic,
       buttonBold,
       buttonUnderline,
       separator,
-      selectFontFamily
+      selectFontFamily,
+      infoFontsButton
     );
     this.painter_drawning_box_property.append(property_textbox);
   }
@@ -1577,12 +1646,20 @@ class Painter {
       if (!targets || targets.length == 0) return;
 
       // Selected tools
-      const setProps = (style, check) => {
+      const setProps = (style, value) => {
         const propEl = this.painter_drawning_box_property.querySelector(
-          `#prop_${style}`
+          `[data-prop=prop_${style}]`
         );
 
-        if (propEl) propEl.classList[check ? "remove" : "add"]("active");
+        if (propEl) {
+          switch (propEl.dataset.prop) {
+            case "prop_fontFamily": {
+              propEl.value = value;
+            }
+            default:
+              propEl.classList[value ? "remove" : "add"]("active");
+          }
+        }
       };
 
       targets.forEach((target) => {
@@ -1602,6 +1679,8 @@ class Painter {
             "underline",
             Boolean(this.getActiveStyle("underline", target)) == false
           );
+
+          setProps("fontFamily", this.getActiveStyle("fontFamily", target));
         }
 
         if (
@@ -1991,6 +2070,29 @@ class Painter {
     );
   }
 
+  getImageByName(image_name) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = (e) => resolve(new Error("Image not load!"));
+
+      let name = image_name;
+      let folder_separator = name.lastIndexOf("/");
+      let subfolder = "";
+
+      if (folder_separator > -1) {
+        subfolder = name.substring(0, folder_separator);
+        name = name.substring(folder_separator + 1);
+      }
+
+      img.src = api.apiURL(
+        `/view?filename=${encodeURIComponent(
+          name
+        )}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}${app.getRandParam()}`
+      );
+    });
+  }
+
   async addImageToCanvas(image, options = {}) {
     async function uploadFile(file) {
       try {
@@ -2007,28 +2109,7 @@ class Painter {
           let path = data.name;
           if (data.subfolder) path = data.subfolder + "/" + path;
 
-          const img = await new Promise((resolve, reject) => {
-            let img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = (e) => resolve(new Error("Image not load!"));
-
-            let name = path;
-            let folder_separator = name.lastIndexOf("/");
-            let subfolder = "";
-
-            if (folder_separator > -1) {
-              subfolder = name.substring(0, folder_separator);
-              name = name.substring(folder_separator + 1);
-            }
-
-            img.src = api.apiURL(
-              `/view?filename=${encodeURIComponent(
-                name
-              )}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}${app.getRandParam()}`
-            );
-          });
-
-          return img;
+          return await getImageByName(path);
         } else {
           console.log(`${resp.status} - ${resp.statusText}`);
           return resp.statusText;
@@ -2106,7 +2187,7 @@ class Painter {
     await new Promise((res) => {
       const uploadFile = async (blobFile) => {
         try {
-          const resp = await fetch("/upload/image", {
+          const resp = await api.fetchApi("/upload/image", {
             method: "POST",
             body: blobFile,
           });
@@ -2528,6 +2609,7 @@ app.registerExtension({
   async init(app) {
     // Add styles
     addStylesheet("css/painternode/painter_node_styles.css", import.meta.url);
+    addStylesheet("css/painternode/painter_node_fonts.css", import.meta.url);
 
     // Add settings params painter node
     app.ui.settings.addSetting({
@@ -2616,6 +2698,13 @@ app.registerExtension({
   },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === "PainterNode") {
+      if (!STATES.fontsLoaded) {
+        await getLoadedFonts().then(() => {
+          STATES.fontsLoaded = true;
+          console.log("PainterNode: Loading fonts completed");
+        });
+      }
+
       // Create node
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = async function () {
@@ -2689,7 +2778,6 @@ app.registerExtension({
       const getExtraMenuOptions = nodeType.prototype.getExtraMenuOptions;
       nodeType.prototype.getExtraMenuOptions = async function (_, options) {
         getExtraMenuOptions?.apply(this, arguments);
-        await this.getTitle();
 
         const past_index = options.findIndex(
             (m) => m?.content === "Paste (Clipspace)"

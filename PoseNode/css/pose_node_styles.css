@@ -1,3 +1,11 @@
+.canvas_container_openpose {
+  width: auto !important;
+  height: auto !important;
+}
+.canvas_container_openpose canvas {
+  width: 100% !important;
+  height: auto !important;
+}
 .pose_panelButtons {
   position: absolute;
   padding: 4px;
@@ -5,6 +13,9 @@
   gap: 4px;
   flex-direction: column;
   width: fit-content;
+}
+.pose_panelButtons button {
+  width: 32px;
 }
 .pose_panelButtons .clear_history {
   border-color: var(--error-text);
