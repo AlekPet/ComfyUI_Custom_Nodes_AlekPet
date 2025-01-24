@@ -670,7 +670,7 @@ function createOpenPose(node, inputName, inputData, app) {
 
   node.openPose = new OpenPose(node, canvasOpenPose);
   const widget = node.addDOMWidget(
-    `w${inputName}`,
+    "widget_openpose",
     "openpose",
     openPoseWrapper,
     {
