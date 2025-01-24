@@ -462,7 +462,7 @@ class OpenPose {
       this.uploadFileToServer(formData)
         .then((jsonData) => {
           if (!jsonData.success) {
-            throw new Error(data.error);
+            throw new Error(jsonData.error);
           }
 
           const { name } = jsonData.data;
