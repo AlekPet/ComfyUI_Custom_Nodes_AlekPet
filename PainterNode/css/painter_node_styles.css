@@ -1,22 +1,29 @@
-.canvas-container-painter {
-  position: absolute !important;
-  left: 0;
-  top: 0;
+.wrapperPainter {
+  display: flex;
 }
-.panelPaintBox {
-  position: absolute;
+
+.panelPaintBoxRight {
+  position: relative;
   width: 100%;
+}
+
+.canvas-container-painter {
+  width: auto !important;
+}
+
+.canvas-container-painter canvas {
+  width: 100% !important;
+  height: auto !important;
+}
+
+.panelPaintBoxLeft {
+  display: flex;
+  flex-direction: column;
 }
 .comfy-menu-btns button.active {
   color: var(--error-text) !important;
   font-weight: bold;
   border: 1px solid;
-}
-.painter_manipulation_box {
-  position: absolute;
-  left: 50%;
-  top: -40px;
-  transform: translateX(-50%);
 }
 .painter_manipulation_box > div {
   display: grid;
@@ -27,23 +34,23 @@
 }
 .painter_manipulation_box > div button {
   font-size: 0.5rem;
+  width: 80px;
 }
 .painter_manipulation_box > div button[id^="zpos"]:active {
   background-color: #484848;
 }
 .painter_drawning_box {
-  position: absolute;
-  top: -64px;
-  width: 88px;
+  min-width: 100px;
 }
-.painter_drawning_box button {
-  width: 24px;
+
+.panelPaintBoxRight_options {
+  min-height: 55px;
 }
-.painter_drawning_box_property {
-  position: absolute;
-  top: -60px;
-  width: 100%;
+
+.property_brushesBox > button {
+  width: auto;
 }
+
 .painter_drawning_box_property select {
   color: var(--input-text);
   background-color: var(--comfy-input-bg);
@@ -66,16 +73,14 @@
   align-items: center;
 }
 .painter_drawning_box input[type="number"] {
-  width: 2.6rem;
+  width: 50px;
   color: var(--input-text);
   background-color: var(--comfy-input-bg);
   border-radius: 8px;
   border-color: var(--border-color);
   border-style: solid;
-  font-size: inherit;
 }
-.painter_colors_box input[type="color"],
-.painter_bg_setting input[type="color"] {
+.painter_drawning_box input[type="color"] {
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
@@ -85,11 +90,10 @@
   border-radius: 8px;
   border-color: var(--border-color);
   border-style: solid;
-  font-size: inherit;
 }
 
 .painter_bg_setting button {
-  width: 40px;
+  width: 50px;
   height: 20px;
 }
 .painter_bg_setting #bgColor:after {
@@ -115,6 +119,23 @@
 .painter_shapes_box {
   grid-template-columns: 1fr 1fr 1fr;
 }
+.painter_shapes_box button,
+.property_textBox button {
+  width: 25px;
+  height: 25px;
+}
+
+.painter_settings_box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.painter_settings_box button {
+  width: 80px;
+  height: 20px;
+}
+
 .painter_colors_alpha {
   grid-template-columns: 0.7fr 0.7fr;
 }
@@ -134,7 +155,6 @@
   right: 0;
 }
 .list_objects_panel {
-  width: 90%;
   font-size: 0.7rem;
 }
 .list_objects_panel__items {
@@ -222,11 +242,11 @@
 .property_brushesSecondBox {
   display: flex;
   gap: 5px;
-  flex-wrap: wrap;
   flex: 1 0;
 }
+
 .property_brushesSecondBox > button {
-  min-width: 30px;
+  width: 30px;
   font-size: 0.5rem;
 }
 .property_brushesSecondBox svg {

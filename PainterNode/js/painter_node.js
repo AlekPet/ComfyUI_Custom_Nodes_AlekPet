@@ -1,7 +1,6 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2024.09.25
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -241,10 +240,31 @@ class Painter {
     }
   }
 
-  makeElements() {
-    const panelPaintBox = document.createElement("div");
-    panelPaintBox.innerHTML = `<div class="painter_manipulation_box" f_name="Locks" style="display:none;">
-        <div class="comfy-menu-btns">
+  makeElements(wrapperPainter) {
+    // Main panelpaint box
+    const panelPaintBoxLeft = makeElement("div", {
+      class: ["panelPaintBoxLeft"],
+    });
+
+    const panelPaintBoxRight = makeElement("div", {
+      class: ["panelPaintBoxRight"],
+    });
+
+    const panelPaintBoxRight_options = makeElement("div", {
+      class: ["panelPaintBoxRight_options"],
+    });
+
+    panelPaintBoxRight.append(
+      panelPaintBoxRight_options,
+      this.canvas.wrapperEl
+    );
+    wrapperPainter.append(panelPaintBoxLeft, panelPaintBoxRight);
+
+    this.manipulation_box = makeElement("div", {
+      class: ["painter_manipulation_box"],
+      f_name: "Locks",
+      style: { display: "none" },
+      innerHTML: `<div class="comfy-menu-btns">
             <button id="lockMovementX" title="Lock move X">Lock X</button>
             <button id="lockMovementY" title="Lock move Y">Lock Y</button>
             <button id="lockScalingX" title="Lock scale X">Lock ScaleX</button>
@@ -259,12 +279,18 @@ class Painter {
             <button id="zpos_BringFrontSelected" title="Moves an object or the objects of a multiple selection to the top after mouse click" class="${
               this.bringFrontSelected ? "active" : ""
             }">Bring Up Always</button>
-        </div>
-    </div>
-    <div class="painter_drawning_box_property" style='display:block;'></div>
-    <div class="painter_drawning_box">
-        <div class="painter_mode_box fieldset_box comfy-menu-btns" f_name="Mode">
-            <button id="painter_change_mode" title="Enable selection mode">Selection</button>
+        </div>`,
+    });
+
+    this.painter_drawning_box_property = makeElement("div", {
+      class: ["painter_drawning_box_property"],
+      style: { display: "block" },
+    });
+
+    this.painter_drawning_box = makeElement("div", {
+      class: ["painter_drawning_box"],
+      innerHTML: `<div class="painter_mode_box fieldset_box comfy-menu-btns" f_name="Mode">
+            <button id="painter_change_mode" title="Enable selection mode" style="width: 72px;">Selection</button>
             <div class="list_objects_panel" style="display:none;">
                 <div class="list_objects_align">
                     <div class="list_objects_panel__items"></div>
@@ -307,37 +333,45 @@ class Painter {
             <div class="painter_settings_box fieldset_box comfy-menu-btns" f_name="Settimgs">    
               <button id="painter_canvas_size" title="Set canvas size">Canvas size</button>
             </div>
-        </div>
-    </div>
-    <div class="painter_history_panel comfy-menu-btns">
-      <button id="history_undo" title="Undo" disabled>⟲</button>
-      <button id="history_redo" title="Redo" disabled>⟳</button>
-    </div> 
-    `;
+        </div>`,
+    });
 
-    // Main panelpaint box
-    panelPaintBox.className = "panelPaintBox";
-
-    this.canvas.wrapperEl.appendChild(panelPaintBox);
-    // Manipulation box
-    this.manipulation_box = panelPaintBox.querySelector(
-      ".painter_manipulation_box"
-    );
-    this.painter_drawning_box_property = panelPaintBox.querySelector(
-      ".painter_drawning_box_property"
+    panelPaintBoxLeft.append(
+      this.manipulation_box,
+      this.painter_drawning_box_property,
+      this.painter_drawning_box
     );
 
-    [this.undo_button, this.redo_button] = panelPaintBox.querySelectorAll(
-      ".painter_history_panel button"
+    this.undo_button = makeElement("button", {
+      id: "history_undo",
+      title: "Undo",
+      disabled: true,
+      textContent: "⟲",
+    });
+    this.redo_button = makeElement("button", {
+      id: "history_redo",
+      title: "Redo",
+      disabled: true,
+      textContent: "⟳",
+    });
+    this.painter_history_panel = makeElement("div", {
+      class: ["painter_history_panel", "comfy-menu-btns"],
+      children: [this.undo_button, this.redo_button],
+    });
+
+    panelPaintBoxRight_options.append(
+      this.manipulation_box,
+      this.painter_drawning_box_property
     );
 
     // Modify in change mode
-    this.painter_shapes_box_modify = panelPaintBox.querySelector(
+    this.painter_shapes_box_modify = this.painter_drawning_box.querySelector(
       ".painter_shapes_box_modify"
     );
-    this.painter_drawning_elements = panelPaintBox.querySelector(
+    this.painter_drawning_elements = this.painter_drawning_box.querySelector(
       ".painter_drawning_elements"
     );
+
     [
       this.painter_shapes_box,
       this.painter_colors_box,
@@ -355,38 +389,39 @@ class Painter {
       textContent: "Settings 🛠️",
       title: "Show main settings model window",
       onclick: (e) => animateClick(this.painter_wrapper_settings),
-      customSize: { w: 70, h: 25, fs: 10 },
     });
     this.painter_settings_box.append(mainSettingsNode);
 
-    this.change_mode = panelPaintBox.querySelector("#painter_change_mode");
-    this.painter_shapes_box = panelPaintBox.querySelector(
+    this.change_mode = this.painter_drawning_box.querySelector(
+      "#painter_change_mode"
+    );
+    this.painter_shapes_box = this.painter_drawning_box.querySelector(
       ".painter_shapes_box"
     );
-    this.strokeWidth = panelPaintBox.querySelector("#strokeWidth");
-    this.eraseWidth = panelPaintBox.querySelector("#eraseWidth");
-    this.strokeColor = panelPaintBox.querySelector("#strokeColor");
-    this.fillColor = panelPaintBox.querySelector("#fillColor");
+    this.strokeWidth = this.painter_drawning_box.querySelector("#strokeWidth");
+    this.eraseWidth = this.painter_drawning_box.querySelector("#eraseWidth");
+    this.strokeColor = this.painter_drawning_box.querySelector("#strokeColor");
+    this.fillColor = this.painter_drawning_box.querySelector("#fillColor");
 
-    this.list_objects_panel__items = panelPaintBox.querySelector(
+    this.list_objects_panel__items = this.painter_drawning_box.querySelector(
       ".list_objects_panel__items"
     );
 
-    this.strokeColorTransparent = panelPaintBox.querySelector(
+    this.strokeColorTransparent = this.painter_drawning_box.querySelector(
       "#strokeColorTransparent"
     );
-    this.fillColorTransparent = panelPaintBox.querySelector(
+    this.fillColorTransparent = this.painter_drawning_box.querySelector(
       "#fillColorTransparent"
     );
 
-    this.bgColor = panelPaintBox.querySelector("#bgColor");
-    this.clear = panelPaintBox.querySelector("#clear");
+    this.bgColor = this.painter_drawning_box.querySelector("#bgColor");
+    this.clear = this.painter_drawning_box.querySelector("#clear");
 
-    this.painter_bg_setting = panelPaintBox.querySelector(
+    this.painter_bg_setting = this.painter_drawning_box.querySelector(
       ".painter_bg_setting"
     );
 
-    this.buttonSetCanvasSize = panelPaintBox.querySelector(
+    this.buttonSetCanvasSize = this.painter_drawning_box.querySelector(
       "#painter_canvas_size"
     );
 
@@ -437,7 +472,6 @@ class Painter {
       },
     });
 
-    pipingChangeSize.customSize = { w: 10, h: 10, fs: 10 };
     labelPipingChangeSize.append(pipingChangeSize);
     // end - LS change size piping
 
@@ -468,7 +502,6 @@ class Painter {
       },
     });
 
-    pipingUpdateImageCheckbox.customSize = { w: 10, h: 10, fs: 10 };
     labelPipingUpdateImage.append(pipingUpdateImageCheckbox);
     // end - Piping update image
 
@@ -631,7 +664,6 @@ class Painter {
           checkBoxLSSave.checked;
         this.node.LS_Cls.LS_Save();
       },
-      customSize: { w: 10, h: 10, fs: 10 },
     });
 
     labelLSSave.append(checkBoxLSSave);
@@ -721,6 +753,7 @@ class Painter {
         "input[class*=painter_position]"
       );
     }
+
     this.elemX.value = object.left;
     this.elemY.value = object.top;
 
@@ -873,6 +906,8 @@ class Painter {
       );
       // Position and scale remove
       this.position_sizes_box.remove();
+      this.elemX = null;
+      this.elemY = null;
     }
 
     this.canvas.discardActiveObject();
@@ -1087,7 +1122,6 @@ class Painter {
       title: "MyPaint Brush",
       textContent: "MyPaint",
     });
-    BrushMyPaint.customSize = { w: 50, h: 25, fs: 10 };
 
     const buttonBrushSymmetry = makeElement("button", {
       dataset: [{ shape: "BrushSymmetry" }, { prop: "prop_BrushSymmetry" }],
@@ -1099,17 +1133,15 @@ class Painter {
 
     // Second panel setting brushes
     this.property_brushesSecondBox = makeElement("div", {
-      class: ["property_brushesSecondBox"],
+      class: ["property_brushesSecondBox", "comfy-menu-btns"],
     });
 
-    property_brushesBox.append(
-      BrushMyPaint,
-      buttonBrushSymmetry,
-      separator,
+    property_brushesBox.append(BrushMyPaint, buttonBrushSymmetry, separator);
+
+    this.painter_drawning_box_property.append(
+      property_brushesBox,
       this.property_brushesSecondBox
     );
-
-    this.painter_drawning_box_property.append(property_brushesBox);
   }
 
   async createToolbarOptions(type) {
@@ -2248,155 +2280,63 @@ class Painter {
 // ================= CREATE PAINTER WIDGET ============
 function PainterWidget(node, inputName, inputData, app) {
   node.name = inputName;
-  const widget = {
-    type: "painter_widget",
-    name: `w${inputName}`,
-    callback: () => {},
-    draw: function (ctx, _, widgetWidth, y, widgetHeight) {
-      const margin = 10,
-        left_offset = 8,
-        top_offset = 50,
-        visible = app.canvas.ds.scale > 0.6 && this.type === "painter_widget",
-        w = widgetWidth - margin * 2 - 80,
-        clientRectBound = ctx.canvas.getBoundingClientRect(),
-        transform = new DOMMatrix()
-          .scaleSelf(
-            clientRectBound.width / ctx.canvas.width,
-            clientRectBound.height / ctx.canvas.height
-          )
-          .multiplySelf(ctx.getTransform())
-          .translateSelf(margin, margin + y),
-        scale = new DOMMatrix().scaleSelf(transform.a, transform.d);
-
-      let aspect_ratio = 1;
-      if (node?.imgs && typeof node.imgs !== undefined) {
-        aspect_ratio = node.imgs[0].naturalHeight / node.imgs[0].naturalWidth;
-      }
-
-      Object.assign(this.painter_wrap.style, {
-        left: `${
-          transform.a * margin * left_offset +
-          transform.e +
-          clientRectBound.left
-        }px`,
-        top: `${
-          transform.d + transform.f + top_offset + clientRectBound.top
-        }px`,
-        width: `${w * transform.a}px`,
-        height: `${w * transform.d}px`,
-        position: "absolute",
-        zIndex: 9,
-      });
-
-      Object.assign(this.painter_wrap.children[0].style, {
-        transformOrigin: "0 0",
-        transform: scale,
-        width: w + "px",
-        height: w * aspect_ratio + "px",
-      });
-
-      Object.assign(this.painter_wrap.children[1].style, {
-        transformOrigin: "0 0",
-        transform: scale,
-        width: w + "px",
-        height: w * aspect_ratio + "px",
-      });
-
-      Array.from(
-        this.painter_wrap.children[2].querySelectorAll(
-          "input, button, input:after, span, div.painter_drawning_box"
-        )
-      ).forEach((element) => {
-        if (element.type == "number") {
-          Object.assign(element.style, {
-            width: `${40 * transform.a}px`,
-            height: `${21 * transform.d}px`,
-            fontSize: `${transform.d * 10.0}px`,
-          });
-        } else if (element.tagName == "SPAN") {
-          // NOPE
-        } else if (element.tagName == "DIV") {
-          Object.assign(element.style, {
-            width: `${88 * transform.a}px`,
-            left: `${-90 * transform.a}px`,
-          });
-        } else {
-          let sizesEl = { w: 25, h: 25, fs: 10 };
-
-          if (element?.customSize) {
-            sizesEl = element.customSize;
-          }
-
-          if (element.id.includes("lock")) sizesEl = { w: 75, h: 15, fs: 10 };
-          if (element.id.includes("zpos")) sizesEl = { w: 80, h: 15, fs: 7 };
-          if (
-            ["painter_change_mode", "painter_canvas_size"].includes(element.id)
-          )
-            sizesEl.w = 75;
-          if (element.hasAttribute("painter_object"))
-            sizesEl = { w: 58, h: 16, fs: 10 };
-          if (element.hasAttribute("bgImage"))
-            sizesEl = { w: 60, h: 20, fs: 10 };
-
-          Object.assign(element.style, {
-            cursor: "pointer",
-            width: `${sizesEl.w * transform.a}px`,
-            height: `${sizesEl.h * transform.d}px`,
-            fontSize: `${transform.d * sizesEl.fs}px`,
-          });
-        }
-      });
-      this.painter_wrap.hidden = !visible;
-    },
-  };
-
-  // Fabric canvas
-  let canvasPainter = makeElement("canvas", {
-    width: 512,
-    height: 512,
-  });
-  node.painter = new Painter(node, canvasPainter);
-
-  node.painter.canvas.setWidth(node.painter.currentCanvasSize.width);
-  node.painter.canvas.setHeight(node.painter.currentCanvasSize.height);
-
-  resizeCanvas(node, node.painter.canvas);
-
-  widget.painter_wrap = node.painter.canvas.wrapperEl;
-  widget.parent = node;
-  widget.painter_wrap.hidden = true;
-
-  node.painter.image.value = node.name;
-
-  node.painter.propertiesLS();
-  node.painter.makeElements();
-
-  document.body.appendChild(widget.painter_wrap);
 
   node.addWidget("button", "Clear Canvas", "clear_painer", () => {
     node.painter.list_objects_panel__items.innerHTML = "";
     node.painter.clearCanvas();
   });
 
-  // Add customWidget to node
-  node.addCustomWidget(widget);
+  const wrapperPainter = makeElement("div", {
+    class: ["wrapperPainter"],
+  });
 
-  node.onRemoved = () => {
-    //this.LS_Cls.removeData();
+  // Fabric canvas
+  const canvasPainter = makeElement("canvas", {
+    width: 512,
+    height: 512,
+  });
+  node.painter = new Painter(node, canvasPainter);
 
-    // When removing this node we need to remove the input from the DOM
-    for (let y in node.widgets) {
-      if (node.widgets[y].painter_wrap) {
-        node.widgets[y].painter_wrap.remove();
-      }
-    }
-  };
+  const widget = node.addDOMWidget(
+    "painter_widget",
+    "painter_node",
+    wrapperPainter
+  );
 
-  widget.onRemove = () => {
-    widget.painter_wrap?.remove();
-  };
+  widget.callback = () => {};
+
+  // node.painter.canvas.setWidth(node.painter.currentCanvasSize.width);
+  // node.painter.canvas.setHeight(node.painter.currentCanvasSize.height);
+
+  // resizeCanvas(node, node.painter.canvas);
+
+  widget.wrapperPainter = wrapperPainter;
+  widget.painter_wrap = node.painter.canvas.wrapperEl;
+  widget.parent = node;
+  // widget.painter_wrap.hidden = true;
+
+  node.painter.image.value = node.name;
+  node.painter.propertiesLS();
+
+  node.painter.makeElements(wrapperPainter);
+
+  // node.onRemoved = () => {
+  //   //this.LS_Cls.removeData();
+
+  //   // When removing this node we need to remove the input from the DOM
+  //   for (let y in node.widgets) {
+  //     if (node.widgets[y].painter_wrap) {
+  //       node.widgets[y].painter_wrap.remove();
+  //     }
+  //   }
+  // };
+
+  // widget.onRemove = () => {
+  //   widget.painter_wrap?.remove();
+  // };
 
   node.onResize = function () {
+    const minSize = 600;
     let [w, h] = this.size;
     let aspect_ratio = 1;
 
@@ -2406,11 +2346,11 @@ function PainterWidget(node, inputName, inputData, app) {
     let buffer = 90;
 
     if (w > this.painter.maxNodeSize) w = w - (w - this.painter.maxNodeSize);
-    if (w < 600) w = 600;
+    if (w < minSize) w = minSize;
 
     h = w * aspect_ratio + buffer;
 
-    if (h < 600) h = 600 + h / 2;
+    if (h < minSize) h = minSize + h / 2;
 
     this.size = [w, h];
   };
@@ -2447,8 +2387,6 @@ function PainterWidget(node, inputName, inputData, app) {
       node.painter.canvas.wrapperEl.hidden = true;
     }
   };
-
-  node.onConnectInput = () => console.log(`Connected input ${node.name}`);
 
   // DragDrop past image
   node.onDragOver = function (e) {
@@ -2577,22 +2515,6 @@ function PainterWidget(node, inputName, inputData, app) {
       });
   });
 
-  app.canvas.onDrawBackground = function () {
-    // Draw node isnt fired once the node is off the screen
-    // if it goes off screen quickly, the input may not be removed
-    // this shifts it off screen so it can be moved back if the node is visible.
-    for (let n in app.graph._nodes) {
-      const currnode = app.graph._nodes[n];
-      for (let w in currnode.widgets) {
-        let wid = currnode.widgets[w];
-        if (Object.hasOwn(wid, "painter_widget")) {
-          wid.painter_wrap.style.left = -8000 + "px";
-          wid.painter_wrap.style.position = "absolute";
-        }
-      }
-    }
-  };
-
   node.onResize();
   app.graph.setDirtyCanvas(true, false);
 
@@ -2685,17 +2607,7 @@ app.registerExtension({
       },
     });
   },
-  async setup(app) {
-    let PainerNode = app.graph._nodes.filter((wi) => wi.type == "PainterNode");
-
-    if (PainerNode.length) {
-      PainerNode.map(async (n) => {
-        console.log(`Setup PainterNode: ${n.name}`);
-        // Resize window
-        window.addEventListener("resize", (e) => resizeCanvas(n), false);
-      });
-    }
-  },
+  async setup(app) {},
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === "PainterNode") {
       if (!STATES.fontsLoaded) {
@@ -2770,7 +2682,7 @@ app.registerExtension({
         this.painter.canvas.renderAll();
         this.painter.uploadPaintFile(nodeNamePNG);
         this.title = `${this.type} - ${this.painter.currentCanvasSize.width}x${this.painter.currentCanvasSize.height}`;
-
+        window.addEventListener("resize", (e) => resizeCanvas(this), false);
         return r;
       };
 

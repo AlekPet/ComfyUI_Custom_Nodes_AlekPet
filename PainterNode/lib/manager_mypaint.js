@@ -93,7 +93,6 @@ class MenuBrushes {
       textContent: "INFORMATION",
       style: "width: 150px",
     });
-    kistey__brushes__info.customSize = { w: 150, h: 17, fs: 10 };
 
     kistey_dir__name_wrapper.append(kistey_directory_slider);
 
@@ -404,7 +403,6 @@ class MyPaintManager {
       class: ["buttonMenuBrushes"],
       textContent: "Brushes",
     });
-    this.buttonMenuBrushes.customSize = { w: 60, h: 25, fs: 10 };
 
     this.buttonMenuBrushes.addEventListener("click", () => {
       if (!this.menuBrushes.wrapper__kistey) {
@@ -419,7 +417,6 @@ class MyPaintManager {
       class: ["buttonMenuSettings"],
       textContent: "Settings",
     });
-    this.buttonMenuSettings.customSize = { w: 60, h: 25, fs: 10 };
 
     this.buttonMenuSettings.addEventListener("click", () =>
       animateClick(this.kistey_wrapper_settings)
@@ -610,7 +607,6 @@ class MyPaintManager {
         });
 
         const range = this[`range_brush_${name}`];
-        range.customSize = { w: 100, h: 6, fs: 10 };
         range.style.background = rangeGradient(range);
 
         if (setting?.events && Object.keys(setting.events).length) {
@@ -631,8 +627,6 @@ class MyPaintManager {
         });
 
         const checkbox = this[`checkbox_brush_${name}`];
-
-        checkbox.customSize = { w: 15, h: 15, fs: 10 };
 
         if (setting?.events && Object.keys(setting.events).length) {
           Object.keys(setting.events).forEach((eventName) =>
