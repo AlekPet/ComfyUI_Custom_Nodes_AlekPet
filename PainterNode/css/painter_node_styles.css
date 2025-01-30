@@ -120,7 +120,8 @@
   grid-template-columns: 1fr 1fr 1fr;
 }
 .painter_shapes_box button,
-.property_textBox button {
+.property_textBox button,
+.painter_history_panel > button {
   width: 25px;
   height: 25px;
 }
@@ -131,7 +132,8 @@
   align-items: center;
 }
 
-.painter_settings_box button {
+.painter_settings_box button,
+.painter_mode_box > button {
   width: 80px;
   height: 20px;
 }
