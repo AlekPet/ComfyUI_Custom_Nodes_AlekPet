@@ -115,6 +115,7 @@ class OpenPose {
     this.canvas = this.initCanvas(canvasElement);
     this.image = node.widgets.find((w) => w.name === "image");
   }
+
   getSettings() {
     return JSON.parse(JSON.stringify(this.settings));
   }
@@ -432,6 +433,26 @@ class OpenPose {
     }
   }
 
+  showImage(name) {
+    let img = new Image();
+    img.onload = () => {
+      this.node.imgs = [img];
+      app.graph.setDirtyCanvas(true);
+    };
+
+    let folder_separator = name.lastIndexOf("/");
+    let subfolder = "";
+    if (folder_separator > -1) {
+      subfolder = name.substring(0, folder_separator);
+      name = name.substring(folder_separator + 1);
+    }
+
+    img.src = api.apiURL(
+      `/view?filename=${name}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}&${app.getRandParam()}`
+    );
+    this.node.setSizeForImage?.();
+  }
+
   uploadPoseFile(fileName) {
     // Upload pose to temp folder ComfyUI
     const hideShowControls = (show) => {
@@ -472,6 +493,7 @@ class OpenPose {
           }
 
           this.image.value = name;
+          this.showImage(name);
           hideShowControls(true);
         })
         .catch(() => hideShowControls(true));
@@ -724,6 +746,8 @@ function createOpenPose(node, inputName, inputData, app) {
     }
   );
 
+  widget.callback = (v) => {};
+
   let widgetCombo = node.widgets.filter((w) => w.type === "combo");
   widgetCombo[0].value = node.name;
 
@@ -763,6 +787,8 @@ function createOpenPose(node, inputName, inputData, app) {
 
     this.size = [w, h];
   };
+
+  node.onDrawBackground = function (ctx) {};
 
   return { widget: widget };
 }
@@ -847,7 +873,6 @@ app.registerExtension({
             }
 
             this.openPose.settings = data;
-            this.openPose.value = data;
 
             this.openPose.canvas.renderAll();
             this.openPose.uploadPoseFile(this.name);
