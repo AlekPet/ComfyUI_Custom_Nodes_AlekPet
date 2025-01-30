@@ -539,13 +539,13 @@ class MyPaintManager {
       DefaultSize: {
         name: "default size",
         checked:
-          this.painterNode.node.LS_Cls.LS_Painters.settings?.mypaint_settings
+          this.painterNode.settings_painter_node.settings?.mypaint_settings
             ?.preset_brush_size ?? true,
         type: "checkbox",
         title: "Apply size from brush settings",
         events: {
           change: (e) => {
-            const lsPainter = this.painterNode.node.LS_Cls.LS_Painters.settings;
+            const lsPainter = this.painterNode.settings_painter_node.settings;
             if (!lsPainter.hasOwnProperty("mypaint_settings"))
               lsPainter.mypaint_settings = {};
 
@@ -553,20 +553,20 @@ class MyPaintManager {
               this.checkbox_brush_default_size.checked;
 
             // Save to localStorage
-            this.painterNode.node.LS_Cls.LS_Save();
+            this.painterNode.saveSettingsPainterNode();
           },
         },
       },
       DefaultColor: {
         name: "default color",
         checked:
-          this.painterNode.node.LS_Cls.LS_Painters.settings?.mypaint_settings
+          this.painterNode.settings_painter_node.settings?.mypaint_settings
             ?.preset_brush_color ?? false,
         type: "checkbox",
         title: "Apply color from brush settings",
         events: {
           change: (e) => {
-            const lsPainter = this.painterNode.node.LS_Cls.LS_Painters.settings;
+            const lsPainter = this.painterNode.settings_painter_node.settings;
             if (!lsPainter.hasOwnProperty("mypaint_settings"))
               lsPainter.mypaint_settings = {};
 
@@ -574,7 +574,7 @@ class MyPaintManager {
               this.checkbox_brush_default_color.checked;
 
             // Save to localStorage
-            this.painterNode.node.LS_Cls.LS_Save();
+            this.painterNode.saveSettingsPainterNode();
           },
         },
       },

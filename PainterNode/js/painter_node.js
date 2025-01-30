@@ -131,13 +131,11 @@ class Painter {
     this.undo_history = [];
     this.redo_history = [];
 
-    this.defaultValue = {
+    this.settings_painter_node = {
       undo_history: [],
       redo_history: [],
-      canvas_settings:
-        '{"version":"4.6.0","objects":[],"background":"#000000"}',
+      canvas_settings: { version: "4.6.0", objects: [], background: "#000000" },
       settings: {
-        lsSavePainter: true,
         pipingSettings: {
           action: {
             name: "background",
@@ -153,10 +151,12 @@ class Painter {
           width: 512,
           height: 512,
         },
+        mypaint_settings: {
+          preset_brush_size: true,
+          preset_brush_color: false,
+        },
       },
     };
-
-    this.settings_painter_node = JSON.parse(JSON.stringify(this.defaultValue));
 
     this.fonts = {
       Arial: { type: "default" },
@@ -210,11 +210,12 @@ class Painter {
   }
 
   getSettingsPainterNode() {
-    return JSON.parse(JSON.stringify(this.settings_painter_node));
+    return this.settings_painter_node;
   }
 
   saveSettingsPainterNode() {
-    this.widget.value = this.getSettingsPainterNode();
+    const painterSettings = this.getSettingsPainterNode();
+    this.widget.value = JSON.parse(JSON.stringify(painterSettings));
   }
 
   initCanvas(canvasEl) {
@@ -566,6 +567,7 @@ class Painter {
     const scaleLabel = makeElement("label", {
       textContent: "Scale: ",
       title: "Change image size (default: 1)",
+      id: "painter_input_scale",
     });
     scaleLabel.append(scale);
 
@@ -635,43 +637,9 @@ class Painter {
       labelPipingUpdateImage
     );
 
-    // LocalStorage fieldset
-    const lSettingsBoxSettingsBox = makeElement("fieldset", {
-      style:
-        "display: flex; flex-direction: column; gap: 5px; text-align: left; border-color: #ffb710; border-radius: 4px;",
-      class: ["lSettingsBoxSettingsBox"],
-    });
-
-    const labelLSSave = makeElement("label", {
-      textContent: "Save canvas:",
-      style: "font-size: 10px; display: block; text-align: right;",
-      title: "Save canvas to local storage",
-    });
-
-    const checkBoxLSSave = makeElement("input", {
-      type: "checkbox",
-      class: ["lsSave_checkbox"],
-      checked: this.settings_painter_node.settings?.lsSavePainter ?? true,
-      onchange: (e) => {
-        this.settings_painter_node.settings.lsSavePainter =
-          checkBoxLSSave.checked;
-        this.saveSettingsPainterNode();
-      },
-    });
-
-    labelLSSave.append(checkBoxLSSave);
-    lSettingsBoxSettingsBox.append(
-      makeElement("legend", {
-        textContent: "Local Storage",
-        style: "color: #ffb710;",
-      }),
-      labelLSSave
-    );
-    // end - LocalStorage fieldset
-
     this.painter_wrapper_settings = createWindowModal({
       textTitle: "Settings",
-      textBody: [pipingSettingsBox, lSettingsBoxSettingsBox],
+      textBody: [pipingSettingsBox],
       stylesBox: {
         borderColor: "#13e9c5ad",
         boxShadow: "2px 2px 4px #13e9c5ad",
@@ -1904,8 +1872,8 @@ class Painter {
 
         // Skip BrushMyPaint mouseup is empty objects array, loading canvas as image, upload when object add to canvas
         if (!["BrushMyPaint"].includes(this.type)) {
-          this.addToHistory();
           this.canvas.renderAll();
+          this.addToHistory();
           this.uploadPaintFile(this.node.name);
         }
       },
@@ -1959,33 +1927,21 @@ class Painter {
 
   // Save canvas data to localStorage or JSON
   canvasSaveSettingsPainter() {
-    if (!this.settings_painter_node.settings.lsSavePainter) return;
-
     try {
       const data = this.canvas.toJSON(["mypaintlib"]);
-      if (
-        this.settings_painter_node &&
-        !isEmptyObject(this.settings_painter_node)
-      ) {
-        this.settings_painter_node.canvas_settings = painters_settings_json
-          ? data
-          : JSON.stringify(data);
 
-        this.saveSettingsPainterNode();
-      }
+      this.settings_painter_node.canvas_settings = JSON.parse(
+        JSON.stringify(data)
+      );
+
+      this.saveSettingsPainterNode();
     } catch (e) {
       console.error(e);
     }
   }
 
   setCanvasLoadData(data) {
-    const obj_data =
-      typeof data === "string" || data instanceof String
-        ? JSON.parse(data)
-        : data;
-
     const canvas_settings = data.canvas_settings;
-    const settings = data.settings;
 
     this.canvas.loadFromJSON(canvas_settings, () => {
       this.canvas.renderAll();
@@ -2002,18 +1958,18 @@ class Painter {
   }
 
   // Load canvas data from localStorage or JSON
-  canvasLoadSettingPainter() {
+  canvasLoadSettingPainter(data_canvas) {
     try {
-      if (
-        this.settings_painter_node &&
-        this.settings_painter_node.hasOwnProperty("canvas_settings")
-      ) {
-        const data =
-          typeof this.settings_painter_node === "string" ||
-          this.settings_painter_node instanceof String
-            ? JSON.parse(this.settings_painter_node)
-            : this.settings_painter_node;
+      if (!data_canvas) {
+        return;
+      }
 
+      const data =
+        typeof data_canvas === "string" || data_canvas instanceof String
+          ? JSON.parse(data_canvas)
+          : data_canvas;
+
+      if (data && data.hasOwnProperty("canvas_settings")) {
         this.setCanvasLoadData(data);
         this.addToHistory();
       }
@@ -2661,12 +2617,10 @@ app.registerExtension({
         onConfigure?.apply(this, arguments);
 
         setTimeout(() => {
-          const data = widget.widgets_values[3];
+          let data = widget.widgets_values[3];
 
           if (data) {
-            console.log("Data:", data);
-
-            this.painter.settings_painter_node = data;
+            if (typeof data === "string") data = JSON.parse(data);
 
             if (data?.settings) {
               // -- Settings piping
@@ -2674,6 +2628,17 @@ app.registerExtension({
                 pipingSettings: { action, pipingChangeSize, pipingUpdateImage },
                 currentCanvasSize: { width, height },
               } = data.settings;
+
+              const [radio_background, radio_image] =
+                this.painter.painter_wrapper_settings.querySelectorAll(
+                  "input[type=radio]"
+                );
+
+              const [pipingScaleImage_input] =
+                this.painter.painter_wrapper_settings.querySelectorAll(
+                  "input[type=number]"
+                );
+
               const [
                 pipingBackSendImage_checkbox,
                 pipingChangeSize_checkbox,
@@ -2681,8 +2646,20 @@ app.registerExtension({
               ] = this.painter.painter_wrapper_settings.querySelectorAll(
                 "input[type=checkbox]"
               );
+
+              if (action.name === "image") {
+                radio_image.checked = true;
+              } else {
+                radio_background.checked = true;
+              }
+              this.painter.painter_wrapper_settings.querySelector(
+                ".custom_options_piping_box"
+              ).style.display = action.name !== "image" ? "none" : "flex";
+
+              pipingScaleImage_input.value = action.options.scale ?? 1.0;
               pipingBackSendImage_checkbox.checked =
                 action.options.sendToBack ?? true;
+
               pipingChangeSize_checkbox.checked = pipingChangeSize ?? true;
               pipingUpdateImage_checkbox.checked = pipingUpdateImage ?? true;
               // --
@@ -2696,9 +2673,11 @@ app.registerExtension({
               }
             }
 
+            this.painter.settings_painter_node = data;
+
             // Loading canvas data
             if (data?.canvas_settings) {
-              this.painter.canvasLoadSettingPainter();
+              this.painter.canvasLoadSettingPainter(data);
             }
 
             this.painter.canvas.renderAll();
