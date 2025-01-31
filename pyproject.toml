@@ -1,7 +1,7 @@
 [project]
 name = "comfyui_custom_nodes_alekpet"
 description = "Nodes: PoseNode, PainterNode, TranslateTextNode, TranslateCLIPTextEncodeNode, DeepTranslatorTextNode, DeepTranslatorCLIPTextEncodeNode, ArgosTranslateTextNode, ArgosTranslateCLIPTextEncodeNode, ChatGLM4TranslateCLIPTextEncodeNode, ChatGLM4TranslateTextNode, ChatGLM4InstructNode, ChatGLM4InstructMediaNode, PreviewTextNode, HexToHueNode, ColorsCorrectNode, IDENode."
-version = "1.0.46"
+version = "1.0.47"
 license = { file = "LICENSE" }
 
 [project.urls]
