@@ -114,10 +114,19 @@ class OpenPose {
 
     this.canvas = this.initCanvas(canvasElement);
     this.image = node.widgets.find((w) => w.name === "image");
+
+    const callb = this.node?.callback,
+      self = this;
+    this.image.callback = function () {
+      self.image.value = self.node.name;
+      if (callb) {
+        return callb.apply(this, arguments);
+      }
+    };
   }
 
   getSettings() {
-    return JSON.parse(JSON.stringify(this.settings));
+    return this.settings;
   }
 
   setCanvasSize(new_width, new_height, resetPose = false) {
@@ -502,15 +511,6 @@ class OpenPose {
 
     //Set the background back
     this.setBackground(tmp_BackgroundImg);
-
-    const callb = this.node.callback,
-      self = this;
-    this.image.callback = function () {
-      this.image.value = self.node.name;
-      if (callb) {
-        return callb.apply(this, arguments);
-      }
-    };
   }
 
   async uploadFileToServer(formData) {
@@ -740,6 +740,9 @@ function createOpenPose(node, inputName, inputData, app) {
     "openpose",
     openPoseWrapper,
     {
+      setValue(v) {
+        node.openPose.settings = v;
+      },
       getValue() {
         return node.openPose.getSettings();
       },
@@ -748,8 +751,10 @@ function createOpenPose(node, inputName, inputData, app) {
 
   widget.callback = (v) => {};
 
-  let widgetCombo = node.widgets.filter((w) => w.type === "combo");
-  widgetCombo[0].value = node.name;
+  try {
+    const data = node.widgets_values[3];
+    if (data) widget.value = JSON.parse(JSON.stringify(data));
+  } catch (error) {}
 
   widget.openpose = node.openPose.canvas.wrapperEl;
   widget.parent = node;
@@ -871,8 +876,6 @@ app.registerExtension({
                 );
               });
             }
-
-            this.openPose.settings = data;
 
             this.openPose.canvas.renderAll();
             this.openPose.uploadPoseFile(this.name);
