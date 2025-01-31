@@ -18,7 +18,6 @@ import {
   makeModal,
   animateClick,
   createWindowModal,
-  isEmptyObject,
   THEMES_MODAL_WINDOW,
 } from "./utils.js";
 import "./lib/painternode/fontfaceobserver.js";
@@ -109,8 +108,7 @@ async function getLoadedFonts() {
 
 // ================= CLASS PAINTER ================
 class Painter {
-  constructor(node, canvas, widget) {
-    this.widget = widget;
+  constructor(node, canvas) {
     this.originX = 0;
     this.originY = 0;
     this.drawning = true;
@@ -177,6 +175,14 @@ class Painter {
     this.image = node.widgets.find((w) => w.name === "image");
 
     const self = this;
+    const callb = this.node.callback;
+
+    this.image.callback = function () {
+      self.image.value = self.node.name;
+      if (callb) {
+        return callb.apply(this, arguments);
+      }
+    };
 
     let default_value = this.image.value;
     Object.defineProperty(this.image, "value", {
@@ -210,12 +216,11 @@ class Painter {
   }
 
   getSettingsPainterNode() {
-    return this.settings_painter_node;
+    return JSON.parse(JSON.stringify(this.settings_painter_node));
   }
 
   saveSettingsPainterNode() {
-    const painterSettings = this.getSettingsPainterNode();
-    this.widget.value = JSON.parse(JSON.stringify(painterSettings));
+    this.node.widgets[3].value = this.getSettingsPainterNode();
   }
 
   initCanvas(canvasEl) {
@@ -1927,26 +1932,17 @@ class Painter {
 
   // Save canvas data to localStorage or JSON
   canvasSaveSettingsPainter() {
-    try {
-      const data = this.canvas.toJSON(["mypaintlib"]);
+    return new Promise((res, rej) => {
+      try {
+        const data = this.canvas.toJSON(["mypaintlib"]);
 
-      this.settings_painter_node.canvas_settings = JSON.parse(
-        JSON.stringify(data)
-      );
+        this.settings_painter_node.canvas_settings = data;
 
-      this.saveSettingsPainterNode();
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  setCanvasLoadData(data) {
-    const canvas_settings = data.canvas_settings;
-
-    this.canvas.loadFromJSON(canvas_settings, () => {
-      this.canvas.renderAll();
-      this.uploadPaintFile(this.node.name);
-      this.bgColor.value = getColorHEX(data.background).color || "";
+        this.saveSettingsPainterNode();
+        res(true);
+      } catch (e) {
+        rej(e);
+      }
     });
   }
 
@@ -1970,8 +1966,12 @@ class Painter {
           : data_canvas;
 
       if (data && data.hasOwnProperty("canvas_settings")) {
-        this.setCanvasLoadData(data);
-        this.addToHistory();
+        this.canvas.loadFromJSON(data.canvas_settings, () => {
+          this.canvas.renderAll();
+          this.uploadPaintFile(this.node.name);
+          this.bgColor.value = getColorHEX(data.background).color || "";
+          this.addToHistory();
+        });
       }
     } catch (e) {
       console.error(e);
@@ -2097,24 +2097,19 @@ class Painter {
   async addImageToCanvas(image, options = {}) {
     async function uploadFile(file) {
       try {
-        const body = new FormData();
-        body.append("image", file);
+        const formData = new FormData();
+        formData.append("image", file);
 
-        const resp = await api.fetchApi("/upload/image", {
-          method: "POST",
-          body,
-        });
+        const jsonData = await this.uploadFileToServer(formData);
 
-        if (resp.status === 200) {
-          const data = await resp.json();
-          let path = data.name;
-          if (data.subfolder) path = data.subfolder + "/" + path;
-
-          return await getImageByName(path);
-        } else {
-          console.log(`${resp.status} - ${resp.statusText}`);
-          return resp.statusText;
+        if (!jsonData.success) {
+          throw new Error(jsonData.error);
         }
+        const data = jsonData.data;
+        let path = data.name;
+        if (data.subfolder) path = data.subfolder + "/" + path;
+
+        return await getImageByName(path);
       } catch (err) {
         console.log(err);
         return err;
@@ -2145,6 +2140,23 @@ class Painter {
       this.pastAsBackground(image, options);
     } else if (confirm("Past as image?")) {
       this.pastAsImage(image, options);
+    }
+  }
+
+  async uploadFileToServer(formData) {
+    try {
+      const resp = await api.fetchApi("/upload/image", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (resp.status !== 200) {
+        return { success: false, error: `${resp.status} - ${resp.statusText}` };
+      }
+
+      return { success: true, data: await resp.json() };
+    } catch (error) {
+      return { success: false, error };
     }
   }
 
@@ -2181,27 +2193,34 @@ class Painter {
           a_obs.hasControls = false;
           a_obs.hasBorders = false;
         });
-        this.canvas.renderAll();
       }
     }
 
     await new Promise((res) => {
-      const uploadFile = async (blobFile) => {
-        try {
-          const resp = await api.fetchApi("/upload/image", {
-            method: "POST",
-            body: blobFile,
-          });
+      this.canvas.renderAll();
+      this.canvasSaveSettingsPainter();
 
-          if (resp.status === 200) {
-            const data = await resp.json();
+      this.canvas.lowerCanvasEl.toBlob((blob) => {
+        const formData = new FormData();
+        formData.append("image", blob, fileName);
+        formData.append("overwrite", "true");
+        formData.append("type", "input");
+        //formData.append("type", "temp");
 
-            if (!this.image.options.values.includes(data.name)) {
-              this.image.options.values.push(data.name);
+        this.uploadFileToServer(formData)
+          .then((jsonData) => {
+            if (!jsonData.success) {
+              throw new Error(jsonData.error);
             }
 
-            this.image.value = data.name;
-            this.showImage(data.name);
+            const { name } = jsonData.data;
+
+            if (!this.image.options.values.includes(name)) {
+              this.image.options.values.push(name);
+            }
+
+            // this.image.value = name;
+            this.showImage(name);
 
             if (activeObj && !this.drawning) {
               activeObj.hasControls = true;
@@ -2212,37 +2231,16 @@ class Painter {
                 a_obs.hasBorders = true;
               });
             }
-
             this.canvas.renderAll();
-            this.canvasSaveSettingsPainter();
-            res(true);
-          } else {
-            alert(resp.status + " - " + resp.statusText);
-          }
-        } catch (error) {
-          console.log(error);
-        }
-      };
-
-      this.canvas.lowerCanvasEl.toBlob(function (blob) {
-        let formData = new FormData();
-        formData.append("image", blob, fileName);
-        formData.append("overwrite", "true");
-        //formData.append("type", "temp");
-        uploadFile(formData);
+            res({ success: true });
+          })
+          .catch((error) => {
+            res({ success: true, error });
+          });
       }, "image/png");
     });
 
     // - end
-
-    const callb = this.node.callback,
-      self = this;
-    this.image.callback = function () {
-      self.image.value = self.node.name;
-      if (callb) {
-        return callb.apply(this, arguments);
-      }
-    };
   }
 }
 // ================= END CLASS PAINTER ================
@@ -2260,40 +2258,38 @@ function PainterWidget(node, inputName, inputData, app) {
     class: ["wrapperPainter"],
   });
 
+  // Fabric canvas
+  const canvasPainter = makeElement("canvas", {
+    width: 512,
+    height: 512,
+  });
+  node.painter = new Painter(node, canvasPainter);
+
   const widget = node.addDOMWidget(
     "painter_widget",
-    "painter_node",
+    "painter",
     wrapperPainter,
     {
       setValue(v) {
-        this._real_value = v;
+        node.painter.settings_painter_nodes = v;
       },
       getValue() {
-        let value = {};
-        if (this._real_value) {
-          value = this._real_value;
-        } else {
-          return node.painter.defaultValue;
-        }
-        return value;
+        return node.painter.getSettingsPainterNode();
       },
     }
   );
 
   widget.callback = function (v) {};
 
-  // Fabric canvas
-  const canvasPainter = makeElement("canvas", {
-    width: 512,
-    height: 512,
-  });
-  node.painter = new Painter(node, canvasPainter, widget);
+  try {
+    const data = node.widgets_values[3];
+    if (data) widget.value = JSON.parse(JSON.stringify(data));
+  } catch (error) {}
 
   widget.wrapperPainter = wrapperPainter;
   widget.painter_wrap = node.painter.canvas.wrapperEl;
   widget.parent = node;
 
-  node.painter.image.value = node.name;
   node.painter.makeElements(wrapperPainter);
 
   // node.onRemoved = () => {
@@ -2603,7 +2599,6 @@ app.registerExtension({
 
         PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
 
-        this.painter.canvas.renderAll();
         this.painter.uploadPaintFile(nodeNamePNG);
         this.title = `${this.type} - ${this.painter.settings_painter_node.settings.currentCanvasSize.width}x${this.painter.settings_painter_node.settings.currentCanvasSize.height}`;
 
@@ -2617,11 +2612,8 @@ app.registerExtension({
         onConfigure?.apply(this, arguments);
 
         setTimeout(() => {
-          let data = widget.widgets_values[3];
-
+          const data = widget.widgets_values[3];
           if (data) {
-            if (typeof data === "string") data = JSON.parse(data);
-
             if (data?.settings) {
               // -- Settings piping
               const {
@@ -2672,8 +2664,6 @@ app.registerExtension({
                 this.painter.setCanvasSize(width, height);
               }
             }
-
-            this.painter.settings_painter_node = data;
 
             // Loading canvas data
             if (data?.canvas_settings) {
