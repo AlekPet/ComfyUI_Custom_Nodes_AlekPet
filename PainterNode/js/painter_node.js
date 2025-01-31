@@ -173,6 +173,7 @@ class Painter {
     this.history_change = false;
     this.canvas = this.initCanvas(canvas);
     this.image = node.widgets.find((w) => w.name === "image");
+    this.image.value = this.node.name;
 
     const self = this;
     const callb = this.node.callback;
@@ -216,7 +217,7 @@ class Painter {
   }
 
   getSettingsPainterNode() {
-    return JSON.parse(JSON.stringify(this.settings_painter_node));
+    return this.settings_painter_node;
   }
 
   saveSettingsPainterNode() {
@@ -472,7 +473,7 @@ class Painter {
         true,
       onchange: (e) => {
         this.settings_painter_node.settings.pipingSettings.pipingChangeSize =
-          pipingChangeSize.checked;
+          !!e.target.checked;
         this.saveSettingsPainterNode();
       },
     });
@@ -495,14 +496,15 @@ class Painter {
         this.settings_painter_node.settings?.pipingSettings
           ?.pipingUpdateImage ?? true,
       onchange: (e) => {
+        const checked = !!e.target.checked;
         this.settings_painter_node.settings.pipingSettings.pipingUpdateImage =
-          pipingUpdateImageCheckbox.checked;
+          checked;
 
         // Get hidden widget update_node
         const update_node_widget = this.node.widgets.find(
           (w) => w.name === "update_node"
         );
-        update_node_widget.value = pipingUpdateImageCheckbox.checked;
+        update_node_widget.value = checked;
         this.saveSettingsPainterNode();
       },
     });
@@ -585,7 +587,7 @@ class Painter {
           .sendToBack ?? true,
       onchange: (e) => {
         this.settings_painter_node.settings.pipingSettings.action.options.sendToBack =
-          e.currentTarget.checked;
+          !!e.target.checked;
         this.saveSettingsPainterNode();
       },
     });
@@ -1932,16 +1934,16 @@ class Painter {
 
   // Save canvas data to localStorage or JSON
   canvasSaveSettingsPainter() {
-    return new Promise((res, rej) => {
+    return new Promise(async (res) => {
       try {
-        const data = this.canvas.toJSON(["mypaintlib"]);
+        const data = await this.canvas.toJSON(["mypaintlib"]);
 
         this.settings_painter_node.canvas_settings = data;
 
         this.saveSettingsPainterNode();
         res(true);
       } catch (e) {
-        rej(e);
+        res(false);
       }
     });
   }
@@ -1955,27 +1957,43 @@ class Painter {
 
   // Load canvas data from localStorage or JSON
   canvasLoadSettingPainter(data_canvas) {
-    try {
-      if (!data_canvas) {
-        return;
-      }
+    return new Promise((res) => {
+      try {
+        if (!data_canvas) {
+          res({ success: false, error: new Error("Invalid canvas data!") });
+          return;
+        }
 
-      const data =
-        typeof data_canvas === "string" || data_canvas instanceof String
-          ? JSON.parse(data_canvas)
-          : data_canvas;
+        const data =
+          typeof data_canvas === "string" || data_canvas instanceof String
+            ? JSON.parse(data_canvas)
+            : data_canvas;
 
-      if (data && data.hasOwnProperty("canvas_settings")) {
-        this.canvas.loadFromJSON(data.canvas_settings, () => {
-          this.canvas.renderAll();
-          this.uploadPaintFile(this.node.name);
-          this.bgColor.value = getColorHEX(data.background).color || "";
-          this.addToHistory();
-        });
+        if (data && data.hasOwnProperty("canvas_settings")) {
+          this.canvas.loadFromJSON(data.canvas_settings, () => {
+            this.canvas.renderAll();
+            this.uploadPaintFile(this.node.name);
+            this.bgColor.value = getColorHEX(data.background).color || "";
+            this.addToHistory();
+            res({ success: true });
+          });
+          // this.canvas.loadFromJSON(
+          //   data.canvas_settings,
+          //   () => {
+          //     this.canvas.renderAll();
+          //     this.uploadPaintFile(this.node.name);
+          //     this.bgColor.value = getColorHEX(data.background).color || "";
+          //     this.addToHistory();
+          //   },
+          //   () => {
+          //     console.log(res({ success: true }));
+          //   }
+          // );
+        }
+      } catch (e) {
+        res({ success: false, error: e });
       }
-    } catch (e) {
-      console.error(e);
-    }
+    });
   }
 
   undo() {
@@ -2195,49 +2213,50 @@ class Painter {
         });
       }
     }
-
     await new Promise((res) => {
       this.canvas.renderAll();
-      this.canvasSaveSettingsPainter();
+      this.canvasSaveSettingsPainter().then((result) => {
+        if (result) {
+          this.canvas.lowerCanvasEl.toBlob((blob) => {
+            const formData = new FormData();
+            formData.append("image", blob, fileName);
+            formData.append("overwrite", "true");
+            //formData.append("type", "temp");
 
-      this.canvas.lowerCanvasEl.toBlob((blob) => {
-        const formData = new FormData();
-        formData.append("image", blob, fileName);
-        formData.append("overwrite", "true");
-        formData.append("type", "input");
-        //formData.append("type", "temp");
+            this.uploadFileToServer(formData)
+              .then((jsonData) => {
+                if (!jsonData.success) {
+                  throw new Error(jsonData.error);
+                }
 
-        this.uploadFileToServer(formData)
-          .then((jsonData) => {
-            if (!jsonData.success) {
-              throw new Error(jsonData.error);
-            }
+                const { name } = jsonData.data;
 
-            const { name } = jsonData.data;
+                if (!this.image.options.values.includes(name)) {
+                  this.image.options.values.push(name);
+                }
 
-            if (!this.image.options.values.includes(name)) {
-              this.image.options.values.push(name);
-            }
+                // this.image.value = name;
+                this.showImage(name);
 
-            // this.image.value = name;
-            this.showImage(name);
+                if (activeObj && !this.drawning) {
+                  activeObj.hasControls = true;
+                  activeObj.hasBorders = true;
 
-            if (activeObj && !this.drawning) {
-              activeObj.hasControls = true;
-              activeObj.hasBorders = true;
-
-              this.canvas.getActiveObjects().forEach((a_obs) => {
-                a_obs.hasControls = true;
-                a_obs.hasBorders = true;
+                  this.canvas.getActiveObjects().forEach((a_obs) => {
+                    a_obs.hasControls = true;
+                    a_obs.hasBorders = true;
+                  });
+                }
+                this.canvas.renderAll();
+                res(true);
+              })
+              .catch((error) => {
+                console.log(error);
+                res(false);
               });
-            }
-            this.canvas.renderAll();
-            res({ success: true });
-          })
-          .catch((error) => {
-            res({ success: true, error });
-          });
-      }, "image/png");
+          }, "image/png");
+        }
+      });
     });
 
     // - end
@@ -2271,7 +2290,7 @@ function PainterWidget(node, inputName, inputData, app) {
     wrapperPainter,
     {
       setValue(v) {
-        node.painter.settings_painter_nodes = v;
+        Object.assign(node.painter.settings_painter_node, v);
       },
       getValue() {
         return node.painter.getSettingsPainterNode();
@@ -2280,11 +2299,6 @@ function PainterWidget(node, inputName, inputData, app) {
   );
 
   widget.callback = function (v) {};
-
-  try {
-    const data = node.widgets_values[3];
-    if (data) widget.value = JSON.parse(JSON.stringify(data));
-  } catch (error) {}
 
   widget.wrapperPainter = wrapperPainter;
   widget.painter_wrap = node.painter.canvas.wrapperEl;
@@ -2611,69 +2625,73 @@ app.registerExtension({
       nodeType.prototype.onConfigure = async function (widget) {
         onConfigure?.apply(this, arguments);
 
-        setTimeout(() => {
-          const data = widget.widgets_values[3];
-          if (data) {
-            if (data?.settings) {
-              // -- Settings piping
-              const {
-                pipingSettings: { action, pipingChangeSize, pipingUpdateImage },
-                currentCanvasSize: { width, height },
-              } = data.settings;
+        await this.getTitle();
+        const painter_idx = this.widgets.findIndex((w) => w.type === "painter");
 
-              const [radio_background, radio_image] =
-                this.painter.painter_wrapper_settings.querySelectorAll(
-                  "input[type=radio]"
-                );
+        if (painter_idx < 0) return;
 
-              const [pipingScaleImage_input] =
-                this.painter.painter_wrapper_settings.querySelectorAll(
-                  "input[type=number]"
-                );
+        const data = widget.widgets_values[painter_idx];
+        Object.assign(this.widgets[painter_idx].value, data);
 
-              const [
-                pipingBackSendImage_checkbox,
-                pipingChangeSize_checkbox,
-                pipingUpdateImage_checkbox,
-              ] = this.painter.painter_wrapper_settings.querySelectorAll(
-                "input[type=checkbox]"
+        if (data) {
+          if (data?.settings) {
+            // -- Settings piping
+            const {
+              pipingSettings: { action, pipingChangeSize, pipingUpdateImage },
+              currentCanvasSize: { width, height },
+            } = data.settings;
+
+            const [radio_background, radio_image] =
+              this.painter.painter_wrapper_settings.querySelectorAll(
+                "input[type=radio]"
               );
 
-              if (action.name === "image") {
-                radio_image.checked = true;
-              } else {
-                radio_background.checked = true;
-              }
-              this.painter.painter_wrapper_settings.querySelector(
-                ".custom_options_piping_box"
-              ).style.display = action.name !== "image" ? "none" : "flex";
+            const [pipingScaleImage_input] =
+              this.painter.painter_wrapper_settings.querySelectorAll(
+                "input[type=number]"
+              );
 
-              pipingScaleImage_input.value = action.options.scale ?? 1.0;
-              pipingBackSendImage_checkbox.checked =
-                action.options.sendToBack ?? true;
+            const [
+              pipingBackSendImage_checkbox,
+              pipingChangeSize_checkbox,
+              pipingUpdateImage_checkbox,
+            ] = this.painter.painter_wrapper_settings.querySelectorAll(
+              "input[type=checkbox]"
+            );
 
-              pipingChangeSize_checkbox.checked = pipingChangeSize ?? true;
-              pipingUpdateImage_checkbox.checked = pipingUpdateImage ?? true;
-              // --
-
-              // -- Settings size
-              if (width && height) {
-                this.painter.settings_painter_node.settings.currentCanvasSize =
-                  { width, height };
-
-                this.painter.setCanvasSize(width, height);
-              }
+            if (action.name === "image") {
+              radio_image.checked = true;
+            } else {
+              radio_background.checked = true;
             }
+            this.painter.painter_wrapper_settings.querySelector(
+              ".custom_options_piping_box"
+            ).style.display = action.name !== "image" ? "none" : "flex";
 
-            // Loading canvas data
-            if (data?.canvas_settings) {
-              this.painter.canvasLoadSettingPainter(data);
+            pipingScaleImage_input.value = action.options.scale ?? 1.0;
+            pipingBackSendImage_checkbox.checked =
+              action.options.sendToBack ?? true;
+
+            pipingChangeSize_checkbox.checked = pipingChangeSize ?? true;
+            pipingUpdateImage_checkbox.checked = pipingUpdateImage ?? true;
+            // --
+
+            // -- Settings size
+            if (width && height) {
+              this.painter.settings_painter_node.settings.currentCanvasSize = {
+                width,
+                height,
+              };
+
+              this.painter.setCanvasSize(width, height);
             }
-
-            this.painter.canvas.renderAll();
-            this.painter.uploadPaintFile(this.name);
           }
-        }, 0);
+
+          // Loading canvas data
+          if (data?.canvas_settings) {
+            this.painter.canvasLoadSettingPainter(data).then((result) => {});
+          }
+        }
       };
 
       // ExtraMenuOptions
