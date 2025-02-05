@@ -325,7 +325,7 @@ class Painter {
 
     this.painter_drawning_box_property = makeElement("div", {
       class: ["painter_drawning_box_property"],
-      style: { display: "block" },
+      style: { display: "flex" },
     });
 
     this.painter_drawning_box = makeElement("div", {
@@ -1162,7 +1162,7 @@ class Painter {
   selectPropertyToolbar(type) {
     this.painter_drawning_box_property.innerHTML = "";
     if (["Textbox", "Brush"].includes(this.type)) {
-      this.painter_drawning_box_property.style.display = "block";
+      this.painter_drawning_box_property.style.display = "flex";
 
       switch (this.type) {
         case "Textbox":

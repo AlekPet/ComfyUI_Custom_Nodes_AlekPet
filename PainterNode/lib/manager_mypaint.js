@@ -539,13 +539,14 @@ class MyPaintManager {
       DefaultSize: {
         name: "default size",
         checked:
-          this.painterNode.settings_painter_node.settings?.mypaint_settings
-            ?.preset_brush_size ?? true,
+          this.painterNode.storageCls.settings_painter_node.settings
+            ?.mypaint_settings?.preset_brush_size ?? true,
         type: "checkbox",
         title: "Apply size from brush settings",
         events: {
           change: (e) => {
-            const lsPainter = this.painterNode.settings_painter_node.settings;
+            const lsPainter =
+              this.painterNode.storageCls.settings_painter_node.settings;
             if (!lsPainter.hasOwnProperty("mypaint_settings"))
               lsPainter.mypaint_settings = {};
 
@@ -560,13 +561,14 @@ class MyPaintManager {
       DefaultColor: {
         name: "default color",
         checked:
-          this.painterNode.settings_painter_node.settings?.mypaint_settings
-            ?.preset_brush_color ?? false,
+          this.painterNode.storageCls.settings_painter_node.settings
+            ?.mypaint_settings?.preset_brush_color ?? false,
         type: "checkbox",
         title: "Apply color from brush settings",
         events: {
           change: (e) => {
-            const lsPainter = this.painterNode.settings_painter_node.settings;
+            const lsPainter =
+              this.painterNode.storageCls.settings_painter_node.settings;
             if (!lsPainter.hasOwnProperty("mypaint_settings"))
               lsPainter.mypaint_settings = {};
 

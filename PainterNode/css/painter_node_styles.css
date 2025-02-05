@@ -244,7 +244,7 @@
 .property_brushesSecondBox {
   display: flex;
   gap: 5px;
-  flex: 1 0;
+  width: auto;
 }
 
 .property_brushesSecondBox > button {
