@@ -136,38 +136,7 @@ class Painter {
     this.undo_history = [];
     this.redo_history = [];
 
-    this.settings_painter_node_default = {
-      undo_history: [],
-      redo_history: [],
-      canvas_settings: { background: "#000000" },
-      settings: {
-        pipingSettings: {
-          action: {
-            name: "background",
-            options: {
-              sendToBack: true,
-              scale: 1.0,
-            },
-          },
-          pipingChangeSize: true,
-          pipingUpdateImage: true,
-        },
-        currentCanvasSize: {
-          width: 512,
-          height: 512,
-        },
-        mypaint_settings: {
-          preset_brush_size: true,
-          preset_brush_color: false,
-        },
-      },
-    };
-
-    this.storageCls = new StorageClass(
-      this.node,
-      this,
-      JSON.parse(JSON.stringify(this.settings_painter_node_default))
-    );
+    this.storageCls = new StorageClass(this.node, this);
 
     this.fonts = {
       Arial: { type: "default" },
@@ -228,10 +197,8 @@ class Painter {
     });
   }
 
-  saveSettingsPainterNode(update = true) {
-    if (update) this.canvasSaveSettingsPainter();
-
-    this.node.widgets[3].value = this.storageCls.getSettingsPainterNode();
+  saveSettingsPainterNode() {
+    this.canvasSaveSettingsPainter();
   }
 
   initCanvas(canvasEl) {
@@ -261,11 +228,11 @@ class Painter {
 
   makeElements(wrapperPainter) {
     // Main panelpaint box
-    const panelPaintBoxLeft = makeElement("div", {
+    this.panelPaintBoxLeft = makeElement("div", {
       class: ["panelPaintBoxLeft"],
     });
 
-    const panelPaintBoxRight = makeElement("div", {
+    this.panelPaintBoxRight = makeElement("div", {
       class: ["panelPaintBoxRight"],
     });
 
@@ -294,12 +261,12 @@ class Painter {
 
     this.canvas.wrapperEl.appendChild(this.painter_history_panel);
 
-    panelPaintBoxRight.append(
+    this.panelPaintBoxRight.append(
       panelPaintBoxRight_options,
       this.canvas.wrapperEl
     );
 
-    wrapperPainter.append(panelPaintBoxLeft, panelPaintBoxRight);
+    wrapperPainter.append(this.panelPaintBoxLeft, this.panelPaintBoxRight);
 
     this.manipulation_box = makeElement("div", {
       class: ["painter_manipulation_box"],
@@ -377,7 +344,7 @@ class Painter {
         </div>`,
     });
 
-    panelPaintBoxLeft.append(
+    this.panelPaintBoxLeft.append(
       this.manipulation_box,
       this.painter_drawning_box_property,
       this.painter_drawning_box
@@ -583,6 +550,7 @@ class Painter {
       step: 0.01,
       style: "width: 30%;",
       onchange: (e) => {
+        e.stopPropagation();
         this.storageCls.settings_painter_node.settings.pipingSettings.action.options.scale =
           +e.currentTarget.value;
         this.saveSettingsPainterNode();
@@ -674,7 +642,7 @@ class Painter {
       stylesBody: { width: "100%", alignItems: "auto" },
     });
 
-    this.canvas.wrapperEl.append(this.painter_wrapper_settings);
+    this.panelPaintBoxRight.append(this.painter_wrapper_settings);
     // === end - Settings box ===
   }
 
@@ -1522,7 +1490,9 @@ class Painter {
       reader.readAsDataURL(file);
     };
 
-    this.bgColor.oninput = this.reset_set_bg;
+    this.bgColor.oninput = () => {
+      this.reset_set_bg();
+    };
 
     // Event input bg image
     this.bgImageFile.onchange = (e) => {
@@ -1649,8 +1619,6 @@ class Painter {
             this.uploadPaintFile(this.node.name);
           }
         };
-
-    this.bgColor.onchange = () => this.uploadPaintFile(this.node.name);
 
     // Event change stroke and erase width
     this.eraseWidth.onchange = () => {
@@ -2287,10 +2255,10 @@ function PainterWidget(node, inputName, inputData, app) {
     wrapperPainter,
     {
       setValue(v) {
-        Object.assign(node.painter.storageCls.settings_painter_node, v);
+        node.painter.storageCls.settings_painter_node = v;
       },
       getValue() {
-        return node.painter.storageCls.getSettingsPainterNode();
+        return node.painter.storageCls.settings_painter_node;
       },
     }
   );
@@ -2630,7 +2598,6 @@ app.registerExtension({
         const painter_idx = this.widgets.findIndex((w) => w.type === "painter");
 
         if (painter_idx < 0) return;
-
         const data = widget.widgets_values[painter_idx];
         Object.assign(this.widgets[painter_idx].value, data);
 

@@ -339,7 +339,7 @@ class WorkflowStateManager {
 
 // LocalStorage Init
 class StorageClass {
-  constructor(node, widget, data) {
+  constructor(node, widget) {
     if (
       !node.name ||
       typeof node.name !== "string" ||
@@ -356,7 +356,32 @@ class StorageClass {
     this.workflowStateManager?.nodeStores?.push(node);
 
     this.settings_painter_node_all = {};
-    this.settings_painter_node = data ?? {};
+    this.settings_painter_node = this.settings_painter_node_default = {
+      undo_history: [],
+      redo_history: [],
+      canvas_settings: { background: "#000000" },
+      settings: {
+        pipingSettings: {
+          action: {
+            name: "background",
+            options: {
+              sendToBack: true,
+              scale: 1.0,
+            },
+          },
+          pipingChangeSize: true,
+          pipingUpdateImage: true,
+        },
+        currentCanvasSize: {
+          width: 512,
+          height: 512,
+        },
+        mypaint_settings: {
+          preset_brush_size: true,
+          preset_brush_color: false,
+        },
+      },
+    };
   }
 
   getSettingsPainterNode() {
