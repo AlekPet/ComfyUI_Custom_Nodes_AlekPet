@@ -21,6 +21,9 @@ import {
   createWindowModal,
   isEmptyObject,
   THEMES_MODAL_WINDOW,
+  comfyuiDesktopConfirm,
+  comfyuiDesktopPrompt,
+  comfyuiDesktopAlert,
 } from "./utils.js";
 import "./lib/painternode/fontfaceobserver.js";
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
@@ -659,13 +662,17 @@ class Painter {
     // === end - Settings box ===
   }
 
-  clearCanvas() {
+  async clearCanvas() {
+    if (await comfyuiDesktopConfirm("Reset canvas size by default 512x512?")) {
+      this.setCanvasSize(512, 512);
+    }
     this.canvas.clear();
     this.canvas.backgroundColor = this.bgColor.value || "#000000";
     this.canvas.requestRenderAll();
 
     this.addToHistory();
     this.canvasSaveSettingsPainter();
+    this.uploadPaintFile(this.node.name);
   }
 
   viewListObjects(list_body) {
@@ -1159,7 +1166,7 @@ class Painter {
     app.graph.setDirtyCanvas(true, false);
   }
 
-  setCanvasSize(new_width, new_height, confirmChange = false) {
+  async setCanvasSize(new_width, new_height, confirmChange = false) {
     if (
       confirmChange &&
       this.node.isInputConnected(0) &&
@@ -1167,7 +1174,7 @@ class Painter {
       (new_width !== this.currentCanvasSize.width ||
         new_height !== this.currentCanvasSize.height)
     ) {
-      if (confirm("Disable change size piping?")) {
+      if (await comfyuiDesktopConfirm("Disable change size piping?")) {
         this.canvas.wrapperEl.querySelector(
           ".pipingChangeSize_checkbox"
         ).checked = false;
@@ -1509,8 +1516,10 @@ class Painter {
         let typeEvent = target.getAttribute("bgImage");
         switch (typeEvent) {
           case "img_load":
-            this.bgImageFile.func = (img) => {
-              if (confirm("Change canvas size equal image?")) {
+            this.bgImageFile.func = async (img) => {
+              if (
+                await comfyuiDesktopConfirm("Change canvas size equal image?")
+              ) {
                 this.setCanvasSize(img.width, img.height, true);
               }
 
@@ -1538,12 +1547,20 @@ class Painter {
     };
 
     // Settings
-    this.buttonSetCanvasSize.addEventListener("click", () => {
-      function checkSized(prop = "", defaultVal = 512) {
+    this.buttonSetCanvasSize.addEventListener("click", async () => {
+      async function checkSized(prop = "", defaultVal = 512) {
         let inputSize;
         let correct = false;
         while (!correct) {
-          inputSize = +prompt(`Enter canvas ${prop}:`, defaultVal);
+          inputSize = await comfyuiDesktopPrompt(
+            "Canvas size",
+            `Enter canvas ${prop}:`,
+            defaultVal
+          );
+
+          if (inputSize === null) return defaultVal;
+
+          inputSize = +inputSize;
           if (
             Number(inputSize) === inputSize &&
             inputSize % 1 === 0 &&
@@ -1551,12 +1568,21 @@ class Painter {
           ) {
             return inputSize;
           }
-          alert(`[${prop}] Invalid number "${inputSize}" or <=0!`);
+
+          comfyuiDesktopAlert(
+            `[${prop}] Invalid number "${inputSize}" or <=0!`
+          );
         }
       }
 
-      let width = checkSized("width", this.currentCanvasSize.width),
-        height = checkSized("height", this.currentCanvasSize.height);
+      let width = await checkSized("width", this.currentCanvasSize.width),
+        height = await checkSized("height", this.currentCanvasSize.height);
+
+      if (
+        width === this.currentCanvasSize.width &&
+        height === this.currentCanvasSize.height
+      )
+        return;
 
       this.setCanvasSize(width, height, true);
       this.uploadPaintFile(this.node.name);
@@ -2009,10 +2035,10 @@ class Painter {
     }
   }
 
-  pastAsBackground(image, options = {}) {
+  async pastAsBackground(image, options = {}) {
     if (!image) return;
 
-    if (confirm("Resize Painter node canvas?")) {
+    if (await comfyuiDesktopConfirm("Resize Painter node canvas?")) {
       this.setCanvasSize(image.naturalWidth, image.naturalHeight);
     }
 
@@ -2038,10 +2064,12 @@ class Painter {
     );
   }
 
-  pastAsImage(image, options = {}) {
+  async pastAsImage(image, options = {}) {
     if (!image) return;
 
-    const painterSize = confirm("Resize Painter node canvas?");
+    const painterSize = await comfyuiDesktopConfirm(
+      "Resize Painter node canvas?"
+    );
     if (painterSize) {
       this.setCanvasSize(image.naturalWidth, image.naturalHeight);
     }
@@ -2054,7 +2082,10 @@ class Painter {
       ...options,
     });
 
-    if (!painterSize && confirm("Stretch image to fit canvas Painter node?")) {
+    if (
+      !painterSize &&
+      (await comfyuiDesktopConfirm("Stretch image to fit canvas Painter node?"))
+    ) {
       img_.scaleToHeight(this.currentCanvasSize.width);
       img_.scaleToWidth(this.currentCanvasSize.height);
     }
@@ -2094,7 +2125,7 @@ class Painter {
   }
 
   async addImageToCanvas(image, options = {}) {
-    async function uploadFile(file) {
+    const uploadFile = async (file) => {
       try {
         const body = new FormData();
         body.append("image", file);
@@ -2109,7 +2140,7 @@ class Painter {
           let path = data.name;
           if (data.subfolder) path = data.subfolder + "/" + path;
 
-          return await getImageByName(path);
+          return await this.getImageByName(path);
         } else {
           console.log(`${resp.status} - ${resp.statusText}`);
           return resp.statusText;
@@ -2118,7 +2149,7 @@ class Painter {
         console.log(err);
         return err;
       }
-    }
+    };
 
     image = await uploadFile(image);
 
@@ -2140,9 +2171,9 @@ class Painter {
       return;
     }
 
-    if (confirm("Past as background?")) {
+    if (await comfyuiDesktopConfirm("Past as background?")) {
       this.pastAsBackground(image, options);
-    } else if (confirm("Past as image?")) {
+    } else if (await comfyuiDesktopConfirm("Past as image?")) {
       this.pastAsImage(image, options);
     }
   }
@@ -2215,7 +2246,7 @@ class Painter {
             this.canvasSaveSettingsPainter();
             res(true);
           } else {
-            alert(resp.status + " - " + resp.statusText);
+            comfyuiDesktopAlert(resp.status + " - " + resp.statusText);
           }
         } catch (error) {
           console.log(error);
@@ -2487,7 +2518,7 @@ function PainterWidget(node, inputName, inputData, app) {
 
     await new Promise((res) => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         // Change size piping input image
         const { naturalWidth: w, naturalHeight: h } = img;
         if (
@@ -2806,19 +2837,23 @@ app.registerExtension({
           });
         }
 
-        const removeIndex = options.findIndex((m) => m?.content === "Remove"),
-          removeButton = options[removeIndex];
-        if (!!removeButton) {
-          const remove_callback = removeButton.callback;
-          const self = this;
-          removeButton.callback = function () {
-            remove_callback.apply(this, arguments);
+        setTimeout(() => {
+          const removeIndex = options.findIndex((m) => m?.content === "Remove"),
+            removeButton = options[removeIndex];
 
-            if (confirm("Remove storage data?")) {
-              self.LS_Cls.removeData();
-            }
-          };
-        }
+          if (!!removeButton) {
+            const remove_callback = removeButton.callback;
+            const self = this;
+
+            removeButton.callback = async function () {
+              remove_callback.apply(this, arguments);
+
+              if (await comfyuiDesktopConfirm("Remove storage data?")) {
+                self.LS_Cls.removeData();
+              }
+            };
+          }
+        }, 0);
       };
       // end - ExtraMenuOptions
     }

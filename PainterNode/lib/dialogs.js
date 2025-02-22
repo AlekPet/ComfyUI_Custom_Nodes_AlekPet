@@ -6,12 +6,13 @@ import {
   makeElement,
   createWindowModal,
   THEMES_MODAL_WINDOW,
+  comfyuiDesktopConfirm,
 } from "../../utils.js";
 
 export class PainterStorageDialog extends ComfyDialog {
   // Remove record in LocalStorage or JSON file
   async removeRecord(name, type) {
-    if (!confirm(`Delete record "${name}"?`)) return;
+    if (!(await comfyuiDesktopConfirm(`Delete record "${name}"?`))) return;
 
     if (type === "ls") {
       if (localStorage.getItem(name)) {

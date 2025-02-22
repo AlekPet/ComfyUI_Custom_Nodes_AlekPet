@@ -12,6 +12,7 @@ import {
   isValidStyle,
   createWindowModal,
   animateClick,
+  comfyuiDesktopAlert,
 } from "../../utils.js";
 import { RecognationSpeechDialog } from "./extras_node_dialogs.js";
 
@@ -382,7 +383,7 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
                     speechRect.lastText = "";
                   };
                 } catch (err) {
-                  alert(
+                  comfyuiDesktopAlert(
                     `Device "Microphone" - ${err.message}!\n\nCheck device or allow access!`
                   );
                 }
