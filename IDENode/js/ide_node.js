@@ -6,6 +6,8 @@ import {
   makeElement,
   findWidget,
   THEMES_MODAL_WINDOW,
+  comfyuiDesktopConfirm,
+  comfyuiDesktopPrompt,
 } from "./utils.js";
 
 ace.config.set(
@@ -206,10 +208,13 @@ app.registerExtension({
 
         const widgetLang_id = findWidget(node, "language", "name", "findIndex");
         if (widgetLang_id !== -1) {
-          node.widgets[widgetLang_id].callback = (v) => {
+          node.widgets[widgetLang_id].callback = async (v) => {
             widget.editor.setTheme(`ace/theme/${themeList.value}`);
-            confirm("Clear code?") && widget.editor.setValue("");
-            if (confirm("Paste template?")) {
+
+            if (await comfyuiDesktopConfirm("Clear code?"))
+              widget.editor.setValue("");
+
+            if (await comfyuiDesktopConfirm("Paste template?")) {
               let defaultCode = null;
               if (v === "javascript") {
                 defaultCode = DEFAULT_TEMPLATES.js;
@@ -269,17 +274,19 @@ app.registerExtension({
           "button",
           "Add Input variable",
           "add_input_variable",
-          () => {
+          async () => {
             // Input name variable and check
             const nameInput = node?.inputs?.length
               ? `var${node.inputs.length + 1}`
               : "var1";
 
-            const varName = prompt(
+            let varName = await comfyuiDesktopPrompt(
+              "Variable",
               "Enter input variable name:",
               nameInput
-            ).trim();
+            );
 
+            varName = varName.trim();
             if (
               !makeValidVariable(
                 varName,
@@ -289,11 +296,13 @@ app.registerExtension({
               return;
 
             // Type variable and check
-            let type = prompt(
+            let type = await comfyuiDesktopPrompt(
+              "Type",
               "Enter type data output (default: *):",
               "*"
-            ).trim();
+            );
 
+            type = type.trim();
             if (
               !makeValidVariable(
                 type,
@@ -313,19 +322,22 @@ app.registerExtension({
           "button",
           "Add Output variable",
           "add_output_variable",
-          () => {
+          async () => {
             const currentWidth = node.size[0];
 
             // Output name variable
             const nameOutput = node?.outputs?.length
               ? `result${node.outputs.length + 1}`
               : "result1";
-            const varName = prompt(
+
+            let varName = await comfyuiDesktopPrompt(
+              "Variable",
               "Enter output variable name:",
               nameOutput
-            ).trim();
+            );
 
             // Check output variable name
+            varName = varName.trim();
             if (
               !makeValidVariable(
                 varName,
@@ -335,11 +347,13 @@ app.registerExtension({
               return;
 
             // Type variable and check
-            let type = prompt(
+            let type = await comfyuiDesktopPrompt(
+              "Type",
               "Enter type data output (default: *):",
               "*"
-            ).trim();
+            );
 
+            type = type.trim();
             if (
               !makeValidVariable(
                 type,

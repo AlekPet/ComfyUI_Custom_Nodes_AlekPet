@@ -9,6 +9,11 @@ import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
 import { $el } from "../../scripts/ui.js";
 import { addStylesheet } from "../../scripts/utils.js";
+import {
+  comfyuiDesktopConfirm,
+  comfyuiDesktopPrompt,
+  comfyuiDesktopAlert,
+} from "./utils.js";
 import { fabric } from "./lib/posenode/fabric.js";
 
 fabric.Object.prototype.transparentCorners = false;
@@ -114,10 +119,19 @@ class OpenPose {
 
     this.canvas = this.initCanvas(canvasElement);
     this.image = node.widgets.find((w) => w.name === "image");
+
+    const callb = this.node?.callback,
+      self = this;
+    this.image.callback = function () {
+      self.image.value = self.node.name;
+      if (callb) {
+        return callb.apply(this, arguments);
+      }
+    };
   }
 
   getSettings() {
-    return JSON.parse(JSON.stringify(this.settings));
+    return this.settings;
   }
 
   setCanvasSize(new_width, new_height, resetPose = false) {
@@ -130,7 +144,9 @@ class OpenPose {
 
     this.node.title = `${this.node.type} - ${new_width}x${new_height}`;
     resetPose && this.resetCanvas();
+
     this.canvas.renderAll();
+
     app.graph.setDirtyCanvas(true, false);
     this.node.onResize();
   }
@@ -361,7 +377,6 @@ class OpenPose {
         return;
       }
 
-      this.settings.undo_history.push(this.getJSON());
       this.settings.redo_history.length = 0;
       this.uploadPoseFile(this.node.name);
     });
@@ -399,14 +414,14 @@ class OpenPose {
     }
   }
 
-  resetCanvas(reset_size = false) {
+  async resetCanvas(reset_size = false) {
     if (reset_size) {
-      if (confirm("Clear undo/redo?")) {
+      if (await comfyuiDesktopConfirm("Clear undo/redo?")) {
         this.settings.undo_history = [];
         this.settings.redo_history = [];
       }
 
-      if (confirm("Reset canvas size?")) {
+      if (await comfyuiDesktopConfirm("Reset canvas size?")) {
         this.setCanvasSize(512, 512);
 
         const backgroundImg = this.canvas.backgroundImage;
@@ -474,6 +489,8 @@ class OpenPose {
     this.canvas.backgroundImage = null;
     this.canvas.renderAll();
 
+    this.settings.undo_history.push(this.getJSON());
+
     this.canvas.lowerCanvasEl.toBlob((blob) => {
       const formData = new FormData();
       formData.append("image", blob, fileName);
@@ -502,15 +519,6 @@ class OpenPose {
 
     //Set the background back
     this.setBackground(tmp_BackgroundImg);
-
-    const callb = this.node.callback,
-      self = this;
-    this.image.callback = function () {
-      this.image.value = self.node.name;
-      if (callb) {
-        return callb.apply(this, arguments);
-      }
-    };
   }
 
   async uploadFileToServer(formData) {
@@ -691,8 +699,12 @@ function createOpenPose(node, inputName, inputData, app) {
     $el("button.clear_history", {
       textContent: "✖",
       title: "Clear History",
-      onclick: () => {
-        if (confirm(`Delete all pose history of a node "${node.name}"?`)) {
+      onclick: async () => {
+        if (
+          await comfyuiDesktopConfirm(
+            `Delete all pose history of a node "${node.name}"?`
+          )
+        ) {
           node.openPose.undo_history = [];
           node.openPose.redo_history = [];
           node.openPose.setPose(default_keypoints);
@@ -708,12 +720,20 @@ function createOpenPose(node, inputName, inputData, app) {
 </svg>`,
       style: { margin: 0, padding: 0 },
       title: "Change canvas size",
-      onclick: () => {
-        function checkSized(prop = "", defaultVal = 512) {
+      onclick: async () => {
+        async function checkSized(prop = "", defaultVal = 512) {
           let inputSize;
-          let correct = false;
-          while (!correct) {
-            inputSize = +prompt(`Enter canvas ${prop}:`, defaultVal);
+
+          while (true) {
+            inputSize = await comfyuiDesktopPrompt(
+              "Canvas size",
+              `Enter canvas ${prop}:`,
+              defaultVal
+            );
+
+            if (inputSize === null) return defaultVal;
+
+            inputSize = +inputSize;
             if (
               Number(inputSize) === inputSize &&
               inputSize % 1 === 0 &&
@@ -721,15 +741,21 @@ function createOpenPose(node, inputName, inputData, app) {
             ) {
               return inputSize;
             }
-            alert(`[${prop}] Invalid number "${inputSize}" or <=0!`);
+
+            comfyuiDesktopAlert(
+              `[${prop}] Invalid number "${inputSize}" or <=0!`
+            );
           }
         }
 
-        const width = checkSized("width", node.openPose.canvas.width),
-          height = checkSized("height", node.openPose.canvas.height);
+        const width = await checkSized("width", node.openPose.canvas.width),
+          height = await checkSized("height", node.openPose.canvas.height);
 
         node.openPose.setCanvasSize(width, height, true);
         node.openPose.uploadPoseFile(node.name);
+
+        // Save data
+        app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
       },
     }),
   ]);
@@ -740,6 +766,9 @@ function createOpenPose(node, inputName, inputData, app) {
     "openpose",
     openPoseWrapper,
     {
+      setValue(v) {
+        node.openPose.settings = v;
+      },
       getValue() {
         return node.openPose.getSettings();
       },
@@ -748,8 +777,10 @@ function createOpenPose(node, inputName, inputData, app) {
 
   widget.callback = (v) => {};
 
-  let widgetCombo = node.widgets.filter((w) => w.type === "combo");
-  widgetCombo[0].value = node.name;
+  try {
+    const data = node.widgets_values[3];
+    if (data) widget.value = JSON.parse(JSON.stringify(data));
+  } catch (error) {}
 
   widget.openpose = node.openPose.canvas.wrapperEl;
   widget.parent = node;
@@ -871,8 +902,6 @@ app.registerExtension({
                 );
               });
             }
-
-            this.openPose.settings = data;
 
             this.openPose.canvas.renderAll();
             this.openPose.uploadPoseFile(this.name);

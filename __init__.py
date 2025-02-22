@@ -31,8 +31,8 @@ extension_dirs = [
 # Debug mode
 DEBUG = False
 
-# NODE_CLASS_MAPPINGS = dict()  # dynamic class nodes append in mappings
-# NODE_DISPLAY_NAME_MAPPINGS = dict()  # dynamic display names nodes append mappings names
+NODE_CLASS_MAPPINGS = dict()  # dynamic class nodes append in mappings
+NODE_DISPLAY_NAME_MAPPINGS = dict()  # dynamic display names nodes append mappings names
 
 humanReadableTextReg = re.compile("(?<=[a-z0-9])([A-Z])|(?<=[A-Z0-9])([A-Z][a-z]+)")
 module_name_cut_version = re.compile("[>=<]")
@@ -40,19 +40,23 @@ module_name_cut_version = re.compile("[>=<]")
 installed_modules = {}
 # installed_modules = {m[1] for m in pkgutil.iter_modules()}
 
+
 def get_version_extension():
-    version = ''
-    toml_file = os.path.join(extension_folder, 'pyproject.toml')
-    if(os.path.isfile(toml_file)):
+    version = ""
+    toml_file = os.path.join(extension_folder, "pyproject.toml")
+    if os.path.isfile(toml_file):
         try:
             with open(toml_file, "r") as v:
-                version = list(filter(lambda l: l.startswith("version"),v.readlines()))[0]
-                version = version.split("=")[1].replace("\"","").strip()
+                version = list(
+                    filter(lambda l: l.startswith("version"), v.readlines())
+                )[0]
+                version = version.split("=")[1].replace('"', "").strip()
                 return f" \033[1;34mv{version}\033[0m\033[1;35m"
         except Exception as e:
             print(e)
 
     return version
+
 
 def log(*text):
     if DEBUG:
@@ -200,7 +204,11 @@ def checkModules(nodeElement):
             )
 
 
+nodes_list_dict = {}
+
+
 def install_node(nodeElement):
+    global nodes_list_dict
     log(f"* Node <{nodeElement}> is found, installing...")
     web_extensions_dir = os.path.join(extension_folder, extension_dirs[0])
 
@@ -217,7 +225,14 @@ def install_node(nodeElement):
 
     clsNodes = getNamesNodesInsidePyFile(nodeElement)
     clsNodesText = "\033[93m" + ", ".join(clsNodes) + "\033[0m" if clsNodes else ""
-    printColorInfo(f"Node -> {nodeElement}: {clsNodesText} \033[92m[Loading] ")
+    # printColorInfo(f"Node -> {nodeElement}: {clsNodesText} \033[92m[Loading] ")
+
+    nodes_list_dict[nodeElement].update(
+        {
+            "nodes": clsNodes,
+            "message": f"Node -> {nodeElement}: {clsNodesText} \033[92m",
+        }
+    )
 
     checkModules(nodeElement)
     # addComfyUINodesToMapping(nodeElement) # dynamic class nodes append in mappings
@@ -225,9 +240,9 @@ def install_node(nodeElement):
 
 def installNodes():
     global installed_modules
+    global nodes_list_dict
     log(f"\n-------> AlekPet Node Installing [DEBUG] <-------")
-    printColorInfo(f"### [START] ComfyUI AlekPet Nodes{get_version_extension()} ###", "\033[1;35m")
-
+    # printColorInfo(f"### [START] ComfyUI AlekPet Nodes{get_version_extension()} ###", "\033[1;35m")
     # Remove files in lib directory
     libfiles = ["fabric.js"]
     for file in libfiles:
@@ -249,18 +264,22 @@ def installNodes():
 
     installed_modules = get_installed_modules()
 
-    nodes = [
-        nodeElement
-        for nodeElement in os.listdir(extension_folder)
-        if not nodeElement.startswith("__")
-        and nodeElement.endswith("Node")
-        and os.path.isdir(os.path.join(extension_folder, nodeElement))
-    ]
+    nodes = []
+    for nodeElement in os.listdir(extension_folder):
+        if (
+            not nodeElement.startswith("__")
+            and nodeElement.endswith("Node")
+            and os.path.isdir(os.path.join(extension_folder, nodeElement))
+        ):
+            nodes_list_dict[nodeElement] = {
+                "error": None,
+            }
+            nodes.append(nodeElement)
 
     with ThreadPoolExecutor() as executor:
         executor.map(install_node, nodes)
 
-    printColorInfo(f"### [END] ComfyUI AlekPet Nodes ###", "\033[1;35m")
+    # printColorInfo(f"### [END] ComfyUI AlekPet Nodes ###", "\033[1;35m")
 
 
 # Mount web directory
@@ -270,65 +289,152 @@ WEB_DIRECTORY = f"./{extension_dirs[0]}"
 # Install nodes
 installNodes()
 
-
 # Import classes nodes and add in mappings
-from .ArgosTranslateNode.argos_translate_node import (
-    ArgosTranslateCLIPTextEncodeNode,
-    ArgosTranslateTextNode,
-)
+# ArgosTranslateNode
+try:
+    from .ArgosTranslateNode.argos_translate_node import (
+        ArgosTranslateCLIPTextEncodeNode,
+        ArgosTranslateTextNode,
+    )
+
+    NODE_CLASS_MAPPINGS.update(
+        {
+            "ArgosTranslateCLIPTextEncodeNode": ArgosTranslateCLIPTextEncodeNode,
+            "ArgosTranslateTextNode": ArgosTranslateTextNode,
+        }
+    )
+    NODE_DISPLAY_NAME_MAPPINGS.update(
+        {
+            "ArgosTranslateCLIPTextEncodeNode": "Argos Translate CLIP Text Encode Node",
+            "ArgosTranslateTextNode": "Argos Translate Text Node",
+        }
+    )
+
+except Exception as e:
+    nodes_list_dict["ArgosTranslateNode"]["error"] = e
+
+
+# DeepTranslatorNode
+try:
+    from .DeepTranslatorNode.deep_translator_node import (
+        DeepTranslatorCLIPTextEncodeNode,
+        DeepTranslatorTextNode,
+    )
+
+    NODE_CLASS_MAPPINGS.update(
+        {
+            "DeepTranslatorCLIPTextEncodeNode": DeepTranslatorCLIPTextEncodeNode,
+            "DeepTranslatorTextNode": DeepTranslatorTextNode,
+        }
+    )
+    NODE_DISPLAY_NAME_MAPPINGS.update(
+        {
+            "DeepTranslatorCLIPTextEncodeNode": "Deep Translator CLIP Text Encode Node",
+            "DeepTranslatorTextNode": "Deep Translator Text Node",
+        }
+    )
+
+except Exception as e:
+    nodes_list_dict["DeepTranslatorNode"]["error"] = e
+
+
+# GoogleTranslateNode
+try:
+    from .GoogleTranslateNode.google_translate_node import (
+        GoogleTranslateCLIPTextEncodeNode,
+        GoogleTranslateTextNode,
+    )
+
+    NODE_CLASS_MAPPINGS.update(
+        {
+            "GoogleTranslateCLIPTextEncodeNode": GoogleTranslateCLIPTextEncodeNode,
+            "GoogleTranslateTextNode": GoogleTranslateTextNode,
+        }
+    )
+    NODE_DISPLAY_NAME_MAPPINGS.update(
+        {
+            "GoogleTranslateCLIPTextEncodeNode": "Google Translate CLIP Text Encode Node",
+            "GoogleTranslateTextNode": "Google Translate Text Node",
+        }
+    )
+
+except Exception as e:
+    nodes_list_dict["GoogleTranslateNode"]["error"] = e
+
+# ChatGLMNode
 from .ChatGLMNode.chatglm_node import (
     ChatGLM4TranslateCLIPTextEncodeNode,
-    ChatGLM4TranslateTextNode, ChatGLM4InstructNode, ChatGLM4InstructMediaNode
+    ChatGLM4TranslateTextNode,
+    ChatGLM4InstructNode,
+    ChatGLM4InstructMediaNode,
 )
-from .DeepTranslatorNode.deep_translator_node import (
-    DeepTranslatorCLIPTextEncodeNode,
-    DeepTranslatorTextNode,
-)
+
+# ExtrasNode
 from .ExtrasNode.extras_node import PreviewTextNode, HexToHueNode, ColorsCorrectNode
-from .GoogleTranslateNode.google_translate_node import (
-    GoogleTranslateCLIPTextEncodeNode,
-    GoogleTranslateTextNode,
-)
+
+# PainterNode
 from .PainterNode.painter_node import PainterNode
+
+# PoseNode
 from .PoseNode.pose_node import PoseNode
+
+# IDENode
 from .IDENode.ide_node import IDENode
 
 
-NODE_CLASS_MAPPINGS = {
-    "ArgosTranslateCLIPTextEncodeNode": ArgosTranslateCLIPTextEncodeNode,
-    "ArgosTranslateTextNode": ArgosTranslateTextNode,
-    "ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
-    "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
-    "ChatGLM4InstructNode": ChatGLM4InstructNode,
-    "ChatGLM4InstructMediaNode": ChatGLM4InstructMediaNode,
-    "DeepTranslatorCLIPTextEncodeNode": DeepTranslatorCLIPTextEncodeNode,
-    "DeepTranslatorTextNode": DeepTranslatorTextNode,
-    "PreviewTextNode": PreviewTextNode,
-    "HexToHueNode": HexToHueNode,
-    "ColorsCorrectNode": ColorsCorrectNode,
-    "GoogleTranslateCLIPTextEncodeNode": GoogleTranslateCLIPTextEncodeNode,
-    "GoogleTranslateTextNode": GoogleTranslateTextNode,
-    "PainterNode": PainterNode,
-    "PoseNode": PoseNode,
-    "IDENode": IDENode,
-}
+NODE_CLASS_MAPPINGS.update(
+    {
+        "ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
+        "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
+        "ChatGLM4InstructNode": ChatGLM4InstructNode,
+        "ChatGLM4InstructMediaNode": ChatGLM4InstructMediaNode,
+        "PreviewTextNode": PreviewTextNode,
+        "HexToHueNode": HexToHueNode,
+        "ColorsCorrectNode": ColorsCorrectNode,
+        "PainterNode": PainterNode,
+        "PoseNode": PoseNode,
+        "IDENode": IDENode,
+    }
+)
 
 
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "ArgosTranslateCLIPTextEncodeNode": "Argos Translate CLIP Text Encode Node",
-    "ArgosTranslateTextNode": "Argos Translate Text Node",
-    "ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
-    "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node",
-    "ChatGLM4InstructNode": "ChatGLM-4 Instruct Node",
-    "ChatGLM4InstructMediaNode": "ChatGLM-4 Instruct Media Node",
-    "DeepTranslatorCLIPTextEncodeNode": "Deep Translator CLIP Text Encode Node",
-    "DeepTranslatorTextNode": "Deep Translator Text Node",
-    "PreviewTextNode": "Preview Text Node",
-    "HexToHueNode": "HEX to HUE Node",
-    "ColorsCorrectNode": "Colors Correct Node",
-    "GoogleTranslateCLIPTextEncodeNode": "Google Translate CLIP Text Encode Node",
-    "GoogleTranslateTextNode": "Google Translate Text Node",
-    "PainterNode": "Painter Node",
-    "PoseNode": "Pose Node",
-    "IDENode": "IDE Node",
-}
+NODE_DISPLAY_NAME_MAPPINGS.update(
+    {
+        "ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
+        "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node",
+        "ChatGLM4InstructNode": "ChatGLM-4 Instruct Node",
+        "ChatGLM4InstructMediaNode": "ChatGLM-4 Instruct Media Node",
+        "PreviewTextNode": "Preview Text Node",
+        "HexToHueNode": "HEX to HUE Node",
+        "ColorsCorrectNode": "Colors Correct Node",
+        "PainterNode": "Painter Node",
+        "PoseNode": "Pose Node",
+        "IDENode": "IDE Node",
+    }
+)
+
+
+# Information
+printColorInfo(
+    f"\n### [START] ComfyUI AlekPet Nodes{get_version_extension()} ###", "\033[1;35m"
+)
+failed_nodes_text = ""
+len_nodes = len(nodes_list_dict)
+for key, node in enumerate(nodes_list_dict):
+    currentNode = nodes_list_dict[node]
+    if currentNode["error"] is None:
+        status = "\033[92m[Loading]"
+    else:
+        status = "\033[1;31;40m[Failed]"
+        error_message = currentNode["error"]
+        failed_nodes_text += f"\033[93m{node} -> \033[1;31;40m{error_message}\033[0m\n"
+
+    message = currentNode["message"]
+    printColorInfo(f"{message}{status}\033[0m")
+
+    if key == len_nodes - 1 and failed_nodes_text:
+        printColorInfo(
+            f"\n\033[1;31;40m* Nodes have been temporarily disabled due to the error *\033[0m\n{failed_nodes_text}"
+        )
+
+printColorInfo(f"### [END] ComfyUI AlekPet Nodes ###", "\033[1;35m")

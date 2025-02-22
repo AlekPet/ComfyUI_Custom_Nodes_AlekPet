@@ -128,3 +128,19 @@
   display: flex;
   font-size: 0.6rem;
 }
+
+/* Style custom Confirm buttons */
+.alekpet_confButtons {
+  border-radius: 3px;
+  font-weight: 600;
+  padding: 3px;
+  text-align: center;
+  color: white;
+  cursor: pointer;
+  transition: all 0.8s;
+}
+
+.alekpet_confButtons:hover {
+  background-blend-mode: multiply;
+  background-color: white;
+}
