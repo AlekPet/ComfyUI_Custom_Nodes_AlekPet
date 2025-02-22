@@ -912,6 +912,9 @@ app.registerExtension({
 
             this.openPose.canvas.renderAll();
             this.openPose.uploadPoseFile(this.name);
+
+            this.setSize(arguments[0].size);
+            app.graph.setDirtyCanvas(true, false);
           }
         }, 0);
       };
