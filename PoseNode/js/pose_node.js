@@ -777,6 +777,15 @@ function createOpenPose(node, inputName, inputData, app) {
 
   widget.callback = (v) => {};
 
+  const origDraw = widget.draw;
+  widget.draw = function () {
+    origDraw?.apply(this, arguments);
+    const [ctx, node, widgetHeight, widgetWidth, y] = arguments;
+    Object.assign(openPoseWrapper.style, {
+      height: widgetHeight + "px",
+    });
+  };
+
   try {
     const data = node.widgets_values[3];
     if (data) widget.value = JSON.parse(JSON.stringify(data));
@@ -849,8 +858,6 @@ app.registerExtension({
         console.log(`Create PoseNode: ${nodeNamePNG}`);
 
         createOpenPose.apply(this, [this, nodeNamePNG, {}, app]);
-
-        this.setSize([530, 620]);
 
         this.openPose.uploadPoseFile(nodeNamePNG);
 
