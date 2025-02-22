@@ -777,6 +777,15 @@ function createOpenPose(node, inputName, inputData, app) {
 
   widget.callback = (v) => {};
 
+  const origDraw = widget.draw;
+  widget.draw = function () {
+    origDraw?.apply(this, arguments);
+    const [ctx, node, widgetHeight, widgetWidth, y] = arguments;
+    Object.assign(openPoseWrapper.style, {
+      height: widgetHeight + "px",
+    });
+  };
+
   try {
     const data = node.widgets_values[3];
     if (data) widget.value = JSON.parse(JSON.stringify(data));
@@ -850,8 +859,6 @@ app.registerExtension({
 
         createOpenPose.apply(this, [this, nodeNamePNG, {}, app]);
 
-        this.setSize([530, 620]);
-
         this.openPose.uploadPoseFile(nodeNamePNG);
 
         // Resize window
@@ -905,6 +912,9 @@ app.registerExtension({
 
             this.openPose.canvas.renderAll();
             this.openPose.uploadPoseFile(this.name);
+
+            this.setSize(arguments[0].size);
+            app.graph.setDirtyCanvas(true, false);
           }
         }, 0);
       };
