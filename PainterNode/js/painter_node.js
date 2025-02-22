@@ -1573,27 +1573,15 @@ class Painter {
         }
       }
 
-      let width = await checkSized(
-          "width",
-          this.storageCls.settings_painter_node.settings.currentCanvasSize.width
-        ),
-        height = await checkSized(
-          "height",
-          this.storageCls.settings_painter_node.settings.currentCanvasSize
-            .height
-        );
+      const { width: curWidth, height: curHeight } =
+        this.storageCls.settings_painter_node.settings.currentCanvasSize;
 
-      if (
-        width ===
-          this.storageCls.settings_painter_node.settings.currentCanvasSize
-            .width &&
-        height ===
-          this.storageCls.settings_painter_node.settings.currentCanvasSizes
-            .height
-      )
-        return;
+      let new_width = await checkSized("width", curWidth),
+        new_height = await checkSized("height", curHeight);
 
-      this.setCanvasSize(width, height, true);
+      if (new_width === curWidth && new_height === curHeight) return;
+
+      this.setCanvasSize(new_width, new_height, true);
       this.uploadPaintFile(this.node.name);
     });
 
@@ -2663,6 +2651,9 @@ app.registerExtension({
           if (data?.canvas_settings) {
             this.painter.canvasLoadSettingPainter(data).then((result) => {});
           }
+
+          this.setSize(arguments[0].size);
+          app.graph.setDirtyCanvas(true, false);
         }
       };
 

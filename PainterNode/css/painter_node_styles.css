@@ -9,6 +9,7 @@
 
 .canvas-container-painter {
   width: auto !important;
+  height: auto !important;
 }
 
 .canvas-container-painter canvas {
