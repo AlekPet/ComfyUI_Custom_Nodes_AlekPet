@@ -588,7 +588,7 @@ def makeRequiredFields(langs_support=[]):
     params = {
         "from_translate": (["auto"] + langs_support, {"default": "auto"}),
         "to_translate": (langs_support, {"default": "english"}),
-        "add_proxies": (([True, False],), {"default": False}),
+        "add_proxies": ("BOOLEAN", {"default": False}),
         "proxies": (
             "STRING",
             {

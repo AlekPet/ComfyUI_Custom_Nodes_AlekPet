@@ -18,7 +18,7 @@ function manual_translate_prompt() {
     if (!!!manual_translate.value) {
       makeModal({
         title: "Info",
-        text: "<p>Manual translate disabled!</p><p>The translation works when you start generating images.</p>",
+        text: "<div>Manual translate disabled!</div><div style='margin: 3px 0;'>The translation works when you press button <b>generate <i>('Queue')</i></b>.</div>",
       });
 
       return;
@@ -84,8 +84,6 @@ app.registerExtension({
           manual_translate_prompt.bind(node)
         );
 
-        node.widgets[2].type = "toggle";
-        node.widgets[2].value = false;
         node.widgets.splice(3, 0, node.widgets.pop());
       };
 

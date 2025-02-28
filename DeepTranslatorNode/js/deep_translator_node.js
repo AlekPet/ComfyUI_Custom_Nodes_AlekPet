@@ -236,9 +236,6 @@ app.registerExtension({
           }
         );
 
-        node.widgets[2].type = "toggle";
-        node.widgets[2].value = false;
-
         get_support_langs.apply(node);
       };
 

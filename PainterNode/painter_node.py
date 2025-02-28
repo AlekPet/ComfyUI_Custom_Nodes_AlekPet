@@ -241,7 +241,7 @@ class PainterNode(object):
         return {
             "required": {"image": (sorted(imgs),)},
             "hidden": {"unique_id": "UNIQUE_ID"},
-            "optional": {"images": ("IMAGE",), "update_node": (([True, False],))},
+            "optional": {"images": ("IMAGE",), "update_node": ("BOOLEAN", {"default": True})},
         }
 
     RETURN_TYPES = ("IMAGE", "MASK")

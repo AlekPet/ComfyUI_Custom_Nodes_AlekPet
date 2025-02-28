@@ -83,7 +83,7 @@ class GoogleTranslateCLIPTextEncodeNode:
                     {"default": "auto"},
                 ),
                 "to_translate": (list(LANGUAGES.keys()), {"default": "en"}),
-                "manual_translate": ([True, False],),
+                "manual_translate": ("BOOLEAN", {"default": False}),
                 "text": ("STRING", {"multiline": True, "placeholder": "Input prompt"}),
                 "clip": ("CLIP",),
             }
