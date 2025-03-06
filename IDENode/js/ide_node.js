@@ -136,8 +136,7 @@ result = str(my(23, 9))`,
         widget.type === "converted-widget" ||
         widget.type === "hidden";
 
-      widget.hidden = hidden;
-      widget.codeElement.style.display = hidden ? "none" : null;
+      widget.codeElement.hidden = hidden;
 
       if (hidden) {
         widget.options.onHide?.(widget);
@@ -161,6 +160,7 @@ result = str(my(23, 9))`,
   widget.editor = ace.edit(widget.codeElement);
   widget.editor.setTheme("ace/theme/monokai");
   widget.editor.session.setMode("ace/mode/python");
+  widget.codeElement.hidden = true;
 
   document.body.appendChild(widget.codeElement);
 
@@ -169,16 +169,19 @@ result = str(my(23, 9))`,
     collapse.apply(this, arguments);
     if (this.flags?.collapsed) {
       widget.codeElement.hidden = true;
-      widget.codeElement.style.display = "none";
     } else {
       if (this.flags?.collapsed === false) {
         widget.codeElement.hidden = false;
-        widget.codeElement.style.display = null;
       }
     }
   };
 
   return widget;
+}
+
+// Save data to workflow forced!
+function saveValue() {
+  app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
 }
 
 // Register extensions
@@ -191,6 +194,7 @@ app.registerExtension({
 
         widget.editor.getSession().on("change", function (e) {
           widget.value = widget.editor.getValue();
+          saveValue();
         });
 
         const themeList = node.addWidget(
@@ -315,6 +319,7 @@ app.registerExtension({
             const currentWidth = node.size[0];
             node.addInput(varName, type);
             node.setSize([currentWidth, node.size[1]]);
+            saveValue();
           }
         );
 
@@ -365,11 +370,13 @@ app.registerExtension({
 
             node.addOutput(varName, type);
             node.setSize([currentWidth, node.size[1]]);
+            saveValue();
           }
         );
 
         node.addWidget("button", "Clear", "clear_code", () => {
           widget.editor.setValue("");
+          saveValue();
         });
 
         node.onRemoved = function () {
@@ -600,6 +607,7 @@ app.registerExtension({
                 }
                 this.removeInput(input_idx);
                 this.setSize([currentWidth, this.size[1]]);
+                saveValue();
               },
             });
           }
@@ -619,6 +627,7 @@ app.registerExtension({
                 }
                 this.removeOutput(output_idx);
                 this.setSize([currentWidth, this.size[1]]);
+                saveValue();
               },
             });
           }
