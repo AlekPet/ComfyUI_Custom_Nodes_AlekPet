@@ -114,10 +114,11 @@ class WorkflowStateManager {
       return WorkflowStateManager.instance;
     }
     this.debug = !false;
-    this._workflowManager = app?.workflowManager;
+    this._workflowManager = app?.extensionManager?.workflow;
 
     this._currentWorkflow =
-      app?.workflowManager?.activeWorkflow.name || "Unsaved Workflow";
+      app?.extensionManager?.workflow?.activeWorkflow?.filename ||
+      "Unsaved Workflow";
     this._previousWorkflow = null;
 
     this.workflowsStores = [];
@@ -131,6 +132,26 @@ class WorkflowStateManager {
     this.setEvents();
   }
 
+  get workflowManager() {
+    return this._workflowManager;
+  }
+
+  get previousWorkflow() {
+    return this._previousWorkflow;
+  }
+
+  set previousWorkflow(new_value) {
+    this._previousWorkflow = new_value;
+  }
+
+  get currentWorkflow() {
+    return this._currentWorkflow;
+  }
+
+  set currentWorkflow(new_value) {
+    this._currentWorkflow = new_value;
+  }
+
   checkWorkflowExist(workflow) {
     return !this.workflowsStores.includes(workflow);
   }
@@ -140,7 +161,19 @@ class WorkflowStateManager {
   }
 
   setEvents() {
-    if (!this.workflowManager) return;
+    const painters_settings_json = JSON.parse(
+      localStorage.getItem(
+        "Comfy.Settings.alekpet.PainterNode.SaveSettingsJson",
+        false
+      )
+    );
+
+    this._workflowManager.$onAction(({ name, args }) => {
+      if (name === "openWorkflow") {
+        console.log(`openWorkflow вызван с аргументами:`, args);
+      }
+    });
+    if (!painters_settings_json || !this.workflowManager) return;
 
     const self = this;
     this.workflowsStores = this.updateWorkflows();
@@ -315,26 +348,6 @@ class WorkflowStateManager {
         `Previous workflow: ${this.previousWorkflow}, Current workflow: ${this.currentWorkflow}`
       );
   }
-
-  get workflowManager() {
-    return this._workflowManager;
-  }
-
-  get previousWorkflow() {
-    return this._previousWorkflow;
-  }
-
-  set previousWorkflow(new_value) {
-    this._previousWorkflow = new_value;
-  }
-
-  get currentWorkflow() {
-    return this._currentWorkflow;
-  }
-
-  set currentWorkflow(new_value) {
-    this._currentWorkflow = new_value;
-  }
 }
 
 // LocalStorage Init
@@ -355,8 +368,7 @@ class StorageClass {
     this.workflowStateManager = new WorkflowStateManager();
     this.workflowStateManager?.nodeStores?.push(node);
 
-    this.settings_painter_node_all = {};
-    this.settings_painter_node = this.settings_painter_node_default = {
+    this.settings_painter_node_default = {
       undo_history: [],
       redo_history: [],
       canvas_settings: { background: "#000000" },
@@ -382,6 +394,11 @@ class StorageClass {
         },
       },
     };
+
+    this.settings_painter_node_all = {};
+    this.settings_painter_node = JSON.parse(
+      JSON.stringify(this.settings_painter_node_default)
+    );
   }
 
   getSettingsPainterNode() {

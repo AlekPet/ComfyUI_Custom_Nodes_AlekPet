@@ -199,10 +199,12 @@ class Painter {
     });
   }
 
-  saveSettingsPainterNode() {
+  async saveSettingsPainterNode() {
     this.canvasSaveSettingsPainter();
     // Save data
     app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
+
+    if (painters_settings_json) await this.storageCls.saveData();
   }
 
   initCanvas(canvasEl) {
@@ -2374,6 +2376,13 @@ function PainterWidget(node, inputName, inputData, app) {
   };
   // end - DragDrop past image
 
+  // Node serialize
+  node.onSerialize = (n) => {
+    if (painters_settings_json) {
+      n.widgets_values[3] = null;
+    }
+  };
+
   // Get piping image input, when node executing...
   api.addEventListener("alekpet_get_image", async ({ detail }) => {
     const { images, unique_id } = detail;
@@ -2615,7 +2624,22 @@ app.registerExtension({
         const painter_idx = this.widgets.findIndex((w) => w.type === "painter");
 
         if (painter_idx < 0) return;
-        const data = widget.widgets_values[painter_idx];
+        let data = widget.widgets_values[painter_idx];
+
+        if (painters_settings_json && data === null) {
+          data = await this.painter.storageCls.getData();
+
+          if (!data) {
+            data = JSON.parse(
+              JSON.stringify(
+                this.painter.storageCls.settings_painter_node_default
+              )
+            );
+          }
+
+          this.painter.storageCls.settings_painter_node = data;
+        }
+
         Object.assign(this.widgets[painter_idx].value, data);
 
         if (data) {
