@@ -608,7 +608,7 @@ export {
   getColorHEX,
   rangeGradient,
   HsvToRgb,
-  formatBytes,
   StorageClass,
+  formatBytes,
   WorkflowStateManager,
 };

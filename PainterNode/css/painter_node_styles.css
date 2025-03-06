@@ -451,13 +451,13 @@
   color: var(--primary-fg);
 }
 
-.painter_storage_select {
+.painter_storage_header {
   display: flex;
-  justify-content: space-evenly;
-  align-items: center;
+  justify-content: space-around;
   background: var(--content-bg);
   padding: 3px;
   border-radius: 8px;
+  align-items: center;
 }
 
 .painter_storage_body {
@@ -472,13 +472,17 @@
   justify-content: center;
 }
 
-.painter_storage_item:hover {
+.painter_storage_workflows_item {
+  cursor: pointer;
+}
+
+.painter_storage_workflows_item:hover {
   background: var(--primary-hover-bg) !important;
 }
 
 .painter_storage_grid {
   display: grid;
-  grid-template-columns: 0.2fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: 0.2fr 0.2fr repeat(3, 1fr);
   justify-content: center;
   place-items: center;
 }
@@ -488,9 +492,30 @@
   text-transform: uppercase;
 }
 
-.painter_storage_item_preview_canvas {
+.painter_storage_painters_item_preview_canvas {
   width: 60% !important;
   height: auto !important;
 }
 
+/* Workflows */
+
+.painter_storage_painters_wrapper {
+  border: 1px solid var(--border-color);
+  background: var(--p-button-outlined-contrast-hover-background);
+}
+
+.painter_storage_painters_grid {
+  grid-template-columns: 0.2fr repeat(4, 1fr);
+}
+
+.painter_storage_painters_header {
+  background: var(--descrip-text);
+}
+
+.painter_storage_painters_item_name {
+  text-wrap: nowrap;
+  width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* -- end Settings store managing data */

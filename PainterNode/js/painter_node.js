@@ -33,13 +33,12 @@ import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 // ================= FUNCTIONS ================
 
 // Save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
-const SaveSettingsJsonLS = localStorage.getItem(
-  "Comfy.Settings.alekpet.PainterNode.SaveSettingsJson",
-  false
+let painters_settings_json = JSON.parse(
+  localStorage.getItem(
+    "Comfy.Settings.alekpet.PainterNode.SaveSettingsJson",
+    false
+  )
 );
-let painters_settings_json = SaveSettingsJsonLS
-  ? JSON.parse(SaveSettingsJsonLS)
-  : false;
 //
 
 const removeIcon =
@@ -2507,54 +2506,21 @@ app.registerExtension({
     addStylesheet("css/painternode/painter_node_styles.css", import.meta.url);
     addStylesheet("css/painternode/painter_node_fonts.css", import.meta.url);
 
-    // Add settings params painter node
+    // -- Settings
+    // Managing data
     app.ui.settings.addSetting({
-      id: `${extensionName}.SaveSettingsJson`,
-      name: "🔸 Painter Node",
+      id: `${extensionName}.ManagingData`,
+      name: "🔸 Managing JSON data storage",
       defaultValue: false,
       type: (name, sett, val) => {
-        const newUI = document.querySelector(".p-dialog-header");
         return makeElement("tr", {
           children: [
-            !newUI
-              ? makeElement("td", {
-                  children: [
-                    makeElement("label", {
-                      textContent: name,
-                      for: convertIdClass(
-                        `${extensionName}.save_settings_json_checkbox`
-                      ),
-                    }),
-                  ],
-                })
-              : "",
             makeElement("td", {
               children: [
-                makeElement("label", {
-                  style: { display: "block" },
-                  textContent: "Save settings to json file: ",
-                  for: convertIdClass(
-                    `${extensionName}.save_settings_json_checkbox`
-                  ),
-                  children: [
-                    makeElement("input", {
-                      id: convertIdClass(
-                        `${extensionName}.save_settings_json_checkbox`
-                      ),
-                      type: "checkbox",
-                      checked: val,
-                      onchange: (e) => {
-                        const checked = !!e.target.checked;
-                        painters_settings_json = checked;
-                        sett(checked);
-                      },
-                    }),
-                  ],
-                }),
                 makeElement("button", {
                   textContent: "Managing Data",
                   onclick: () => {
-                    new PainterStorageDialog().show(painters_settings_json);
+                    new PainterStorageDialog().show();
                   },
                   style: {
                     display: "block",
@@ -2566,6 +2532,32 @@ app.registerExtension({
         });
       },
     });
+
+    // Close workflow
+    app.ui.settings.addSetting({
+      id: `${extensionName}.RemoveWorkflowDelete`,
+      name: "🔸 Delete save when current workflow delete",
+      defaultValue: false,
+      type: "boolean",
+    });
+
+    // Clear workflow
+    app.ui.settings.addSetting({
+      id: `${extensionName}.RemoveWorkflowClear`,
+      name: "🔸 Delete save when clearing current workflow",
+      defaultValue: false,
+      type: "boolean",
+    });
+
+    // Add settings params painter node
+    app.ui.settings.addSetting({
+      id: `${extensionName}.SaveSettingsJson`,
+      name: "🔸 Save settings to JSON file",
+      defaultValue: false,
+      type: "boolean",
+      onChange: (e) => (painters_settings_json = e),
+    });
+    // end -- Settings
   },
   async setup(app) {},
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
