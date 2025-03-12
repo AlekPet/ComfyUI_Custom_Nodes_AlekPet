@@ -32,12 +32,11 @@ import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
 
+const extensionName = "alekpet.PainterNode";
+
 // Save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
 let painters_settings_json = JSON.parse(
-  localStorage.getItem(
-    "Comfy.Settings.alekpet.PainterNode.SaveSettingsJson",
-    false
-  )
+  localStorage.getItem(`${extensionName}.SaveSettingsJson`, false)
 );
 //
 
@@ -2506,8 +2505,6 @@ function PainterWidget(node, inputName, inputData, app) {
 
 // ================= CREATE EXTENSION ================
 
-const extensionName = "alekpet.PainterNode";
-
 app.registerExtension({
   name: extensionName,
   async init(app) {
@@ -2548,6 +2545,9 @@ app.registerExtension({
       name: "🔸 Delete save when current workflow delete",
       defaultValue: false,
       type: "boolean",
+      onChange: (e) => {
+        localStorage.setItem(`${extensionName}.RemoveWorkflowDelete`, !!e);
+      },
     });
 
     // Clear workflow
@@ -2556,6 +2556,9 @@ app.registerExtension({
       name: "🔸 Delete save when clearing current workflow",
       defaultValue: false,
       type: "boolean",
+      onChange: (e) => {
+        localStorage.setItem(`${extensionName}.RemoveWorkflowClear`, !!e);
+      },
     });
 
     // Add settings params painter node
@@ -2564,7 +2567,13 @@ app.registerExtension({
       name: "🔸 Save settings to JSON file",
       defaultValue: false,
       type: "boolean",
-      onChange: (e) => (painters_settings_json = e),
+      onChange: (e) => {
+        painters_settings_json = !!e;
+        localStorage.setItem(
+          `${extensionName}.SaveSettingsJson`,
+          painters_settings_json
+        );
+      },
     });
     // end -- Settings
   },

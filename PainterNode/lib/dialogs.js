@@ -7,6 +7,7 @@ import {
   createWindowModal,
   animateClick,
   THEMES_MODAL_WINDOW,
+  comfyuiDesktopConfirm,
 } from "../../utils.js";
 
 export class PainterStorageDialog extends ComfyDialog {
