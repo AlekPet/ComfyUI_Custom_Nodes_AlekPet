@@ -6,6 +6,7 @@ import {
   createWindowModal,
   isEmptyObject,
   THEMES_MODAL_WINDOW,
+  comfyuiDesktopConfirm,
 } from "../../utils.js";
 
 // RGB, HSV, and HSL color conversion algorithms in JavaScript https://gist.github.com/mjackson/5311256
@@ -113,6 +114,7 @@ class WorkflowStateManager {
     if (WorkflowStateManager.instance) {
       return WorkflowStateManager.instance;
     }
+
     this.debug = !false;
     this._workflowManager = app?.extensionManager?.workflow;
 
@@ -128,7 +130,15 @@ class WorkflowStateManager {
     this.newOverwrite = false;
 
     WorkflowStateManager.instance = this;
-    this.setEvents();
+
+    // this.init();
+  }
+
+  static getInstance() {
+    if (!WorkflowStateManager.instance) {
+      WorkflowStateManager.instance = new WorkflowStateManager();
+    }
+    return WorkflowStateManager.instance;
   }
 
   get workflowManager() {
@@ -156,86 +166,89 @@ class WorkflowStateManager {
   }
 
   updateWorkflows() {
-    return this.workflowManager.workflows.map((w) => w.name);
+    return this.workflowManager.workflows.map((w) => w.filename);
   }
 
-  openWorkflow(result) {
-    const { filename, changeTracker } = result;
+  updateWorkflow(newValue) {
+    this.previousWorkflow = this.currentWorkflow;
+    this.currentWorkflow = newValue;
 
-    this.currentWorkflow = filename;
-    console.log(this._currentWorkflow);
-    const findPaintersNode = changeTracker?.initialState?.nodes?.filter(
-      (n) => n.type === "PainterNode"
-    );
+    this.debug &&
+      console.log(
+        `Previous workflow: ${this.previousWorkflow}, Current workflow: ${this.currentWorkflow}`
+      );
+  }
 
-    if (findPaintersNode.length > 0) {
-      console.log("Painters found!", filename);
+  openWorkflow(filename) {
+    this.updateWorkflow(filename);
 
-      let isOpenWorkflow = false;
-      if (filename && typeof filename === "string") isOpenWorkflow = true;
+    let isOpenWorkflow = false;
+    if (filename && typeof filename === "string") isOpenWorkflow = true;
 
-      this.updateWorkflow(filename);
+    this.nodeStores = app.graph._nodes.filter((n) => n.type === "PainterNode");
+    this.countLoaded = 0;
 
-      this.nodeStores = [];
-      this.countLoaded = 0;
+    if (!isOpenWorkflow) this.newSave = this.checkWorkflowExist(filename);
 
-      if (!isOpenWorkflow) this.newSave = this.checkWorkflowExist(filename);
+    // Overwrite workflow, copy workflow data before workflow
+    if (this.newOverwrite) this.newSave = true;
 
-      // Overwrite workflow, copy workflow data before workflow
-      if (this.newOverwrite) this.newSave = true;
+    this.workflowsStores = this.updateWorkflows();
+    this.debug && console.log("Change workflow", this.currentWorkflow);
+  }
 
-      this.workflowsStores = this.updateWorkflows();
-      this.debug && console.log("Change workflow", this);
-    } else {
-      console.log("Painters no found!");
+  async setEvents() {
+    // Проверяем доступность объекта
+    if (!this.workflowManager) {
+      throw new Error("Workflow manager не доступен");
     }
-  }
 
-  setEvents() {
     const painters_settings_json = JSON.parse(
       localStorage.getItem("alekpet.PainterNode.SaveSettingsJson", false)
     );
-    console.log(painters_settings_json, this.workflowManager);
 
-    if (!painters_settings_json || !this.workflowManager) return;
+    if (!painters_settings_json) {
+      console.log("Painter Settings OFF");
+      return;
+    }
 
+    const workflowStore = this.workflowManager;
     const self = this;
-    this.workflowsStores = this.updateWorkflows();
+    const activeWorkflowName = await new Promise((resolve) => {
+      // Подписываемся на изменения состояния
+      const unsubscribe = workflowStore.$subscribe(function () {
+        const activeWorkflow = arguments[1].activeWorkflow;
+        const filename = activeWorkflow.filename;
+        if (filename) {
+          console.log("✅✅ Workflow filename:", filename);
 
-    this._workflowManager.$onAction(({ name, args, after }) => {
-      if (name === "openWorkflow") {
-        console.log("openWorkflow called with args:", args);
-
-        Promise.all(
-          args.map((arg) =>
-            arg instanceof Promise ? arg : Promise.resolve(arg)
-          )
-        ).then((resolvedArgs) => {
-          console.log("Resolved args:", resolvedArgs);
-        });
-
-        // Можно дождаться завершения самого экшена
-        after((result) => {
-          console.log("openWorkflow finished with result:", result);
-
-          // When open workflow
-          this.openWorkflow(result);
+          self.openWorkflow(filename);
 
           // save
-          const origSave = result.save;
-          result.save = async function () {
-            const data = await origSave?.apply(this, arguments);
-            console.log(data);
-            return data;
-          };
+          // const originalSave = activeWorkflow.save;
+          // activeWorkflow.save = async function () {
+          //   console.log(this.filename, self.currentWorkflow);
+          //   const data = await originalSave?.apply(this, arguments);
+          //   console.log(data, this.filename);
+          //   return data;
+          // };
+
+          // saveAs
+          // const originalSaveAs = activeWorkflow.saveAs;
+          // activeWorkflow.saveAs = async function () {
+          //   console.log(arguments);
+          //   const data = await originalSaveAs?.apply(this, arguments);
+          //   console.log(data);
+          //   return data;
+          // };
 
           // Rename
-          const originalRename = result.rename;
-          result.rename = async function () {
+          const originalRename = activeWorkflow.rename;
+          activeWorkflow.rename = async function () {
             const prevName = this.filename;
 
             // Check if confirm dialog workflow exist overwrite
-            // let confirmed = false;
+            let confirmed = false;
             // const originalConfirm = window.confirm;
 
             // window.confirm = (message) => {
@@ -252,20 +265,20 @@ class WorkflowStateManager {
             let updateComplete = false;
             try {
               // -- Check if new name exist inside folder JSON files
-              const checkResponse = await api.fetchApi(
-                `/alekpet/file_exist_node_settings/Painter_${newName}`
-              );
-              if (checkResponse.status !== 200)
-                throw new Error(
-                  `Error check exist workflow name file settings: ${checkResponse.statusText}`
-                );
+              // const checkResponse = await api.fetchApi(
+              //   `/alekpet/file_exist_node_settings/Painter_${newName}`
+              // );
+              // if (checkResponse.status !== 200)
+              //   throw new Error(
+              //     `Error check exist workflow name file settings: ${checkResponse.statusText}`
+              //   );
 
-              const checkData = await checkResponse?.json();
-              if (checkData?.isExists) {
-                confirmed = confirm(
-                  `Workflow new name '${newName}' already exists among the JSON files! Rename?`
-                );
-              }
+              // const checkData = await checkResponse?.json();
+              // if (checkData?.isExists) {
+              //   confirmed = await comfyuiDesktopConfirm(
+              //     `Workflow new name '${newName}' already exists among the JSON files! Rename?`
+              //   );
+              // }
               // -- end - Check if new name exist inside folder JSON files
 
               const rawResponse = await fetch("/alekpet/rename_node_settings", {
@@ -283,7 +296,7 @@ class WorkflowStateManager {
               if (rawResponse.status === 200) {
                 const json_data = await rawResponse?.json();
                 console.log(json_data?.message);
-                updateComplete = true;
+                // updateComplete = true;
               } else {
                 console.error(
                   `Error rename workflow file settings ${rawResponse.statusText}`
@@ -293,24 +306,18 @@ class WorkflowStateManager {
               console.log(e);
             }
 
-            if (updateComplete) {
-              app.graph._nodes.forEach(
-                async (n) => await n.storageCls.saveData(newName)
-              );
-            }
-
             self.debug && console.log("Rename workflow!");
 
             return result;
           };
 
           // Delete
-          const originalDelete = result.delete;
-          result.delete = async function () {
+          const originalDelete = activeWorkflow.delete;
+          activeWorkflow.delete = async function () {
             self.debug && console.log("Delete global");
             await originalDelete.apply(this, arguments);
 
-            self.updateWorkflow(this.filename);
+            // self.updateWorkflow(this.filename);
 
             // Workflow remove from storage, when delete workflow
             if (
@@ -324,188 +331,25 @@ class WorkflowStateManager {
               // Remove data when removed workflow
             }
           };
-        });
-      }
+
+          //   // Other - Clear workflow event
+          //   api.addEventListener("graphCleared", async (event) => {
+          //     this.debug && console.log("Graph cleared");
+          //   });
+
+          resolve(filename); // Разрешаем Promise
+          unsubscribe(); // Отписываемся после получения значения
+        }
+      });
     });
 
-    // const self = this;
-    // this.workflowsStores = this.updateWorkflows();
-
-    // // -- Set workflow
-    // const originsetWorkflow =
-    //   comfyAPI.workflows.ComfyWorkflowManager.prototype.setWorkflow;
-    // comfyAPI.workflows.ComfyWorkflowManager.prototype.setWorkflow = function (
-    //   workflow
-    // ) {
-    //   let isOpenWorkflow = false;
-    //   if (workflow && typeof workflow === "string") isOpenWorkflow = true;
-
-    //   originsetWorkflow.apply(this, [workflow]);
-
-    //   self.updateWorkflow(this.activeWorkflow.name);
-
-    //   self.nodeStores = [];
-    //   self.countLoaded = 0;
-
-    //   if (!isOpenWorkflow)
-    //     self.newSave = self.checkWorkflowExist(this.activeWorkflow.name);
-
-    //   // Overwrite workflow, copy workflow data before workflow
-    //   if (self.newOverwrite) self.newSave = true;
-
-    //   self.workflowsStores = self.updateWorkflows();
-
-    //   self.debug && console.log("Change workflow", self);
-    // };
-    // // -- end Set workflow
-
-    // // -- Global event workflow
-    // // Save workflow
-    // const originalSave = comfyAPI.workflows.ComfyWorkflow.prototype.save;
-    // comfyAPI.workflows.ComfyWorkflow.prototype.save = async function (
-    //   saveAs = false
-    // ) {
-    //   self.debug && console.log("Save global");
-
-    //   // Check if confirm dialog workflow exist overwrite
-    //   let confirmed = false;
-    //   const originalConfirm = window.confirm;
-
-    //   window.confirm = (message) => {
-    //     confirmed = originalConfirm(message);
-
-    //     if (confirmed) {
-    //       self.newOverwrite = confirmed;
-    //       self.debug && console.log("Overwrite exist workflow!");
-    //     }
-
-    //     return confirmed;
-    //   };
-
-    //   const result = await originalSave.apply(this, [saveAs]);
-    //   window.confirm = originalConfirm;
-
-    //   return result;
-    // };
-
-    // // Rename workflow
-    // const originalRename = comfyAPI.workflows.ComfyWorkflow.prototype.rename;
-    // comfyAPI.workflows.ComfyWorkflow.prototype.rename = async function () {
-    //   self.debug && console.log("Rename global");
-    //   const prevName = this.name;
-
-    //   // Check if confirm dialog workflow exist overwrite
-    //   let confirmed = false;
-    //   const originalConfirm = window.confirm;
-
-    //   window.confirm = (message) => {
-    //     confirmed = originalConfirm(message);
-    //     return confirmed;
-    //   };
-
-    //   const result = await originalRename.apply(this, arguments);
-    //   const newName = this.name;
-
-    //   if (newName === prevName) return result; // names equals, nothing rename
-
-    //   // Rename backend
-    //   let updateComplete = false;
-    //   try {
-    //     // -- Check if new name exist inside folder JSON files
-    //     const checkResponse = await api.fetchApi(
-    //       `/alekpet/file_exist_node_settings/Painter_${newName}`
-    //     );
-    //     if (checkResponse.status !== 200)
-    //       throw new Error(
-    //         `Error check exist workflow name file settings: ${checkResponse.statusText}`
-    //       );
-
-    //     const checkData = await checkResponse?.json();
-    //     if (checkData?.isExists) {
-    //       confirmed = confirm(
-    //         `Workflow new name '${newName}' already exists among the JSON files! Rename?`
-    //       );
-    //     }
-    //     // -- end - Check if new name exist inside folder JSON files
-
-    //     const rawResponse = await fetch("/alekpet/rename_node_settings", {
-    //       method: "POST",
-    //       headers: {
-    //         Accept: "application/json",
-    //         "Content-Type": "application/json",
-    //       },
-    //       body: JSON.stringify({
-    //         old_name: `Painter_${prevName}`,
-    //         new_name: `Painter_${newName}`,
-    //         overwrite: confirmed,
-    //       }),
-    //     });
-    //     if (rawResponse.status === 200) {
-    //       const json_data = await rawResponse?.json();
-    //       console.log(json_data?.message);
-    //       updateComplete = true;
-    //     } else {
-    //       console.error(
-    //         `Error rename workflow file settings ${rawResponse.statusText}`
-    //       );
-    //     }
-    //   } catch (e) {
-    //     console.log(e);
-    //   }
-
-    //   if (updateComplete) {
-    //     app.graph._nodes.forEach(
-    //       async (n) => await n.storageCls.saveData(newName)
-    //     );
-    //   }
-
-    //   self.debug && console.log("Rename workflow!");
-
-    //   return result;
-    // };
-
-    // // Delete workflow
-    // const originalDelete = comfyAPI.workflows.ComfyWorkflow.prototype.delete;
-    // comfyAPI.workflows.ComfyWorkflow.prototype.delete = async function () {
-    //   self.debug && console.log("Delete global");
-    //   await originalDelete.apply(this, arguments);
-
-    //   this.updateWorkflow(this.name);
-
-    //   // Workflow remove from storage, when delete workflow
-    //   if (
-    //     JSON.parse(
-    //       localStorage.getItem(
-    //         "Comfy.Settings.alekpet.PainterNode.RemoveWorkflowDelete",
-    //         false
-    //       )
-    //     )
-    //   ) {
-    //     // Remove data when removed workflow
-    //   }
-    // };
-    // end -- Global event workflows
-
-    // Other - Clear workflow event
-    api.addEventListener("graphCleared", async (event) => {
-      this.debug && console.log("Graph cleared");
-    });
-  }
-
-  updateWorkflow(newValue) {
-    this.previousWorkflow = this.currentWorkflow;
-    this.currentWorkflow = newValue;
-
-    this.debug &&
-      console.log(
-        `Previous workflow: ${this.previousWorkflow}, Current workflow: ${this.currentWorkflow}`
-      );
+    return activeWorkflowName;
   }
 }
 
 // LocalStorage Init
 class StorageClass {
-  constructor(node, widget) {
+  constructor(node) {
     if (
       !node.name ||
       typeof node.name !== "string" ||
@@ -514,12 +358,11 @@ class StorageClass {
       throw new Error("Incorrect painter name!");
     }
 
-    this.widget = widget;
     this.node = node;
     this.name = node.name;
 
-    this.workflowStateManager = new WorkflowStateManager();
-    this.workflowStateManager?.nodeStores?.push(node);
+    this.workflowStateManager = WorkflowStateManager.getInstance();
+    // this.workflowStateManager?.nodeStores?.push(node);
 
     this.settings_painter_node_default = {
       undo_history: [],
@@ -639,7 +482,7 @@ class StorageClass {
       isEmptyObject(this.settings_painter_node_all.painters_data[this.name])
     ) {
       this.settings_painter_node_all.painters_data[this.name] = JSON.parse(
-        JSON.stringify(this.widget.settings_painter_node_default)
+        JSON.stringify(this.settings_painter_node_default)
       );
     }
 
@@ -721,6 +564,16 @@ class StorageClass {
 
   // Load settings from json file
   async loadData(workflowName = null) {
+    if (!this.workflowStateManager.currentWorkflow) {
+      console.log("❗ [PainterNode] No currentWorkflow");
+      return;
+    } else {
+      console.log(
+        "🆗 [PainterNode] Data loaded workflow: ",
+        this.workflowStateManager.currentWorkflow
+      );
+    }
+
     try {
       const rawResponse = await api.fetchApi(
         `/alekpet/loading_node_settings/Painter_${

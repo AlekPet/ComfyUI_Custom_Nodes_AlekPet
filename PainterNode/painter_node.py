@@ -88,7 +88,7 @@ async def loadingSettings(request):
     else:
         load_data = get_settings_json(filename + PREFIX)
 
-    return web.json_response({"settings_nodes": load_data})
+    return web.json_response({"settings_nodes": load_data}, status=200)
 
 
 # Load json's files
@@ -113,7 +113,7 @@ async def loadingAllSettings(request):
         else:
             print(f"File {f} not file!")
 
-    return web.json_response({"all_settings_nodes": load_data})
+    return web.json_response({"all_settings_nodes": load_data}, status=200)
 
 
 # Save data to json file
@@ -326,9 +326,9 @@ async def check_canvas_changed(request):
 
     if unique_id is not None and unique_id in PAINTER_DICT and is_ok == True:
         PAINTER_DICT[unique_id].canvas_set = True
-        return web.json_response({"status": "Ok"})
+        return web.json_response({"status": "Ok"}, status=200)
 
-    return web.json_response({"status": "Error"})
+    return web.json_response({"status": "Error"}, status=200)
 
 
 async def wait_canvas_change(unique_id, time_out=40):

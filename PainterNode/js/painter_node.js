@@ -137,7 +137,7 @@ class Painter {
     this.undo_history = [];
     this.redo_history = [];
 
-    this.storageCls = new StorageClass(this.node, this);
+    this.storageCls = this.node.storageCls;
 
     this.fonts = {
       Arial: { type: "default" },
@@ -203,7 +203,7 @@ class Painter {
     // Save data
     app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
 
-    if (painters_settings_json) await this.storageCls.saveData();
+    if (painters_settings_json) await this.node.storageCls.saveData();
   }
 
   initCanvas(canvasEl) {
@@ -2256,8 +2256,6 @@ class Painter {
 
 // ================= CREATE PAINTER WIDGET ============
 function PainterWidget(node, inputName, inputData, app) {
-  node.name = inputName;
-
   node.addWidget("button", "Clear Canvas", "clear_painer", () => {
     node.painter.list_objects_panel__items.innerHTML = "";
     node.painter.clearCanvas();
@@ -2505,6 +2503,8 @@ function PainterWidget(node, inputName, inputData, app) {
 
 // ================= CREATE EXTENSION ================
 
+let setEventsPromise = null;
+
 app.registerExtension({
   name: extensionName,
   async init(app) {
@@ -2600,7 +2600,9 @@ app.registerExtension({
         const nodeName = `Paint_${node_id}`;
         const nodeNamePNG = `${nodeName}.png`;
 
-        console.log(`Create PainterNode: ${nodeName}`);
+        this.name = nodeNamePNG;
+
+        console.log(`🔨 Created PainterNode: ${this.name}`);
 
         // Find widget update_node and hide him
         for (const w of this.widgets) {
@@ -2614,6 +2616,8 @@ app.registerExtension({
             }
           }
         }
+
+        this.storageCls = new StorageClass(this);
 
         const widget = PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
 
@@ -2630,6 +2634,31 @@ app.registerExtension({
         onConfigure?.apply(this, arguments);
 
         await this.getTitle();
+
+        if (this.storageCls.workflowStateManager.currentWorkflow) {
+          console.log(
+            `⚠️ [PainterNode] currentWorkflow уже установлен, пропускаем: ${this.name} -> ${this.storageCls.workflowStateManager.currentWorkflow}`
+          );
+          setEventsPromise = null;
+        }
+
+        // Если `setEvents` уже выполняется, ждем его завершения
+        if (setEventsPromise) {
+          console.log(`⏳ [PainterNode] Ждем завершения setEvents...`);
+          this.storageCls.workflowStateManager.currentWorkflow =
+            await setEventsPromise;
+          console.log(`✅ [PainterNode] setEvents завершился, продолжаем`);
+        } else {
+          // Если это первый узел, запускаем `setEvents`
+          console.log(`🚀 [PainterNode] Первый узел вызывает setEvents...`);
+          setEventsPromise = this.storageCls.workflowStateManager.setEvents();
+          this.storageCls.workflowStateManager.currentWorkflow =
+            await setEventsPromise;
+          console.log(`✅ [PainterNode] setEvents завершен`);
+        }
+
+        console.log(`🔧 Configure PainterNode: ${this.name}`);
+
         const painter_idx = this.widgets.findIndex((w) => w.type === "painter");
 
         if (painter_idx < 0) return;
