@@ -32,6 +32,7 @@ import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
 
+const DEBUG = !false;
 const extensionName = "alekpet.PainterNode";
 
 // Save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
@@ -2294,12 +2295,6 @@ function PainterWidget(node, inputName, inputData, app) {
 
   node.painter.makeElements(wrapperPainter);
 
-  const origOnRemoved = node.onRemoved;
-  node.onRemoved = function () {
-    origOnRemoved?.apply(this, [arguments]);
-    console.log("Removed!");
-  };
-
   node.onResize = function () {
     const minSize = 600;
     let [w, h] = this.size;
@@ -2539,28 +2534,6 @@ app.registerExtension({
       },
     });
 
-    // Close workflow
-    app.ui.settings.addSetting({
-      id: `${extensionName}.RemoveWorkflowDelete`,
-      name: "🔸 Delete save when current workflow delete",
-      defaultValue: false,
-      type: "boolean",
-      onChange: (e) => {
-        localStorage.setItem(`${extensionName}.RemoveWorkflowDelete`, !!e);
-      },
-    });
-
-    // Clear workflow
-    app.ui.settings.addSetting({
-      id: `${extensionName}.RemoveWorkflowClear`,
-      name: "🔸 Delete save when clearing current workflow",
-      defaultValue: false,
-      type: "boolean",
-      onChange: (e) => {
-        localStorage.setItem(`${extensionName}.RemoveWorkflowClear`, !!e);
-      },
-    });
-
     // Add settings params painter node
     app.ui.settings.addSetting({
       id: `${extensionName}.SaveSettingsJson`,
@@ -2617,7 +2590,7 @@ app.registerExtension({
           }
         }
 
-        this.storageCls = new StorageClass(this);
+        this.storageCls = new StorageClass(this, DEBUG);
 
         const widget = PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
 
@@ -2636,79 +2609,84 @@ app.registerExtension({
         await this.getTitle();
 
         if (this.storageCls.workflowStateManager.currentWorkflow) {
-          console.log(
-            `⚠️ [PainterNode] currentWorkflow уже установлен, пропускаем: ${this.name} -> ${this.storageCls.workflowStateManager.currentWorkflow}`
-          );
-          setEventsPromise = null;
+          DEBUG &&
+            console.log(
+              `⚠️ [PainterNode] currentWorkflow уже установлен, пропускаем: ${this.name} -> ${this.storageCls.workflowStateManager.currentWorkflow}`
+            );
         }
 
         // Если `setEvents` уже выполняется, ждем его завершения
         if (setEventsPromise) {
-          console.log(`⏳ [PainterNode] Ждем завершения setEvents...`);
-          this.storageCls.workflowStateManager.currentWorkflow =
-            await setEventsPromise;
-          console.log(`✅ [PainterNode] setEvents завершился, продолжаем`);
+          DEBUG && console.log(`⏳ [PainterNode] Ждем завершения setEvents...`);
+
+          await setEventsPromise;
+          DEBUG &&
+            console.log(`✅ [PainterNode] setEvents завершился, продолжаем`);
         } else {
           // Если это первый узел, запускаем `setEvents`
-          console.log(`🚀 [PainterNode] Первый узел вызывает setEvents...`);
+          DEBUG &&
+            console.log(`🚀 [PainterNode] Первый узел вызывает setEvents...`);
           setEventsPromise = this.storageCls.workflowStateManager.setEvents();
-          this.storageCls.workflowStateManager.currentWorkflow =
-            await setEventsPromise;
-          console.log(`✅ [PainterNode] setEvents завершен`);
+          await setEventsPromise;
+          DEBUG && console.log(`✅ [PainterNode] setEvents завершен`);
         }
 
-        console.log(`🔧 Configure PainterNode: ${this.name}`);
+        setTimeout(async () => {
+          console.log(`🔧 Configure PainterNode: ${this.name}`);
 
-        const painter_idx = this.widgets.findIndex((w) => w.type === "painter");
+          const painter_idx = this.widgets.findIndex(
+            (w) => w.type === "painter"
+          );
 
-        if (painter_idx < 0) return;
-        let data = widget.widgets_values[painter_idx];
+          if (painter_idx < 0) return;
+          let data = widget.widgets_values[painter_idx];
 
-        if (painters_settings_json && data === null) {
-          data = await this.painter.storageCls.getData();
+          if (painters_settings_json && data === null) {
+            data = await this.painter.storageCls.getData();
 
-          if (!data) {
-            data = JSON.parse(
-              JSON.stringify(
-                this.painter.storageCls.settings_painter_node_default
-              )
-            );
-          }
-
-          this.painter.storageCls.settings_painter_node = data;
-        }
-
-        Object.assign(this.widgets[painter_idx].value, data);
-
-        if (data) {
-          if (data?.settings) {
-            const {
-              currentCanvasSize: { width, height },
-            } = data.settings;
-
-            // -- Settings piping
-            this.painter.setValueElementsLS();
-
-            // -- Settings size
-            if (width && height) {
-              this.painter.storageCls.settings_painter_node.settings.currentCanvasSize =
-                {
-                  width,
-                  height,
-                };
-
-              this.painter.setCanvasSize(width, height);
+            if (!data) {
+              data = JSON.parse(
+                JSON.stringify(
+                  this.painter.storageCls.settings_painter_node_default
+                )
+              );
             }
+
+            this.painter.storageCls.settings_painter_node = data;
           }
 
-          // Loading canvas data
-          if (data?.canvas_settings) {
-            this.painter.canvasLoadSettingPainter(data).then((result) => {});
-          }
+          Object.assign(this.widgets[painter_idx].value, data);
 
-          this.setSize(arguments[0].size);
-          app.graph.setDirtyCanvas(true, false);
-        }
+          if (data) {
+            if (data?.settings) {
+              const {
+                currentCanvasSize: { width, height },
+              } = data.settings;
+
+              // -- Settings piping
+              this.painter.setValueElementsLS();
+
+              // -- Settings size
+              if (width && height) {
+                this.painter.storageCls.settings_painter_node.settings.currentCanvasSize =
+                  {
+                    width,
+                    height,
+                  };
+
+                this.painter.setCanvasSize(width, height);
+              }
+            }
+
+            // Loading canvas data
+            if (data?.canvas_settings) {
+              this.painter.canvasLoadSettingPainter(data).then((result) => {});
+            }
+
+            this.setSize(arguments[0].size);
+            app.graph.setDirtyCanvas(true, false);
+          }
+        });
       };
 
       // ExtraMenuOptions
@@ -2752,11 +2730,20 @@ app.registerExtension({
             const self = this;
 
             removeButton.callback = async function () {
+              const nodeName = Array.from(arguments).find((f) => f?.name).name;
               remove_callback.apply(this, arguments);
 
-              // if (await comfyuiDesktopConfirm("Remove storage data?")) {
-              //   self.LS_Cls.removeData();
-              // }
+              if (!painters_settings_json) return;
+
+              if (
+                await comfyuiDesktopConfirm(
+                  `Remove data ${nodeName} from JSON?`
+                )
+              ) {
+                self.storageCls.workflowStateManager.removeData(null, [
+                  nodeName,
+                ]);
+              }
             };
           }
         }, 0);
