@@ -452,7 +452,7 @@ class MyPaintManager {
 
     await this.loadBrushSetting(
       this.menuBrushes.currentDir === "brushes"
-        ? "/"
+        ? ""
         : this.menuBrushes.currentDir,
       this.brushName
     );
@@ -684,7 +684,7 @@ class MyPaintManager {
   }
 
   async loadBrushSetting(pathToBrush, brushName) {
-    pathToBrush = `brushes/${pathToBrush}/`;
+    pathToBrush = `brushes/${pathToBrush}`;
 
     const pathToJsonBrush = encodeURI(
       `${this.basePath}/${pathToBrush}${brushName}`
@@ -788,7 +788,10 @@ class MyPaintManager {
     }
 
     this.brushName = brushName;
-    await this.loadBrushSetting(pathToBrush, brushName);
+    await this.loadBrushSetting(
+      pathToBrush === "/" ? "" : pathToBrush + "/",
+      brushName
+    );
 
     this.painterNode.canvas.freeDrawingBrush.brush = new MypaintBrush(
       this.currentBrushSettings,
