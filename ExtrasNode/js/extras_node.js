@@ -187,8 +187,9 @@ app.registerExtension({
           const body_rect = document.body.getBoundingClientRect();
           const root_rect = this.root.getBoundingClientRect();
           const { x, y } = element.getBoundingClientRect();
+          //const preview_rect = this.root.preview_content_combo.getBoundingClientRect();
 
-          const scale = app.graph.extra.ds.scale;
+          //const scale = app.graph.extra.ds.scale;
 
           const canvas = this.root.preview_content_combo.children[0];
           const ctx = canvas.getContext("2d");
@@ -207,15 +208,17 @@ app.registerExtension({
               this.root.preview_content_combo.style.maxWidth
             );
 
-            if (scale >= 1) {
-              this.root.preview_content_combo.style.top = `${
-                (y - root_rect.top) / scale
-              }px`;
-            } else {
-              this.root.preview_content_combo.style.top = `${
-                y - root_rect.top
-              }px`;
-            }
+            // if (scale >= 1) {
+            // this.root.preview_content_combo.style.top = `${
+            // (y - root_rect.top) / scale
+            // }px`;
+            // } else {
+            // this.root.preview_content_combo.style.top = `${
+            // y - root_rect.top
+            // }px`;
+            // }
+
+            this.root.preview_content_combo.style.top = `${y}px`;
 
             if (
               body_rect.width &&
@@ -249,6 +252,7 @@ app.registerExtension({
             } else if (type === "audio") {
               Object.assign(audio.style, {
                 opacity: 1,
+                display: "",
               });
               audio.play();
             }
@@ -256,6 +260,7 @@ app.registerExtension({
             if (type === "video" || type === "image") {
               Object.assign(audio.style, {
                 opacity: 0,
+                display: "none",
               });
               !audio.paused && audio.pause();
               ctx.drawImage(raw, 0, 0, canvas.width, canvas.height);
