@@ -338,6 +338,30 @@ except Exception as e:
     nodes_list_dict["DeepTranslatorNode"]["error"] = e
 
 
+# DeepLXTranslateNode
+try:
+    from .DeepLXTranslateNode.deeplx_translate_node import (
+        DeepLXTranslateCLIPTextEncodeNode,
+        DeepLXTranslateTextNode,
+    )
+
+    NODE_CLASS_MAPPINGS.update(
+        {
+            "DeepLXTranslateCLIPTextEncodeNode": DeepLXTranslateCLIPTextEncodeNode,
+            "DeepLXTranslateTextNode": DeepLXTranslateTextNode,
+        }
+    )
+    NODE_DISPLAY_NAME_MAPPINGS.update(
+        {
+            "DeepLXTranslateCLIPTextEncodeNode": "DeepLX Translate CLIP Text Encode Node",
+            "DeepLXTranslateTextNode": "DeepLX Translate Text Node",
+        }
+    )
+
+except Exception as e:
+    nodes_list_dict["DeepLXTranslateNode"]["error"] = e
+
+
 # GoogleTranslateNode
 try:
     from .GoogleTranslateNode.google_translate_node import (
