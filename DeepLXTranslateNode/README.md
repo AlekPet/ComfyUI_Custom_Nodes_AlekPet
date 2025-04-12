@@ -89,7 +89,7 @@ Powerful Free DeepL API, No Token Required. Used module [DeepLX](https://github.
 1. Install my custom nodes in ComfyUI, used [HERE](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet#installing)
 2. Download zip archive Golang (programming language) from your system (Widnows, Linux ...) [Download Golang](https://go.dev/dl/)
 3. Extract archive (inside archive folder `go`) in the folder `\ComfyUI\custom_nodes\ComfyUI_Custom_Nodes_AlekPet\DeepLXTranslateNode`
-4. Open shell and run command `git clone https://github.com/OwO-Network/DeepLX` (you need install Git if not exists [Git](https://git-scm.com/downloads)) in the folder `\ComfyUI\custom_nodes\ComfyUI_Custom_Nodes_AlekPet\DeepLXTranslateNode`
+4. Open shell in the folder `\ComfyUI\custom_nodes\ComfyUI_Custom_Nodes_AlekPet\DeepLXTranslateNode` and run command `git clone https://github.com/OwO-Network/DeepLX` (you need install Git if not exists [Git](https://git-scm.com/downloads))
    **Structure folders:**
 
    ```ComfyUI_portables\
@@ -102,6 +102,21 @@ Powerful Free DeepL API, No Token Required. Used module [DeepLX](https://github.
    ```
 
 5. Run comfyui and add node `DeepLXTranslateCLIPTextEncodeNode` or `DeepLXTranslateTextNode` context menu in the category `CONDITIONING`.
+
+### Note
+
+On first launch, a `config.json` file will be created where you can specify the initial values ​​from which language to translate and to which language.
+**Default config.json values:**
+
+```json
+{
+  "settings": {
+    "__commnet": "Please check the list of available languages ​​before specifying, especially target_lang! See README file",
+    "source_lang": "Russian",
+    "target_lang": "English"
+  }
+}
+```
 
 > Includes:
 

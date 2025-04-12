@@ -1,3 +1,7 @@
+# Title: DeepLX Translate promts nodes
+# Author: AlekPet (https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet)
+# Github DeepLX: https://github.com/OwO-Network/DeepLX 
+
 import os
 import json
 import subprocess
@@ -146,13 +150,16 @@ PATH_TO_GO = os.path.join(NODE_DIR, "go", "bin")
 
 # Checking exists path to Go
 if not os.path.exists(PATH_TO_GO):
-    print(f"{ColPrint.RED}[DeepLXTranslateNode] Error path to Go not exists:{ColPrint.CLEAR}{PATH_TO_GO}")
+    error_text = (
+        f"{ColPrint.RED}Error path to 'Golang (Go)' not exists: {ColPrint.MAGNETA}{PATH_TO_GO}{ColPrint.CLEAR} "
+    )
+    raise FileNotFoundError(error_text)
+
 
 # Checking exists path to DeepLX folder
 if not os.path.exists(PATH_TO_DEEPLX_SERVER):
-    print(
-        f"{ColPrint.RED}[DeepLXTranslateNode] Error path to DeepLX server folder not exists:{ColPrint.CLEAR}{PATH_TO_DEEPLX_SERVER}"
-    )
+    error_text = f"{ColPrint.RED}Error path to DeepLX server folder not exists: {ColPrint.MAGNETA}{PATH_TO_DEEPLX_SERVER}{ColPrint.CLEAR}"
+    raise FileNotFoundError(error_text)
 
 # Detect platform
 go_executable = os.path.join(PATH_TO_GO, "go")
@@ -180,9 +187,13 @@ try:
     else:
         DEEPLX_SERVER_RUNNING = False
 
+except requests.HTTPError as e:
+    raise e
 except Exception as e:
-    print(f"{ColPrint.RED}[DeepLXTranslateNode] Error running server DeepLX:{ColPrint.CLEAR}", e)
     DEEPLX_SERVER_RUNNING = False
+    raise Exception(
+        f"{ColPrint.RED}[DeepLXTranslateNode] Error running server DeepLX: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
+    )
 
 
 def createRequest(payload):
