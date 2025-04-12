@@ -1,7 +1,8 @@
 import os
 import json
+import subprocess
 import requests
-from server import PromptServer
+import time
 
 
 LANGUAGES_CODES = {
@@ -12,7 +13,7 @@ LANGUAGES_CODES = {
         "Danish": "DA",
         "German": "DE",
         "Greek": "EL",
-        "English (all English variants)": "EN",
+        "English": "EN",
         "Spanish": "ES",
         "Estonian": "ET",
         "Finnish": "FI",
@@ -27,7 +28,7 @@ LANGUAGES_CODES = {
         "Norwegian Bokmål": "NB",
         "Dutch": "NL",
         "Polish": "PL",
-        "Portuguese (all Portuguese variants)": "PT",
+        "Portuguese": "PT",
         "Romanian": "RO",
         "Russian": "RU",
         "Slovak": "SK",
@@ -35,7 +36,7 @@ LANGUAGES_CODES = {
         "Swedish": "SV",
         "Turkish": "TR",
         "Ukrainian": "UK",
-        "Chinese (all Chinese variants)": "ZH",
+        "Chinese": "ZH",
     },
     "target": {
         "Arabic": "AR",
@@ -77,26 +78,117 @@ LANGUAGES_CODES = {
     },
 }
 
-DEEPLX_SERVICE_URL = "http://127.0.0.1:1188/translate"
+
+# Colors
+class ColPrint:
+    RED = "\033[1;31;40m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    MAGNETA = "\033[95m"
+    BLUE = "\033[94m"
+    CLEAR = "\033[0m"
+
+
+# Node directory
+NODE_DIR = os.path.dirname(os.path.abspath(__file__))
+SETTINGS = {}
 
 # Directory node and config file
-# dir_node = os.path.dirname(__file__)
-# config_path = os.path.join(os.path.abspath(dir_node), "config.json")
+config_path = os.path.join(NODE_DIR, "config.json")
 
-# # Load config.js file
-# if not os.path.exists(config_path):
-#     print("File config.js file not found! Reinstall extensions!")
-# else:
-#     with open(config_path, "r") as f:
-#         CONFIG = json.load(f)
+# Load config.js file
+if not os.path.exists(config_path):
+    print(
+        f"{ColPrint.YELLOW}[DeepLXTranslateNode] {ColPrint.MAGNETA}File config.js file not found! Create default!{ColPrint.CLEAR}"
+    )
 
-#         # Get data from json
-#     # =====
+    with open(config_path, "w", encoding="utf-8") as f:
+        defaultJSON = {
+            "settings": {
+                "__commnet": "Please check the list of available languages ​​before specifying, especially target_lang! See README file",
+                "source_lang": "Russian",
+                "target_lang": "English",
+            }
+        }
+        json.dump(defaultJSON, f, ensure_ascii=False, indent=4)
+
+else:
+    with open(config_path, "r") as f:
+        config = json.load(f)
+        SETTINGS = config.get("settings", {})
+
+        if SETTINGS.keys():
+            reset_lang = False
+            source_lang = SETTINGS.get("source_lang")
+            target_lang = SETTINGS.get("target_lang")
+
+            if source_lang not in LANGUAGES_CODES["source"]:
+                SETTINGS.update({"source_lang": "Russian"})
+                reset_lang = True
+
+            if target_lang not in LANGUAGES_CODES["target"]:
+                SETTINGS.update({"target_lang": "English"})
+                reset_lang = True
+
+            if reset_lang:
+                print(
+                    f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.MAGNETA} Source or target language not found in list of available languages, check config.js!{ColPrint.CLEAR}"
+                )
+
+
+# DeepLX and go constants
+DEEPLX_SERVER_RUNNING = False
+DEEPLX_SERVER_URL = "http://127.0.0.1:1188/"
+DEEPLX_SERVER_URL_TRANSLATE = "http://127.0.0.1:1188/translate"
+
+PATH_TO_DEEPLX_SERVER = os.path.join(NODE_DIR, "DeepLX")
+PATH_TO_GO = os.path.join(NODE_DIR, "go", "bin")
+
+# Checking exists path to Go
+if not os.path.exists(PATH_TO_GO):
+    print(f"{ColPrint.RED}[DeepLXTranslateNode] Error path to Go not exists:{ColPrint.CLEAR}{PATH_TO_GO}")
+
+# Checking exists path to DeepLX folder
+if not os.path.exists(PATH_TO_DEEPLX_SERVER):
+    print(
+        f"{ColPrint.RED}[DeepLXTranslateNode] Error path to DeepLX server folder not exists:{ColPrint.CLEAR}{PATH_TO_DEEPLX_SERVER}"
+    )
+
+# Detect platform
+go_executable = os.path.join(PATH_TO_GO, "go")
+if os.name == "nt":
+    go_executable += ".exe"
+
+# Try run DeepLX server
+try:
+    print(f"{ColPrint.YELLOW}[DeepLXTranslateNode] {ColPrint.BLUE}Running server DeepLX...{ColPrint.CLEAR}")
+    proc_deeplx = subprocess.Popen([go_executable, "run", "main.go"], cwd=PATH_TO_DEEPLX_SERVER)
+    time.sleep(2)
+
+    print(
+        f"{ColPrint.YELLOW}[DeepLXTranslateNode] {ColPrint.BLUE}Server verification sends a request to the DeepLX server...{ColPrint.CLEAR}"
+    )
+    response = requests.get(DEEPLX_SERVER_URL)
+    response.raise_for_status()
+
+    if response.status_code == 200:
+        print(
+            f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.GREEN} Server answer successful:{ColPrint.CLEAR}",
+            response.text,
+        )
+        DEEPLX_SERVER_RUNNING = True
+    else:
+        DEEPLX_SERVER_RUNNING = False
+
+except Exception as e:
+    print(f"{ColPrint.RED}[DeepLXTranslateNode] Error running server DeepLX:{ColPrint.CLEAR}", e)
+    DEEPLX_SERVER_RUNNING = False
 
 
 def createRequest(payload):
+    """Request function"""
     try:
-        response = requests.post(DEEPLX_SERVICE_URL, json=payload)
+        response = requests.post(DEEPLX_SERVER_URL_TRANSLATE, json=payload)
         response.raise_for_status()
 
         if response.status_code == 200:
@@ -106,20 +198,23 @@ def createRequest(payload):
             return response_text
 
     except requests.HTTPError as e:
-        print(f"Error request to DeepLX: {response.status_code}, {response.text}")
+        print(
+            f"DeepLX server is not running! Please check Go and DeepLX repository installation or information in the ComfyUI terminal!: {response.status_code}, {response.text}"
+        )
         raise e
     except Exception as e:
         print(f"Error DeepLX: {e}")
         raise e
 
 
-def translate(prompt, srcTrans, toTrans):
+def translate(prompt, source, target):
+    """Translate function"""
     # Check prompt exist
     if prompt is None or prompt.strip() == "":
         return ""
 
     # Create body request
-    payload = {"source_lang": srcTrans, "target_lang": toTrans, "text": prompt}
+    payload = {"source_lang": source, "target_lang": target, "text": prompt}
 
     response_translate_text = createRequest(payload)
 
@@ -129,18 +224,18 @@ def translate(prompt, srcTrans, toTrans):
 class DeepLXTranslateCLIPTextEncodeNode:
     @classmethod
     def INPUT_TYPES(self):
+        source_langs = list(LANGUAGES_CODES.get("source").keys())
+        target_langs = list(LANGUAGES_CODES.get("target").keys())
+
         return {
             "required": {
                 "source_translate": (
-                    LANGUAGES_CODES.get("source").keys(),
-                    {"default": "Russian", "tooltip": "Translation source"},
+                    source_langs,
+                    {"default": SETTINGS.get("source_lang", "Russian"), "tooltip": "Translation source languge"},
                 ),
                 "target_translate": (
-                    LANGUAGES_CODES.get("target").keys(),
-                    {
-                        "default": "English (all English variants)",
-                        "tooltip": "Translation target",
-                    },
+                    target_langs,
+                    {"default": SETTINGS.get("target_lang", "English"), "tooltip": "Translation target languge"},
                 ),
                 "prompt": (
                     "STRING",
@@ -155,24 +250,20 @@ class DeepLXTranslateCLIPTextEncodeNode:
         "STRING",
     )
     FUNCTION = "deeplx_translate_text"
-    DESCRIPTION = (
-        "This is a node that translates the prompt into another language using DeepLX."
-    )
+    DESCRIPTION = "This is a node that translates the prompt into another language using DeepLX."
     CATEGORY = "AlekPet Nodes/conditioning"
 
-    def deeplx_translate_text(
-        self,
-        source_translate,
-        target_translate,
-        prompt,
-        clip,
-    ):
+    def deeplx_translate_text(self, source_translate, target_translate, prompt, clip):
+        if not DEEPLX_SERVER_RUNNING:
+            raise ValueError(
+                "DeepLX server is not running! Please check Go and DeepLX repository installation or information in the ComfyUI terminal!"
+            )
 
-        prompt = translate(
-            prompt,
-            source_translate,
-            target_translate,
-        )
+        # Get short value source and target code languages
+        source_translate_code = LANGUAGES_CODES["source"][source_translate]
+        target_translate_code = LANGUAGES_CODES["target"][target_translate]
+
+        prompt = translate(prompt, source_translate_code, target_translate_code)
 
         tokens = clip.tokenize(prompt)
         cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
@@ -193,7 +284,15 @@ class DeepLXTranslateTextNode(DeepLXTranslateCLIPTextEncodeNode):
     CATEGORY = "AlekPet Nodes/text"
 
     def deeplx_translate_text(self, source_translate, target_translate, prompt):
+        if not DEEPLX_SERVER_RUNNING:
+            raise ValueError(
+                "DeepLX server is not running! Please check Go and DeepLX repository installation or information in the ComfyUI terminal!"
+            )
 
-        prompt = translate(prompt, source_translate, target_translate)
+        # Get short value source and target code languages
+        source_translate_code = LANGUAGES_CODES["source"][source_translate]
+        target_translate_code = LANGUAGES_CODES["target"][target_translate]
+
+        prompt = translate(prompt, source_translate_code, target_translate_code)
 
         return (prompt,)
