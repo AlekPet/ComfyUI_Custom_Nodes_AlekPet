@@ -101,7 +101,9 @@ Powerful Free DeepL API, No Token Required. Used module [DeepLX](https://github.
                        DeepLX\
    ```
 
-5. Run comfyui and add node `DeepLXTranslateCLIPTextEncodeNode` or `DeepLXTranslateTextNode` context menu in the category `CONDITIONING`.
+5. Run comfyui (**see note after**) and add node `DeepLXTranslateCLIPTextEncodeNode` or `DeepLXTranslateTextNode` context menu in the category `CONDITIONING`.
+
+**_Note: The first launch may fail, Golang is installing packages for DeepLX, just restart ComfyUI!_**
 
 ### Note
 
