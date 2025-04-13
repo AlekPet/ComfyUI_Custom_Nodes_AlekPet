@@ -273,6 +273,7 @@ def installNodes():
         ):
             nodes_list_dict[nodeElement] = {
                 "error": None,
+                "message": f"Node -> {nodeElement}\033[92m",
             }
             nodes.append(nodeElement)
 
@@ -336,6 +337,30 @@ try:
 
 except Exception as e:
     nodes_list_dict["DeepTranslatorNode"]["error"] = e
+
+
+# DeepLXTranslateNode
+try:
+    from .DeepLXTranslateNode.deeplx_translate_node import (
+        DeepLXTranslateCLIPTextEncodeNode,
+        DeepLXTranslateTextNode,
+    )
+
+    NODE_CLASS_MAPPINGS.update(
+        {
+            "DeepLXTranslateCLIPTextEncodeNode": DeepLXTranslateCLIPTextEncodeNode,
+            "DeepLXTranslateTextNode": DeepLXTranslateTextNode,
+        }
+    )
+    NODE_DISPLAY_NAME_MAPPINGS.update(
+        {
+            "DeepLXTranslateCLIPTextEncodeNode": "DeepLX Translate CLIP Text Encode Node",
+            "DeepLXTranslateTextNode": "DeepLX Translate Text Node",
+        }
+    )
+
+except Exception as e:
+    nodes_list_dict["DeepLXTranslateNode"]["error"] = e
 
 
 # GoogleTranslateNode
@@ -418,18 +443,19 @@ NODE_DISPLAY_NAME_MAPPINGS.update(
 printColorInfo(
     f"\n### [START] ComfyUI AlekPet Nodes{get_version_extension()} ###", "\033[1;35m"
 )
+
 failed_nodes_text = ""
 len_nodes = len(nodes_list_dict)
 for key, node in enumerate(nodes_list_dict):
     currentNode = nodes_list_dict[node]
-    if currentNode["error"] is None:
+    if currentNode.get("error", None) is None:
         status = "\033[92m[Loading]"
     else:
         status = "\033[1;31;40m[Failed]"
-        error_message = currentNode["error"]
+        error_message = currentNode.get("error", "Error")
         failed_nodes_text += f"\033[93m{node} -> \033[1;31;40m{error_message}\033[0m\n"
 
-    message = currentNode["message"]
+    message = currentNode.get("message", "No message available")
     printColorInfo(f"{message}{status}\033[0m")
 
     if key == len_nodes - 1 and failed_nodes_text:
