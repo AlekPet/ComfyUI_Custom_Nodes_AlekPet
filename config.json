@@ -21,6 +21,13 @@
         "DeepTranslatorTextNode": true
       }
     },
+    "DeepLXTranslateNode": {
+      "active": true,
+      "nodes": {
+        "DeepLXTranslateCLIPTextEncodeNode": true,
+        "DeepLXTranslateTextNode": true
+      }
+    },
     "ExtrasNode": {
       "active": true,
       "nodes": {

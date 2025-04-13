@@ -366,6 +366,7 @@ from .ArgosTranslateNode.argos_translate_node import (
     ArgosTranslateCLIPTextEncodeNode,
     ArgosTranslateTextNode,
 )
+
 from .ChatGLMNode.chatglm_node import (
     ChatGLM4TranslateCLIPTextEncodeNode,
     ChatGLM4TranslateTextNode, ChatGLM4InstructNode, ChatGLM4InstructMediaNode
@@ -379,6 +380,12 @@ from .GoogleTranslateNode.google_translate_node import (
     GoogleTranslateCLIPTextEncodeNode,
     GoogleTranslateTextNode,
 )
+
+from .DeepLXTranslateNode.deeplx_translate_node import (
+        DeepLXTranslateCLIPTextEncodeNode,
+        DeepLXTranslateTextNode,
+)
+
 from .PainterNode.painter_node import PainterNode
 from .PoseNode.pose_node import PoseNode
 from .IDENode.ide_node import IDENode
@@ -392,6 +399,8 @@ NODE_CLASS_MAPPINGS = {
     "ChatGLM4InstructMediaNode": ChatGLM4InstructMediaNode,
     "DeepTranslatorCLIPTextEncodeNode": DeepTranslatorCLIPTextEncodeNode,
     "DeepTranslatorTextNode": DeepTranslatorTextNode,
+    "DeepLXTranslateCLIPTextEncodeNode": DeepLXTranslateCLIPTextEncodeNode,
+    "DeepLXTranslateTextNode": DeepLXTranslateTextNode,    
     "PreviewTextNode": PreviewTextNode,
     "HexToHueNode": HexToHueNode,
     "ColorsCorrectNode": ColorsCorrectNode,
@@ -411,6 +420,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ChatGLM4InstructMediaNode": "ChatGLM-4 Instruct Media Node",
     "DeepTranslatorCLIPTextEncodeNode": "Deep Translator CLIP Text Encode Node",
     "DeepTranslatorTextNode": "Deep Translator Text Node",
+    "DeepLXTranslateCLIPTextEncodeNode": "DeepLX Translate CLIP Text Encode Node",
+    "DeepLXTranslateTextNode": "DeepLX Translate Text Node",    
     "PreviewTextNode": "Preview Text Node",
     "HexToHueNode": "HEX to HUE Node",
     "ColorsCorrectNode": "Colors Correct Node",
