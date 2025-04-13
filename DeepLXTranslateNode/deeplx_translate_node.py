@@ -180,33 +180,39 @@ except Exception as e:
     )
 
 if DEEPLX_SERVER_RUNNING:
-    for idx, retry in enumerate(range(0, RETRY_CHECK_SERVER)):
-        try:
-            print(
-                f"{ColPrint.YELLOW}[DeepLXTranslateNode] {ColPrint.BLUE}Server verification sends a request to the DeepLX server. Retry {RETRY_CHECK_SERVER - idx}...{ColPrint.CLEAR}"
-            )
-            response = requests.get(DEEPLX_SERVER_URL)
-            response.raise_for_status()
-
-            if response.status_code == 200:
+    try:
+        for retry in enumerate(range(RETRY_CHECK_SERVER, 0, -1)):
                 print(
-                    f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.GREEN} Server answer successful:{ColPrint.CLEAR}",
-                    response.text,
+                    f"{ColPrint.YELLOW}[DeepLXTranslateNode] {ColPrint.BLUE}Server verification sends a request to the DeepLX server. Retry {retry}...{ColPrint.CLEAR}"
                 )
-                DEEPLX_SERVER_RUNNING = True
-                break
-            else:
-                DEEPLX_SERVER_RUNNING = False
+                response = requests.get(DEEPLX_SERVER_URL)
+                response.raise_for_status()
 
-            time.sleep(2)
+                if response.status_code == 200:
+                    print(
+                        f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.GREEN} Server answer successful:{ColPrint.CLEAR}",
+                        response.text,
+                    )
+                    DEEPLX_SERVER_RUNNING = True
+                    break
+                else:
+                    DEEPLX_SERVER_RUNNING = False
 
-        except requests.HTTPError as e:
-            raise e
-        except Exception as e:
+                time.sleep(2)
+
+    except requests.HTTPError as e:
+        if retry == 1:
             DEEPLX_SERVER_RUNNING = False
-            raise Exception(
+            raise e
+        else:
+            print(
                 f"{ColPrint.RED}[DeepLXTranslateNode] Error request to server DeepLX: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
             )
+    except Exception as e:
+        DEEPLX_SERVER_RUNNING = False
+        raise Exception(
+            f"{ColPrint.RED}[DeepLXTranslateNode] Error server DeepLX: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
+        )
 
 
 def createRequest(payload):
