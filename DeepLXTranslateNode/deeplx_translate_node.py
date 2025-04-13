@@ -1,6 +1,6 @@
 # Title: DeepLX Translate promts nodes
 # Author: AlekPet (https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet)
-# Github DeepLX: https://github.com/OwO-Network/DeepLX 
+# Github DeepLX: https://github.com/OwO-Network/DeepLX
 
 import os
 import json
@@ -144,6 +144,7 @@ else:
 DEEPLX_SERVER_RUNNING = False
 DEEPLX_SERVER_URL = "http://127.0.0.1:1188/"
 DEEPLX_SERVER_URL_TRANSLATE = "http://127.0.0.1:1188/translate"
+RETRY_CHECK_SERVER = 3
 
 PATH_TO_DEEPLX_SERVER = os.path.join(NODE_DIR, "DeepLX")
 PATH_TO_GO = os.path.join(NODE_DIR, "go", "bin")
@@ -170,30 +171,42 @@ if os.name == "nt":
 try:
     print(f"{ColPrint.YELLOW}[DeepLXTranslateNode] {ColPrint.BLUE}Running server DeepLX...{ColPrint.CLEAR}")
     proc_deeplx = subprocess.Popen([go_executable, "run", "main.go"], cwd=PATH_TO_DEEPLX_SERVER)
+    DEEPLX_SERVER_RUNNING = True
     time.sleep(2)
-
-    print(
-        f"{ColPrint.YELLOW}[DeepLXTranslateNode] {ColPrint.BLUE}Server verification sends a request to the DeepLX server...{ColPrint.CLEAR}"
-    )
-    response = requests.get(DEEPLX_SERVER_URL)
-    response.raise_for_status()
-
-    if response.status_code == 200:
-        print(
-            f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.GREEN} Server answer successful:{ColPrint.CLEAR}",
-            response.text,
-        )
-        DEEPLX_SERVER_RUNNING = True
-    else:
-        DEEPLX_SERVER_RUNNING = False
-
-except requests.HTTPError as e:
-    raise e
 except Exception as e:
     DEEPLX_SERVER_RUNNING = False
     raise Exception(
         f"{ColPrint.RED}[DeepLXTranslateNode] Error running server DeepLX: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
     )
+
+if DEEPLX_SERVER_RUNNING:
+    for idx, retry in enumerate(range(0, RETRY_CHECK_SERVER)):
+        try:
+            print(
+                f"{ColPrint.YELLOW}[DeepLXTranslateNode] {ColPrint.BLUE}Server verification sends a request to the DeepLX server. Retry {RETRY_CHECK_SERVER - idx}...{ColPrint.CLEAR}"
+            )
+            response = requests.get(DEEPLX_SERVER_URL)
+            response.raise_for_status()
+
+            if response.status_code == 200:
+                print(
+                    f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.GREEN} Server answer successful:{ColPrint.CLEAR}",
+                    response.text,
+                )
+                DEEPLX_SERVER_RUNNING = True
+                break
+            else:
+                DEEPLX_SERVER_RUNNING = False
+
+            time.sleep(2)
+
+        except requests.HTTPError as e:
+            raise e
+        except Exception as e:
+            DEEPLX_SERVER_RUNNING = False
+            raise Exception(
+                f"{ColPrint.RED}[DeepLXTranslateNode] Error request to server DeepLX: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
+            )
 
 
 def createRequest(payload):
