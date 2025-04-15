@@ -76,7 +76,6 @@ LANGUAGES_CODES = {
         "Swedish": "SV",
         "Turkish": "TR",
         "Ukrainian": "UK",
-        "Chinese": "ZH",
         "Chinese (simplified)": "ZH-HANS",
         "Chinese (traditional)": "ZH-HANT",
     },
@@ -181,7 +180,7 @@ except Exception as e:
 
 if DEEPLX_SERVER_RUNNING:
     try:
-        for retry in enumerate(range(RETRY_CHECK_SERVER, 0, -1)):
+        for retry in range(RETRY_CHECK_SERVER, 0, -1):
                 print(
                     f"{ColPrint.YELLOW}[DeepLXTranslateNode] {ColPrint.BLUE}Server verification sends a request to the DeepLX server. Retry {retry}...{ColPrint.CLEAR}"
                 )
