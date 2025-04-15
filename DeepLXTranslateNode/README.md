@@ -78,7 +78,6 @@ Powerful Free DeepL API, No Token Required. Used module [DeepLX](https://github.
 - Swedish: SV
 - Turkish: TR
 - Ukrainian: UK
-- Chinese: ZH
 - Chinese (simplified): ZH-HANS
 - Chinese (traditional): ZH-HANT
 
