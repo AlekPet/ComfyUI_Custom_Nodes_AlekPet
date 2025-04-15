@@ -116,7 +116,7 @@ if not os.path.exists(config_path):
         json.dump(defaultJSON, f, ensure_ascii=False, indent=4)
 
 else:
-    with open(config_path, "r") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
         SETTINGS = config.get("settings", {})
 
@@ -179,39 +179,44 @@ except Exception as e:
     )
 
 if DEEPLX_SERVER_RUNNING:
-    try:
-        for retry in range(RETRY_CHECK_SERVER, 0, -1):
-                print(
-                    f"{ColPrint.YELLOW}[DeepLXTranslateNode] {ColPrint.BLUE}Server verification sends a request to the DeepLX server. Retry {retry}...{ColPrint.CLEAR}"
-                )
-                response = requests.get(DEEPLX_SERVER_URL)
-                response.raise_for_status()
-
-                if response.status_code == 200:
-                    print(
-                        f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.GREEN} Server answer successful:{ColPrint.CLEAR}",
-                        response.text,
-                    )
-                    DEEPLX_SERVER_RUNNING = True
-                    break
-                else:
-                    DEEPLX_SERVER_RUNNING = False
-
-                time.sleep(2)
-
-    except requests.HTTPError as e:
-        if retry == 1:
-            DEEPLX_SERVER_RUNNING = False
-            raise e
-        else:
-            print(
-                f"{ColPrint.RED}[DeepLXTranslateNode] Error request to server DeepLX: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
-            )
-    except Exception as e:
-        DEEPLX_SERVER_RUNNING = False
-        raise Exception(
-            f"{ColPrint.RED}[DeepLXTranslateNode] Error server DeepLX: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
+    for retry in range(RETRY_CHECK_SERVER, 0, -1):
+        print(
+            f"{ColPrint.YELLOW}[DeepLXTranslateNode] {ColPrint.BLUE}Checking DeepLX server. Attempt {retry}...{ColPrint.CLEAR}"
         )
+
+        try:
+            response = requests.get(DEEPLX_SERVER_URL)
+            response.raise_for_status()
+
+            print(
+                f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.GREEN} Server responded successfully: {ColPrint.CLEAR}",
+                response.text,
+            )
+            DEEPLX_SERVER_RUNNING = True
+            break
+
+        except requests.HTTPError as e:
+            print(
+                f"{ColPrint.RED}[DeepLXTranslateNode] HTTP error while connecting to DeepLX: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
+            )
+            if retry == 1:
+                DEEPLX_SERVER_RUNNING = False
+                raise
+
+        except Exception as e:
+            DEEPLX_SERVER_RUNNING = False
+            raise Exception(
+                f"{ColPrint.RED}[DeepLXTranslateNode] Unexpected error while checking DeepLX server: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
+            )
+
+        time.sleep(2)
+
+    else:
+        DEEPLX_SERVER_RUNNING = False
+        print(
+            f"{ColPrint.RED}[DeepLXTranslateNode] All attempts to reach the DeepLX server have failed.{ColPrint.CLEAR}"
+        )
+
 
 
 def createRequest(payload):

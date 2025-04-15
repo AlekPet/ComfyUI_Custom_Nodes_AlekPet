@@ -101,6 +101,7 @@ Powerful Free DeepL API, No Token Required. Used module [DeepLX](https://github.
    ```
 
 5. Run comfyui (**see note after**) and add node `DeepLXTranslateCLIPTextEncodeNode` or `DeepLXTranslateTextNode` context menu in the category `CONDITIONING`.
+6. [Optional] If you are in **CH**, you need in the `\ComfyUI\custom_nodes\ComfyUI_Custom_Nodes_AlekPet\DeepLXTranslateNode\go`, edit file **go.env**, modify this line `GOPROXY=https://proxy.golang.org,direct` to `GOPROXY=https://goproxy.cn,direct` [Thanks tongpeng1988](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/136#issuecomment-2804126821) .
 
 **_Note: The first launch may fail, Golang is installing packages for DeepLX, just restart ComfyUI!_**
 
