@@ -143,7 +143,7 @@ else:
 DEEPLX_SERVER_RUNNING = False
 DEEPLX_SERVER_URL = "http://127.0.0.1:1188/"
 DEEPLX_SERVER_URL_TRANSLATE = "http://127.0.0.1:1188/translate"
-RETRY_CHECK_SERVER = 3
+RETRY_CHECK_SERVER = 10
 
 PATH_TO_DEEPLX_SERVER = os.path.join(NODE_DIR, "DeepLX")
 PATH_TO_GO = os.path.join(NODE_DIR, "go", "bin")
@@ -172,6 +172,7 @@ try:
     proc_deeplx = subprocess.Popen([go_executable, "run", "main.go"], cwd=PATH_TO_DEEPLX_SERVER)
     DEEPLX_SERVER_RUNNING = True
     time.sleep(2)
+
 except Exception as e:
     DEEPLX_SERVER_RUNNING = False
     raise Exception(
@@ -204,10 +205,11 @@ if DEEPLX_SERVER_RUNNING:
                 raise
 
         except Exception as e:
-            DEEPLX_SERVER_RUNNING = False
-            raise Exception(
-                f"{ColPrint.RED}[DeepLXTranslateNode] Unexpected error while checking DeepLX server: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
-            )
+            if retry == 1:
+                DEEPLX_SERVER_RUNNING = False
+                raise Exception(
+                    f"{ColPrint.RED}[DeepLXTranslateNode] Unexpected error while checking DeepLX server: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
+                )
 
         time.sleep(2)
 
@@ -216,7 +218,6 @@ if DEEPLX_SERVER_RUNNING:
         print(
             f"{ColPrint.RED}[DeepLXTranslateNode] All attempts to reach the DeepLX server have failed.{ColPrint.CLEAR}"
         )
-
 
 
 def createRequest(payload):
