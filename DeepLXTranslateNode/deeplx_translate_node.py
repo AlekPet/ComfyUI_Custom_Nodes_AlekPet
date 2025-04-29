@@ -7,6 +7,7 @@ import json
 import subprocess
 import requests
 import time
+from . import install_deeplx
 
 
 LANGUAGES_CODES = {
@@ -148,18 +149,61 @@ RETRY_CHECK_SERVER = 10
 PATH_TO_DEEPLX_SERVER = os.path.join(NODE_DIR, "DeepLX")
 PATH_TO_GO = os.path.join(NODE_DIR, "go", "bin")
 
+### Automatical install Golang (Go) and DeepLX ###
+
+# Get platform
+platform = install_deeplx.getPlatform()
+
 # Checking exists path to Go
+if platform is not None:
+        try:
+            # Install Golang (Go)
+            if not os.path.exists(PATH_TO_GO):
+                print(
+                    f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.MAGNETA} Path to 'Golang (Go)' not exists, try install...{ColPrint.CLEAR}")
+                
+                # Get link
+                go_url = install_deeplx.GO_URLS[platform]
+
+                # Download file
+                file_name, path_to_file = install_deeplx.download(go_url, NODE_DIR)
+
+                # Extract file
+                install_deeplx.extractArchive(path_to_file)
+
+            # Install DeepLX
+            if not os.path.exists(PATH_TO_DEEPLX_SERVER):
+                print(
+                    f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.MAGNETA} Path to DeepLX server folder not exists, try install...{ColPrint.CLEAR}")
+                
+                # Get link
+                deeplx_url = install_deeplx.FILES_DOWNLOAD["DeepLX"]
+
+                # Download file
+                file_name, path_to_file = install_deeplx.download(deeplx_url, NODE_DIR)
+
+                # Extract file
+                install_deeplx.extractArchive(path_to_file)
+
+                # Rename DeepLX-master to DeepLX
+                install_deeplx.otherOperations("DeepLX", NODE_DIR)          
+
+        except Exception as e:
+            raise e
+else:
+    print(f"{ColPrint.RED}[DeepLXTranslateNode] Unable to determine identifying the underlying platform! Use manual installation!{ColPrint.CLEAR} ")
+
+
+### end - Automatical install Golang (Go) and DeepLX ###
+
+# Checking pathes variables
 if not os.path.exists(PATH_TO_GO):
-    error_text = (
-        f"{ColPrint.RED}Error path to 'Golang (Go)' not exists: {ColPrint.MAGNETA}{PATH_TO_GO}{ColPrint.CLEAR} "
-    )
-    raise FileNotFoundError(error_text)
+    raise FileNotFoundError(f"Error path to 'Golang (Go)' not exists: {PATH_TO_GO}")    
 
 
-# Checking exists path to DeepLX folder
 if not os.path.exists(PATH_TO_DEEPLX_SERVER):
-    error_text = f"{ColPrint.RED}Error path to DeepLX server folder not exists: {ColPrint.MAGNETA}{PATH_TO_DEEPLX_SERVER}{ColPrint.CLEAR}"
-    raise FileNotFoundError(error_text)
+    raise FileNotFoundError(f"Error path to DeepLX server folder not exists: {PATH_TO_DEEPLX_SERVER}")
+
 
 # Detect platform
 go_executable = os.path.join(PATH_TO_GO, "go")
