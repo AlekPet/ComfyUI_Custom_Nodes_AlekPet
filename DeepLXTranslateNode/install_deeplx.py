@@ -1,8 +1,13 @@
+# Title: Autoinstall Golang (Go) and DeepLX for ComfyUI DeepLXTranslateNode
+# Author: AlekPet (https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet)
+# DeepLXTranslateNode README: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/blob/master/DeepLXTranslateNode/README.md
+
 import os
 from sys import version_info, platform as _platform
 import platform
 import requests
 from tqdm import tqdm
+import shutil
 
 class ColPrintInstall:
     RED = "\033[1;31;40m"
@@ -21,8 +26,12 @@ GO_URLS = {
     }
 
 FILES_DOWNLOAD = {
-    "Golang": None,
-    "DeepLX": "https://github.com/OwO-Network/DeepLX/archive/refs/heads/main.zip",
+    "Golang": {
+        "url": None,
+    },
+    "DeepLX": {
+        "url":"https://github.com/OwO-Network/DeepLX/archive/refs/heads/main.zip",
+    },
 }
 
 WORK_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -44,8 +53,6 @@ def getPlatform():
             platform_name = "win64"
         else:
             platform_name = "win32"
-
-    print(f"{ColPrintInstall.YELLOW}[DeepLXTranslateNode]{ColPrintInstall.GREEN} Your platform is: {'macOS (Darwin)' if platform_name == 'darwin' else platform_name.capitalize()}{ColPrintInstall.CLEAR}")
     
     return platform_name
 
@@ -142,29 +149,38 @@ def extractArchive(file_path, extract_to = WORK_DIR, removeArchive = True):
 def otherOperations(name, save_path_dir):
     if name == "DeepLX":
         path_to_deeplx_master = os.path.join(save_path_dir, "DeepLX-main")
-        if os.path.isdir(path_to_deeplx_master):
-            os.rename(path_to_deeplx_master, os.path.join(save_path_dir, "DeepLX"))
-            print(f"{ColPrintInstall.YELLOW}[DeepLXTranslateNode]{ColPrintInstall.MAGNETA} Folder 'DeepLX-main' renamed to 'DeepLX'!{ColPrintInstall.CLEAR}")
+        path_to_rename = os.path.join(save_path_dir, "DeepLX")
+        
+        if os.path.isdir(path_to_deeplx_master) and not os.path.exists(path_to_rename):
+            os.rename(path_to_deeplx_master, path_to_rename)
+            print(f"{ColPrintInstall.YELLOW}[DeepLXTranslateNode]{ColPrintInstall.MAGNETA} Directory 'DeepLX-main' renamed to 'DeepLX'!{ColPrintInstall.CLEAR}")
+        else:
+            print(f"{ColPrintInstall.YELLOW}[DeepLXTranslateNode]{ColPrintInstall.MAGNETA} Directory 'DeepLX' already exists or directory {path_to_deeplx_master}' is not correct! Renaming operation abort!{ColPrintInstall.CLEAR}")
+            shutil.rmtree(path_to_deeplx_master, ignore_errors=True)
 
 
 def main():
-    print("### Install Golang and DeepLX for ComfyUI DeepLXTranslateNode by AlekPet ###")
+    print(f"""{ColPrintInstall.MAGNETA}~~~~~~~~~ Autoinstall Golang (Go) and DeepLX for ComfyUI DeepLXTranslateNode by AlekPet ~~~~~~~~~
+#{ColPrintInstall.CLEAR} Github: {ColPrintInstall.BLUE}https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
+{ColPrintInstall.MAGNETA}~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~{ColPrintInstall.CLEAR}""")
     try:
         platform_name = getPlatform()
+        print(f"{ColPrintInstall.YELLOW}[DeepLXTranslateNode]{ColPrintInstall.GREEN} Your platform is: {'macOS (Darwin)' if platform_name == 'darwin' else platform_name.capitalize()}{ColPrintInstall.CLEAR}")
+
         if platform_name is None:
             raise Exception("Unable to determine identifying the underlying platform!")
 
         url_down = GO_URLS[platform_name]
 
         # Download links (Golang and DeepLX)
-        FILES_DOWNLOAD["Golang"] = url_down
+        FILES_DOWNLOAD["Golang"]["url"] = url_down
               
         for keyName in FILES_DOWNLOAD:
-            url = FILES_DOWNLOAD[keyName]
+            url = FILES_DOWNLOAD[keyName].get("url")
             
             if url is None:
                 continue
-
+            
             # Download file
             file_name, path_to_file = download(url, WORK_DIR)
             
@@ -175,7 +191,7 @@ def main():
             otherOperations(keyName, WORK_DIR)
 
             
-        print("--------------------\nComplete install Golang and DeepLX...")
+        print(f"{ColPrintInstall.GREEN}--------------------\nAutoinstall has completed its work...{ColPrintInstall.CLEAR}")
         
     except Exception as e:
         raise e

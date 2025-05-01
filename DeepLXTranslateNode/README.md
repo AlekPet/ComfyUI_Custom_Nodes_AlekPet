@@ -83,7 +83,15 @@ Powerful Free DeepL API, No Token Required. Used module [DeepLX](https://github.
 
 </details>
 
-### Install and use:
+### Autoinstaller
+
+**Golang (Go)** and **DeepLX** installation occurs automatically if the **Go** or **DeepLX** directory is missing.
+
+You can also call the automatic installer by running shell `run_install_deeplx_windows.cmd` or `run_install_deeplx_linux.sh` for your platform.
+
+**_Note: If you encounter any problems, you can use manual installation._**
+
+### Manual install and use:
 
 1. Install my custom nodes in ComfyUI, used [HERE](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet#installing)
 2. Download zip archive Golang (programming language) from your system (Widnows, Linux ...) [Download Golang](https://go.dev/dl/)
@@ -91,14 +99,7 @@ Powerful Free DeepL API, No Token Required. Used module [DeepLX](https://github.
 4. Open shell in the folder `\ComfyUI\custom_nodes\ComfyUI_Custom_Nodes_AlekPet\DeepLXTranslateNode` and run command `git clone https://github.com/OwO-Network/DeepLX` (you need install Git if not exists [Git](https://git-scm.com/downloads))
    **Structure folders:**
 
-   ```ComfyUI_portables\
-        ComfyUI\
-           custom_nodes\
-               ComfyUI_Custom_Nodes_AlekPet\
-                   DeepLXTranslateNode\
-                       go\
-                       DeepLX\
-   ```
+![DeepLXTranslateNode structures folders](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/DeepLXTranslateNode/image_deeplx_structures_folders.png)
 
 5. Run comfyui (**see note after**) and add node `DeepLXTranslateCLIPTextEncodeNode` or `DeepLXTranslateTextNode` context menu in the category `CONDITIONING`.
 6. [Optional] If you are in **CH**, you need in the `\ComfyUI\custom_nodes\ComfyUI_Custom_Nodes_AlekPet\DeepLXTranslateNode\go`, edit file **go.env**, modify this line `GOPROXY=https://proxy.golang.org,direct` to `GOPROXY=https://goproxy.cn,direct` [Thanks tongpeng1988](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/136#issuecomment-2804126821) .
