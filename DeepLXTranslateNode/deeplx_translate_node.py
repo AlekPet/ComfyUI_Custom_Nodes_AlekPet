@@ -150,48 +150,48 @@ PATH_TO_DEEPLX_SERVER = os.path.join(NODE_DIR, "DeepLX")
 PATH_TO_GO = os.path.join(NODE_DIR, "go", "bin")
 
 ### Automatical install Golang (Go) and DeepLX ###
+try:
+    # Checking exists path to Go and install Golang (Go)
+    if not os.path.exists(PATH_TO_GO):
+        print(f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.MAGNETA} Path to 'Golang (Go)' not exists, try install...{ColPrint.CLEAR}")
+        
+        # Get platform
+        platform = install_deeplx.getPlatform()
 
-# Get platform
-platform = install_deeplx.getPlatform()
+        if platform is not None:       
+            print(f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.GREEN} Your platform is: {'macOS (Darwin)' if platform == 'darwin' else platform.capitalize()}{ColPrint.CLEAR}")
+            # Get link
+            go_url = install_deeplx.GO_URLS[platform]
 
-# Checking exists path to Go
-if platform is not None:
-        try:
-            # Install Golang (Go)
-            if not os.path.exists(PATH_TO_GO):
-                print(
-                    f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.MAGNETA} Path to 'Golang (Go)' not exists, try install...{ColPrint.CLEAR}")
-                
-                # Get link
-                go_url = install_deeplx.GO_URLS[platform]
+            # Download file
+            file_name, path_to_file = install_deeplx.download(go_url, NODE_DIR)
 
-                # Download file
-                file_name, path_to_file = install_deeplx.download(go_url, NODE_DIR)
+            # Extract file
+            install_deeplx.extractArchive(path_to_file)
+        else:
+            print(f"{ColPrint.RED}[DeepLXTranslateNode] Unable to determine identifying the underlying platform! Use manual installation!{ColPrint.CLEAR} ")
 
-                # Extract file
-                install_deeplx.extractArchive(path_to_file)
 
-            # Install DeepLX
-            if not os.path.exists(PATH_TO_DEEPLX_SERVER):
-                print(
-                    f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.MAGNETA} Path to DeepLX server folder not exists, try install...{ColPrint.CLEAR}")
-                
-                # Get link
-                deeplx_url = install_deeplx.FILES_DOWNLOAD["DeepLX"]
+    # # Checking exists path to Go and install DeepLX
+    if not os.path.exists(PATH_TO_DEEPLX_SERVER):
+        print(
+            f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.MAGNETA} Path to DeepLX server folder not exists, try install...{ColPrint.CLEAR}")
+            
+        # Get link
+        deeplx_url = install_deeplx.FILES_DOWNLOAD["DeepLX"].get("url")
+    
+        # Download file
+        file_name, path_to_file = install_deeplx.download(deeplx_url, NODE_DIR)
 
-                # Download file
-                file_name, path_to_file = install_deeplx.download(deeplx_url, NODE_DIR)
+        # Extract file
+        install_deeplx.extractArchive(path_to_file)
 
-                # Extract file
-                install_deeplx.extractArchive(path_to_file)
+        # Rename DeepLX-master to DeepLX
+        install_deeplx.otherOperations("DeepLX", NODE_DIR)          
 
-                # Rename DeepLX-master to DeepLX
-                install_deeplx.otherOperations("DeepLX", NODE_DIR)          
+except Exception as e:
+    raise e
 
-        except Exception as e:
-            raise e
-else:
-    print(f"{ColPrint.RED}[DeepLXTranslateNode] Unable to determine identifying the underlying platform! Use manual installation!{ColPrint.CLEAR} ")
 
 
 ### end - Automatical install Golang (Go) and DeepLX ###
