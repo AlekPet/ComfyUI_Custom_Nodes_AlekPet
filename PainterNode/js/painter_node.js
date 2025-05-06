@@ -2537,7 +2537,7 @@ app.registerExtension({
     // Add settings params painter node
     app.ui.settings.addSetting({
       id: `${extensionName}.SaveSettingsJson`,
-      name: "🔸 Save settings to JSON file",
+      name: "🔸 Save settings to JSON file (BETA)",
       defaultValue: false,
       type: "boolean",
       onChange: (e) => {
@@ -2594,7 +2594,7 @@ app.registerExtension({
 
         const widget = PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
 
-        this.painter.uploadPaintFile(nodeNamePNG);
+        //this.painter.uploadPaintFile(nodeNamePNG);
         this.title = `${this.type} - ${this.painter.storageCls.settings_painter_node.settings.currentCanvasSize.width}x${this.painter.storageCls.settings_painter_node.settings.currentCanvasSize.height}`;
 
         // Resize window
@@ -2608,27 +2608,30 @@ app.registerExtension({
 
         await this.getTitle();
 
-        if (this.storageCls.workflowStateManager.currentWorkflow) {
-          DEBUG &&
-            console.log(
-              `⚠️ [PainterNode] currentWorkflow уже установлен, пропускаем: ${this.name} -> ${this.storageCls.workflowStateManager.currentWorkflow}`
-            );
-        }
+        if (painters_settings_json) {
+          if (this.storageCls.workflowStateManager.currentWorkflow) {
+            DEBUG &&
+              console.log(
+                `⚠️ [PainterNode] currentWorkflow уже установлен, пропускаем: ${this.name} -> ${this.storageCls.workflowStateManager.currentWorkflow}`
+              );
+          }
 
-        // Если `setEvents` уже выполняется, ждем его завершения
-        if (setEventsPromise) {
-          DEBUG && console.log(`⏳ [PainterNode] Ждем завершения setEvents...`);
+          // Если `setEvents` уже выполняется, ждем его завершения
+          if (setEventsPromise) {
+            DEBUG &&
+              console.log(`⏳ [PainterNode] Ждем завершения setEvents...`);
 
-          await setEventsPromise;
-          DEBUG &&
-            console.log(`✅ [PainterNode] setEvents завершился, продолжаем`);
-        } else {
-          // Если это первый узел, запускаем `setEvents`
-          DEBUG &&
-            console.log(`🚀 [PainterNode] Первый узел вызывает setEvents...`);
-          setEventsPromise = this.storageCls.workflowStateManager.setEvents();
-          await setEventsPromise;
-          DEBUG && console.log(`✅ [PainterNode] setEvents завершен`);
+            await setEventsPromise;
+            DEBUG &&
+              console.log(`✅ [PainterNode] setEvents завершился, продолжаем`);
+          } else {
+            // Если это первый узел, запускаем `setEvents`
+            DEBUG &&
+              console.log(`🚀 [PainterNode] Первый узел вызывает setEvents...`);
+            setEventsPromise = this.storageCls.workflowStateManager.setEvents();
+            await setEventsPromise;
+            DEBUG && console.log(`✅ [PainterNode] setEvents завершен`);
+          }
         }
 
         setTimeout(async () => {
@@ -2680,7 +2683,12 @@ app.registerExtension({
 
             // Loading canvas data
             if (data?.canvas_settings) {
-              this.painter.canvasLoadSettingPainter(data).then((result) => {});
+              this.painter.canvasLoadSettingPainter(data).then((result) => {
+                if (result) {
+                  this.painter.canvas.renderAll();
+                  this.painter.uploadPaintFile(this.name);
+                }
+              });
             }
 
             this.setSize(arguments[0].size);
