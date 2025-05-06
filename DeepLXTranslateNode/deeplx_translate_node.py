@@ -7,6 +7,7 @@ import json
 import subprocess
 import requests
 import time
+from . import install_deeplx
 
 
 LANGUAGES_CODES = {
@@ -76,7 +77,6 @@ LANGUAGES_CODES = {
         "Swedish": "SV",
         "Turkish": "TR",
         "Ukrainian": "UK",
-        "Chinese": "ZH",
         "Chinese (simplified)": "ZH-HANS",
         "Chinese (traditional)": "ZH-HANT",
     },
@@ -117,7 +117,7 @@ if not os.path.exists(config_path):
         json.dump(defaultJSON, f, ensure_ascii=False, indent=4)
 
 else:
-    with open(config_path, "r") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
         SETTINGS = config.get("settings", {})
 
@@ -144,23 +144,66 @@ else:
 DEEPLX_SERVER_RUNNING = False
 DEEPLX_SERVER_URL = "http://127.0.0.1:1188/"
 DEEPLX_SERVER_URL_TRANSLATE = "http://127.0.0.1:1188/translate"
-RETRY_CHECK_SERVER = 3
+RETRY_CHECK_SERVER = 10
 
 PATH_TO_DEEPLX_SERVER = os.path.join(NODE_DIR, "DeepLX")
 PATH_TO_GO = os.path.join(NODE_DIR, "go", "bin")
 
-# Checking exists path to Go
+### Automatical install Golang (Go) and DeepLX ###
+try:
+    # Checking exists path to Go and install Golang (Go)
+    if not os.path.exists(PATH_TO_GO):
+        print(f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.MAGNETA} Path to 'Golang (Go)' not exists, try install...{ColPrint.CLEAR}")
+        
+        # Get platform
+        platform = install_deeplx.getPlatform()
+
+        if platform is not None:       
+            print(f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.GREEN} Your platform is: {'macOS (Darwin)' if platform == 'darwin' else platform.capitalize()}{ColPrint.CLEAR}")
+            # Get link
+            go_url = install_deeplx.GO_URLS[platform]
+
+            # Download file
+            file_name, path_to_file = install_deeplx.download(go_url, NODE_DIR)
+
+            # Extract file
+            install_deeplx.extractArchive(path_to_file)
+        else:
+            print(f"{ColPrint.RED}[DeepLXTranslateNode] Unable to determine identifying the underlying platform! Use manual installation!{ColPrint.CLEAR} ")
+
+
+    # # Checking exists path to Go and install DeepLX
+    if not os.path.exists(PATH_TO_DEEPLX_SERVER):
+        print(
+            f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.MAGNETA} Path to DeepLX server folder not exists, try install...{ColPrint.CLEAR}")
+            
+        # Get link
+        deeplx_url = install_deeplx.FILES_DOWNLOAD["DeepLX"].get("url")
+    
+        # Download file
+        file_name, path_to_file = install_deeplx.download(deeplx_url, NODE_DIR)
+
+        # Extract file
+        install_deeplx.extractArchive(path_to_file)
+
+        # Rename DeepLX-master to DeepLX
+        install_deeplx.otherOperations("DeepLX", NODE_DIR)          
+
+except Exception as e:
+    raise e
+
+
+
+### end - Automatical install Golang (Go) and DeepLX ###
+
+# Checking pathes variables
 if not os.path.exists(PATH_TO_GO):
-    error_text = (
-        f"{ColPrint.RED}Error path to 'Golang (Go)' not exists: {ColPrint.MAGNETA}{PATH_TO_GO}{ColPrint.CLEAR} "
-    )
-    raise FileNotFoundError(error_text)
+    raise FileNotFoundError(f"Error path to 'Golang (Go)' not exists: {PATH_TO_GO}")    
 
 
-# Checking exists path to DeepLX folder
 if not os.path.exists(PATH_TO_DEEPLX_SERVER):
-    error_text = f"{ColPrint.RED}Error path to DeepLX server folder not exists: {ColPrint.MAGNETA}{PATH_TO_DEEPLX_SERVER}{ColPrint.CLEAR}"
-    raise FileNotFoundError(error_text)
+    raise FileNotFoundError(f"Error path to DeepLX server folder not exists: {PATH_TO_DEEPLX_SERVER}")
+
 
 # Detect platform
 go_executable = os.path.join(PATH_TO_GO, "go")
@@ -173,6 +216,7 @@ try:
     proc_deeplx = subprocess.Popen([go_executable, "run", "main.go"], cwd=PATH_TO_DEEPLX_SERVER)
     DEEPLX_SERVER_RUNNING = True
     time.sleep(2)
+
 except Exception as e:
     DEEPLX_SERVER_RUNNING = False
     raise Exception(
@@ -180,38 +224,43 @@ except Exception as e:
     )
 
 if DEEPLX_SERVER_RUNNING:
-    try:
-        for retry in enumerate(range(RETRY_CHECK_SERVER, 0, -1)):
-                print(
-                    f"{ColPrint.YELLOW}[DeepLXTranslateNode] {ColPrint.BLUE}Server verification sends a request to the DeepLX server. Retry {retry}...{ColPrint.CLEAR}"
-                )
-                response = requests.get(DEEPLX_SERVER_URL)
-                response.raise_for_status()
+    for retry in range(RETRY_CHECK_SERVER, 0, -1):
+        print(
+            f"{ColPrint.YELLOW}[DeepLXTranslateNode] {ColPrint.BLUE}Checking DeepLX server. Attempt {retry}...{ColPrint.CLEAR}"
+        )
 
-                if response.status_code == 200:
-                    print(
-                        f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.GREEN} Server answer successful:{ColPrint.CLEAR}",
-                        response.text,
-                    )
-                    DEEPLX_SERVER_RUNNING = True
-                    break
-                else:
-                    DEEPLX_SERVER_RUNNING = False
+        try:
+            response = requests.get(DEEPLX_SERVER_URL)
+            response.raise_for_status()
 
-                time.sleep(2)
-
-    except requests.HTTPError as e:
-        if retry == 1:
-            DEEPLX_SERVER_RUNNING = False
-            raise e
-        else:
             print(
-                f"{ColPrint.RED}[DeepLXTranslateNode] Error request to server DeepLX: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
+                f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.GREEN} Server responded successfully: {ColPrint.CLEAR}",
+                response.text,
             )
-    except Exception as e:
+            DEEPLX_SERVER_RUNNING = True
+            break
+
+        except requests.HTTPError as e:
+            print(
+                f"{ColPrint.RED}[DeepLXTranslateNode] HTTP error while connecting to DeepLX: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
+            )
+            if retry == 1:
+                DEEPLX_SERVER_RUNNING = False
+                raise
+
+        except Exception as e:
+            if retry == 1:
+                DEEPLX_SERVER_RUNNING = False
+                raise Exception(
+                    f"{ColPrint.RED}[DeepLXTranslateNode] Unexpected error while checking DeepLX server: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
+                )
+
+        time.sleep(2)
+
+    else:
         DEEPLX_SERVER_RUNNING = False
-        raise Exception(
-            f"{ColPrint.RED}[DeepLXTranslateNode] Error server DeepLX: {ColPrint.MAGNETA}{e}{ColPrint.CLEAR}"
+        print(
+            f"{ColPrint.RED}[DeepLXTranslateNode] All attempts to reach the DeepLX server have failed.{ColPrint.CLEAR}"
         )
 
 
