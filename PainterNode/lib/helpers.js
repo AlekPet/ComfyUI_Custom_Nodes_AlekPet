@@ -272,7 +272,7 @@ class WorkflowStateManager {
   async setEvents() {
     // Проверяем доступность объекта
     if (!this.workflowManager) {
-      throw new Error("Workflow manager не доступен");
+      throw new Error("Workflow manager is not available");
     }
 
     const painters_settings_json = JSON.parse(
@@ -280,7 +280,7 @@ class WorkflowStateManager {
     );
 
     if (!painters_settings_json) {
-      console.log("Painter Settings OFF");
+      console.log("Painter settings save to JSON -> OFF");
       return;
     }
 

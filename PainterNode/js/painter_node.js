@@ -2612,25 +2612,27 @@ app.registerExtension({
           if (this.storageCls.workflowStateManager.currentWorkflow) {
             DEBUG &&
               console.log(
-                `⚠️ [PainterNode] currentWorkflow уже установлен, пропускаем: ${this.name} -> ${this.storageCls.workflowStateManager.currentWorkflow}`
+                `⚠️ [PainterNode] currentWorkflow is already set, skip: ${this.name} -> ${this.storageCls.workflowStateManager.currentWorkflow}`
               );
           }
 
           // Если `setEvents` уже выполняется, ждем его завершения
           if (setEventsPromise) {
             DEBUG &&
-              console.log(`⏳ [PainterNode] Ждем завершения setEvents...`);
+              console.log(
+                `⏳ [PainterNode] Waiting for setEvents to complete...`
+              );
 
             await setEventsPromise;
             DEBUG &&
-              console.log(`✅ [PainterNode] setEvents завершился, продолжаем`);
+              console.log(`✅ [PainterNode] setEvents completed, continue`);
           } else {
             // Если это первый узел, запускаем `setEvents`
             DEBUG &&
-              console.log(`🚀 [PainterNode] Первый узел вызывает setEvents...`);
+              console.log(`🚀 [PainterNode] The first node calls setEvents...`);
             setEventsPromise = this.storageCls.workflowStateManager.setEvents();
             await setEventsPromise;
-            DEBUG && console.log(`✅ [PainterNode] setEvents завершен`);
+            DEBUG && console.log(`✅ [PainterNode] setEvents completed`);
           }
         }
 
