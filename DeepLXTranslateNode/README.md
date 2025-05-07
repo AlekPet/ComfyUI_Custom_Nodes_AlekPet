@@ -109,15 +109,16 @@ You can also call the automatic installer by running shell `run_install_deeplx_w
 
 ### Note
 
-On first launch, a `config.json` file will be created where you can specify the initial values ​​from which language to translate and to which language.
+On first launch, a `config.json` file will be created where you can specify the initial values ​​from which language to translate and to which language. You can also disable DeepLXTranslate nodes using the 'run_deeplx' property.
 **Default config.json values:**
 
 ```json
 {
   "settings": {
-    "__commnet": "Please check the list of available languages ​​before specifying, especially target_lang! See README file",
+    "__commnet": "Please check the list of available languages ​​before specifying, especially target_lang! Property run_deeplx disable DeepLXTranslate nodes. See README file",
     "source_lang": "Russian",
-    "target_lang": "English"
+    "target_lang": "English",
+    "run_deeplx": true
   }
 }
 ```

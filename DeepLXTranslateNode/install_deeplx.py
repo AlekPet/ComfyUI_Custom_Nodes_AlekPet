@@ -22,7 +22,10 @@ GO_URLS = {
     "win32": "https://go.dev/dl/go1.24.2.windows-386.zip",
     "win64": "https://go.dev/dl/go1.24.2.windows-amd64.zip",
     "darwin": "https://go.dev/dl/go1.24.2.darwin-arm64.tar.gz",
-    "linux": "https://go.dev/dl/go1.24.2.linux-386.tar.gz",
+    "linux_i386_i686": "https://go.dev/dl/go1.24.2.linux-386.tar.gz",
+    "linux_x86_64": "https://go.dev/dl/go1.24.3.linux-amd64.tar.gz",
+    "linux_aarch64": "https://go.dev/dl/go1.24.3.linux-arm64.tar.gz",
+    "linux_armv6l": "https://go.dev/dl/go1.24.3.linux-armv6l.tar.gz",
     }
 
 FILES_DOWNLOAD = {
@@ -42,8 +45,23 @@ def getPlatform():
     platform_name = None
     
     if _platform.startswith("linux"):
-        platform_name = "linux"
-        
+        # Check architecture linux
+        arch = platform.uname()
+        if arch.machine == "x86_64":
+            platform_name = "linux_x86_64"
+
+        elif arch.machine == "i386" or arch.machine == "i686":
+            platform_name = "linux_i386_i686"
+
+        elif arch.machine == "aarch64":
+            platform_name = "linux_aarch64"
+
+        elif arch.machine == "armv6l" or arch.machine == "armv7l":
+            platform_name = "linux_armv6l"
+            
+        else:
+            platform_name = "linux_i386_i686"
+
     elif _platform == "darwin":
         platform_name = "darwin"
         
