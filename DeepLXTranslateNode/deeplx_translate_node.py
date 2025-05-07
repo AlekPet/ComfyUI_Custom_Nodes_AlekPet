@@ -7,6 +7,7 @@ import json
 import subprocess
 import requests
 import time
+from . import install_deeplx
 
 
 LANGUAGES_CODES = {
@@ -108,9 +109,10 @@ if not os.path.exists(config_path):
     with open(config_path, "w", encoding="utf-8") as f:
         defaultJSON = {
             "settings": {
-                "__commnet": "Please check the list of available languages ​​before specifying, especially target_lang! See README file",
+                "__commnet": "Please check the list of available languages ​​before specifying, especially target_lang! Property run_deeplx disable DeepLXTranslate nodes. See README file",
                 "source_lang": "Russian",
                 "target_lang": "English",
+                "run_deeplx": True
             }
         }
         json.dump(defaultJSON, f, ensure_ascii=False, indent=4)
@@ -122,6 +124,8 @@ else:
 
         if SETTINGS.keys():
             reset_lang = False
+
+             # Getting user settings for config.json
             source_lang = SETTINGS.get("source_lang")
             target_lang = SETTINGS.get("target_lang")
 
@@ -148,18 +152,67 @@ RETRY_CHECK_SERVER = 10
 PATH_TO_DEEPLX_SERVER = os.path.join(NODE_DIR, "DeepLX")
 PATH_TO_GO = os.path.join(NODE_DIR, "go", "bin")
 
-# Checking exists path to Go
+# We check whether the user has disabled the launch of the DeepLX server.
+if not SETTINGS.get("run_deeplx", True): # Setting whether to run DeepLX server
+    DEEPLX_SERVER_RUNNING = False
+    raise Exception("User disabled DeepLX server startup in config.json (proprety: 'run_deeplx')")
+    
+
+### Automatical install Golang (Go) and DeepLX ###
+try:
+    # Checking exists path to Go and install Golang (Go)
+    if not os.path.exists(PATH_TO_GO):
+        print(f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.MAGNETA} Path to 'Golang (Go)' not exists, try install...{ColPrint.CLEAR}")
+        
+        # Get platform
+        platform = install_deeplx.getPlatform()
+
+        if platform is not None:       
+            print(f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.GREEN} Your platform is: {'macOS (Darwin)' if platform == 'darwin' else platform.capitalize()}{ColPrint.CLEAR}")
+            # Get link
+            go_url = install_deeplx.GO_URLS[platform]
+
+            # Download file
+            file_name, path_to_file = install_deeplx.download(go_url, NODE_DIR)
+
+            # Extract file
+            install_deeplx.extractArchive(path_to_file)
+        else:
+            print(f"{ColPrint.RED}[DeepLXTranslateNode] Unable to determine identifying the underlying platform! Use manual installation!{ColPrint.CLEAR} ")
+
+
+    # # Checking exists path to Go and install DeepLX
+    if not os.path.exists(PATH_TO_DEEPLX_SERVER):
+        print(
+            f"{ColPrint.YELLOW}[DeepLXTranslateNode]{ColPrint.MAGNETA} Path to DeepLX server folder not exists, try install...{ColPrint.CLEAR}")
+            
+        # Get link
+        deeplx_url = install_deeplx.FILES_DOWNLOAD["DeepLX"].get("url")
+    
+        # Download file
+        file_name, path_to_file = install_deeplx.download(deeplx_url, NODE_DIR)
+
+        # Extract file
+        install_deeplx.extractArchive(path_to_file)
+
+        # Rename DeepLX-master to DeepLX
+        install_deeplx.otherOperations("DeepLX", NODE_DIR)          
+
+except Exception as e:
+    raise e
+
+
+
+### end - Automatical install Golang (Go) and DeepLX ###
+
+# Checking pathes variables
 if not os.path.exists(PATH_TO_GO):
-    error_text = (
-        f"{ColPrint.RED}Error path to 'Golang (Go)' not exists: {ColPrint.MAGNETA}{PATH_TO_GO}{ColPrint.CLEAR} "
-    )
-    raise FileNotFoundError(error_text)
+    raise FileNotFoundError(f"Error path to 'Golang (Go)' not exists: {PATH_TO_GO}")    
 
 
-# Checking exists path to DeepLX folder
 if not os.path.exists(PATH_TO_DEEPLX_SERVER):
-    error_text = f"{ColPrint.RED}Error path to DeepLX server folder not exists: {ColPrint.MAGNETA}{PATH_TO_DEEPLX_SERVER}{ColPrint.CLEAR}"
-    raise FileNotFoundError(error_text)
+    raise FileNotFoundError(f"Error path to DeepLX server folder not exists: {PATH_TO_DEEPLX_SERVER}")
+
 
 # Detect platform
 go_executable = os.path.join(PATH_TO_GO, "go")

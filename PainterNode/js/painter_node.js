@@ -1,7 +1,6 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2024.09.25
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -10,7 +9,11 @@ import { api } from "../../scripts/api.js";
 import { fabric } from "./lib/painternode/fabric.js";
 import "./lib/painternode/mybrush.js";
 import { svgSymmetryButtons } from "./lib/painternode/brushes.js";
-import { toRGBA, getColorHEX, LS_Class } from "./lib/painternode/helpers.js";
+import {
+  toRGBA,
+  getColorHEX,
+  StorageClass,
+} from "./lib/painternode/helpers.js";
 import { PainterStorageDialog } from "./lib/painternode/dialogs.js";
 import { addStylesheet } from "../../scripts/utils.js";
 import {
@@ -19,7 +22,6 @@ import {
   makeModal,
   animateClick,
   createWindowModal,
-  isEmptyObject,
   THEMES_MODAL_WINDOW,
   comfyuiDesktopConfirm,
   comfyuiDesktopPrompt,
@@ -30,20 +32,19 @@ import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
 
+const DEBUG = !false;
+const extensionName = "alekpet.PainterNode";
+
 // Save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
-const SaveSettingsJsonLS = localStorage.getItem(
-  "Comfy.Settings.alekpet.PainterNode.SaveSettingsJson",
-  false
+let painters_settings_json = JSON.parse(
+  localStorage.getItem(`${extensionName}.SaveSettingsJson`, false)
 );
-let painters_settings_json = SaveSettingsJsonLS
-  ? JSON.parse(SaveSettingsJsonLS)
-  : false;
 //
 
 const removeIcon =
   "data:image/svg+xml,%3Csvg version='1.1' id='Ebene_1' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3C/defs%3E%3Crect x='125.3' y='264.6' width='350.378' height='349.569' style='fill: rgb(237, 0, 0); stroke: rgb(197, 2, 2);' rx='58.194' ry='58.194'%3E%3C/rect%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18' rx='32.772' ry='32.772'%3E%3C/rect%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179' rx='32.772' ry='32.772'%3E%3C/rect%3E%3C/g%3E%3C/svg%3E";
 
-const removeImg = document.createElement("img");
+const removeImg = makeElement("img");
 removeImg.src = removeIcon;
 
 const convertIdClass = (text) => text.replaceAll(".", "_");
@@ -68,7 +69,9 @@ function removeObject(eventData, transform) {
 }
 
 function resizeCanvas(node, sizes) {
-  const { width, height } = sizes ?? node.painter.currentCanvasSize;
+  const { width, height } =
+    sizes ??
+    node.painter.storageCls.settings_painter_node.settings.currentCanvasSize;
 
   node.painter.canvas.setDimensions({
     width: width,
@@ -113,6 +116,8 @@ async function getLoadedFonts() {
 // ================= CLASS PAINTER ================
 class Painter {
   constructor(node, canvas) {
+    this.node = node;
+
     this.originX = 0;
     this.originY = 0;
     this.drawning = true;
@@ -127,15 +132,13 @@ class Painter {
       lockRotation: false,
     };
 
-    this.currentCanvasSize = { width: 512, height: 512 };
     this.maxNodeSize = 1024;
 
     this.max_history_steps = 20;
     this.undo_history = [];
     this.redo_history = [];
 
-    // this.undo_history = this.node.LS_Cls.LS_Painters.undo_history || [];
-    // this.redo_history = this.node.LS_Cls.LS_Painters.redo_history || [];
+    this.storageCls = this.node.storageCls;
 
     this.fonts = {
       Arial: { type: "default" },
@@ -150,10 +153,20 @@ class Painter {
 
     this.bringFrontSelected = true;
 
-    this.node = node;
     this.history_change = false;
     this.canvas = this.initCanvas(canvas);
     this.image = node.widgets.find((w) => w.name === "image");
+    this.image.value = this.node.name;
+
+    const self = this;
+    const callb = this.node.callback;
+
+    this.image.callback = function () {
+      self.image.value = self.node.name;
+      if (callb) {
+        return callb.apply(this, arguments);
+      }
+    };
 
     let default_value = this.image.value;
     Object.defineProperty(this.image, "value", {
@@ -186,12 +199,22 @@ class Painter {
     });
   }
 
+  async saveSettingsPainterNode() {
+    this.canvasSaveSettingsPainter();
+    // Save data
+    app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
+
+    if (painters_settings_json) await this.node.storageCls.saveData();
+  }
+
   initCanvas(canvasEl) {
     this.canvas = new fabric.Canvas(canvasEl, {
       isDrawingMode: true,
       backgroundColor: "transparent",
-      width: 512,
-      height: 512,
+      width:
+        this.storageCls.settings_painter_node.settings.currentCanvasSize.width,
+      height:
+        this.storageCls.settings_painter_node.settings.currentCanvasSize.height,
       enablePointerEvents: true,
       containerClass: "canvas-container-painter",
     });
@@ -209,45 +232,53 @@ class Painter {
     return this.canvas;
   }
 
-  propertiesLS() {
-    let settingsNode = this.node.LS_Cls.LS_Painters.settings;
+  makeElements(wrapperPainter) {
+    // Main panelpaint box
+    this.panelPaintBoxLeft = makeElement("div", {
+      class: ["panelPaintBoxLeft"],
+    });
 
-    if (!settingsNode) {
-      settingsNode = this.node.LS_Cls.LS_Painters.settings = {
-        lsSavePainter: true,
-        pipingSettings: {
-          action: {
-            name: "background",
-            options: {},
-          },
-          pipingChangeSize: true,
-          pipingUpdateImage: true,
-        },
-      };
-    }
+    this.panelPaintBoxRight = makeElement("div", {
+      class: ["panelPaintBoxRight"],
+    });
 
-    // Save canvas to localStorage if not exists
-    if (typeof settingsNode?.lsSavePainter !== "boolean") {
-      settingsNode.lsSavePainter = true;
-    }
+    const panelPaintBoxRight_options = makeElement("div", {
+      class: ["panelPaintBoxRight_options"],
+    });
 
-    // Piping settings localStorage if not exists
-    if (!settingsNode?.pipingSettings) {
-      settingsNode.pipingSettings = {
-        action: {
-          name: "background",
-          options: {},
-        },
-        pipingChangeSize: true,
-        pipingUpdateImage: true,
-      };
-    }
-  }
+    this.undo_button = makeElement("button", {
+      id: "history_undo",
+      title: "Undo",
+      disabled: true,
+      textContent: "⟲",
+    });
 
-  makeElements() {
-    const panelPaintBox = document.createElement("div");
-    panelPaintBox.innerHTML = `<div class="painter_manipulation_box" f_name="Locks" style="display:none;">
-        <div class="comfy-menu-btns">
+    this.redo_button = makeElement("button", {
+      id: "history_redo",
+      title: "Redo",
+      disabled: true,
+      textContent: "⟳",
+    });
+
+    this.painter_history_panel = makeElement("div", {
+      class: ["painter_history_panel", "comfy-menu-btns"],
+      children: [this.undo_button, this.redo_button],
+    });
+
+    this.canvas.wrapperEl.appendChild(this.painter_history_panel);
+
+    this.panelPaintBoxRight.append(
+      panelPaintBoxRight_options,
+      this.canvas.wrapperEl
+    );
+
+    wrapperPainter.append(this.panelPaintBoxLeft, this.panelPaintBoxRight);
+
+    this.manipulation_box = makeElement("div", {
+      class: ["painter_manipulation_box"],
+      f_name: "Locks",
+      style: { display: "none" },
+      innerHTML: `<div class="comfy-menu-btns">
             <button id="lockMovementX" title="Lock move X">Lock X</button>
             <button id="lockMovementY" title="Lock move Y">Lock Y</button>
             <button id="lockScalingX" title="Lock scale X">Lock ScaleX</button>
@@ -262,12 +293,18 @@ class Painter {
             <button id="zpos_BringFrontSelected" title="Moves an object or the objects of a multiple selection to the top after mouse click" class="${
               this.bringFrontSelected ? "active" : ""
             }">Bring Up Always</button>
-        </div>
-    </div>
-    <div class="painter_drawning_box_property" style='display:block;'></div>
-    <div class="painter_drawning_box">
-        <div class="painter_mode_box fieldset_box comfy-menu-btns" f_name="Mode">
-            <button id="painter_change_mode" title="Enable selection mode">Selection</button>
+        </div>`,
+    });
+
+    this.painter_drawning_box_property = makeElement("div", {
+      class: ["painter_drawning_box_property"],
+      style: { display: "flex" },
+    });
+
+    this.painter_drawning_box = makeElement("div", {
+      class: ["painter_drawning_box"],
+      innerHTML: `<div class="painter_mode_box fieldset_box comfy-menu-btns" f_name="Mode">
+            <button class="painter_change_mode" title="Enable selection mode">Selection</button>
             <div class="list_objects_panel" style="display:none;">
                 <div class="list_objects_align">
                     <div class="list_objects_panel__items"></div>
@@ -310,37 +347,28 @@ class Painter {
             <div class="painter_settings_box fieldset_box comfy-menu-btns" f_name="Settimgs">    
               <button id="painter_canvas_size" title="Set canvas size">Canvas size</button>
             </div>
-        </div>
-    </div>
-    <div class="painter_history_panel comfy-menu-btns">
-      <button id="history_undo" title="Undo" disabled>⟲</button>
-      <button id="history_redo" title="Redo" disabled>⟳</button>
-    </div> 
-    `;
+        </div>`,
+    });
 
-    // Main panelpaint box
-    panelPaintBox.className = "panelPaintBox";
-
-    this.canvas.wrapperEl.appendChild(panelPaintBox);
-    // Manipulation box
-    this.manipulation_box = panelPaintBox.querySelector(
-      ".painter_manipulation_box"
-    );
-    this.painter_drawning_box_property = panelPaintBox.querySelector(
-      ".painter_drawning_box_property"
+    this.panelPaintBoxLeft.append(
+      this.manipulation_box,
+      this.painter_drawning_box_property,
+      this.painter_drawning_box
     );
 
-    [this.undo_button, this.redo_button] = panelPaintBox.querySelectorAll(
-      ".painter_history_panel button"
+    panelPaintBoxRight_options.append(
+      this.manipulation_box,
+      this.painter_drawning_box_property
     );
 
     // Modify in change mode
-    this.painter_shapes_box_modify = panelPaintBox.querySelector(
+    this.painter_shapes_box_modify = this.painter_drawning_box.querySelector(
       ".painter_shapes_box_modify"
     );
-    this.painter_drawning_elements = panelPaintBox.querySelector(
+    this.painter_drawning_elements = this.painter_drawning_box.querySelector(
       ".painter_drawning_elements"
     );
+
     [
       this.painter_shapes_box,
       this.painter_colors_box,
@@ -358,39 +386,39 @@ class Painter {
       textContent: "Settings 🛠️",
       title: "Show main settings model window",
       onclick: (e) => animateClick(this.painter_wrapper_settings),
-      customSize: { w: 70, h: 25, fs: 10 },
     });
     this.painter_settings_box.append(mainSettingsNode);
 
-    this.change_mode = panelPaintBox.querySelector("#painter_change_mode");
-    this.painter_shapes_box = panelPaintBox.querySelector(
+    this.change_mode = this.painter_drawning_box.querySelector(
+      ".painter_change_mode"
+    );
+    this.painter_shapes_box = this.painter_drawning_box.querySelector(
       ".painter_shapes_box"
     );
-    this.strokeWidth = panelPaintBox.querySelector("#strokeWidth");
-    this.eraseWidth = panelPaintBox.querySelector("#eraseWidth");
-    this.strokeColor = panelPaintBox.querySelector("#strokeColor");
-    this.fillColor = panelPaintBox.querySelector("#fillColor");
+    this.strokeWidth = this.painter_drawning_box.querySelector("#strokeWidth");
+    this.eraseWidth = this.painter_drawning_box.querySelector("#eraseWidth");
+    this.strokeColor = this.painter_drawning_box.querySelector("#strokeColor");
+    this.fillColor = this.painter_drawning_box.querySelector("#fillColor");
 
-    this.list_objects_panel__items = panelPaintBox.querySelector(
+    this.list_objects_panel__items = this.painter_drawning_box.querySelector(
       ".list_objects_panel__items"
     );
 
-    this.strokeColorTransparent = panelPaintBox.querySelector(
+    this.strokeColorTransparent = this.painter_drawning_box.querySelector(
       "#strokeColorTransparent"
     );
-    this.fillColorTransparent = panelPaintBox.querySelector(
+    this.fillColorTransparent = this.painter_drawning_box.querySelector(
       "#fillColorTransparent"
     );
 
-    this.bgColor = panelPaintBox.querySelector("#bgColor");
-    this.clear = panelPaintBox.querySelector("#clear");
-
-    this.painter_bg_setting = panelPaintBox.querySelector(
-      ".painter_bg_setting"
+    this.buttonSetCanvasSize = this.painter_drawning_box.querySelector(
+      "#painter_canvas_size"
     );
 
-    this.buttonSetCanvasSize = panelPaintBox.querySelector(
-      "#painter_canvas_size"
+    this.bgColor = this.painter_drawning_box.querySelector("#bgColor");
+
+    this.painter_bg_setting = this.painter_drawning_box.querySelector(
+      ".painter_bg_setting"
     );
 
     this.bgImageFile = document.createElement("input");
@@ -431,16 +459,16 @@ class Painter {
       type: "checkbox",
       class: ["pipingChangeSize_checkbox"],
       checked:
-        this.node.LS_Cls.LS_Painters.settings?.pipingSettings
+        this.storageCls.settings_painter_node.settings?.pipingSettings
           ?.pipingChangeSize ?? true,
       onchange: (e) => {
-        this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingChangeSize =
-          pipingChangeSize.checked;
-        this.node.LS_Cls.LS_Save();
+        this.storageCls.settings_painter_node.settings.pipingSettings.pipingChangeSize =
+          !!e.target.checked;
+
+        this.saveSettingsPainterNode();
       },
     });
 
-    pipingChangeSize.customSize = { w: 10, h: 10, fs: 10 };
     labelPipingChangeSize.append(pipingChangeSize);
     // end - LS change size piping
 
@@ -456,22 +484,22 @@ class Painter {
       type: "checkbox",
       class: ["pipingUpdateImage_checkbox"],
       checked:
-        this.node.LS_Cls.LS_Painters.settings?.pipingSettings
+        this.storageCls.settings_painter_node.settings?.pipingSettings
           ?.pipingUpdateImage ?? true,
       onchange: (e) => {
-        this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingUpdateImage =
-          pipingUpdateImageCheckbox.checked;
+        const checked = !!e.target.checked;
+        this.storageCls.settings_painter_node.settings.pipingSettings.pipingUpdateImage =
+          checked;
 
         // Get hidden widget update_node
         const update_node_widget = this.node.widgets.find(
           (w) => w.name === "update_node"
         );
-        update_node_widget.value = pipingUpdateImageCheckbox.checked;
-        this.node.LS_Cls.LS_Save();
+        update_node_widget.value = checked;
+        this.saveSettingsPainterNode();
       },
     });
 
-    pipingUpdateImageCheckbox.customSize = { w: 10, h: 10, fs: 10 };
     labelPipingUpdateImage.append(pipingUpdateImageCheckbox);
     // end - Piping update image
 
@@ -479,61 +507,8 @@ class Painter {
 
     // Function click on the radio and show/hide custom settings
     function checkRadioOptionsSelect(currentTarget) {
-      if (currentTarget.value !== "image") {
-        other_options_radio.innerHTML = "";
-      } else {
-        if (!other_options_radio.querySelector(".custom_options_piping_box")) {
-          const custom_options_piping_box = makeElement("div", {
-            class: ["custom_options_piping_box"],
-            style:
-              "border: 1px solid #0069ff; padding: 6px; display: flex; flex-direction: column; gap: 3px; justify-content: center; align-items: flex-end; text-align: right; border-radius: 6px;",
-          });
-
-          // Scale option image
-          const scale = makeElement("input", {
-            type: "number",
-            value:
-              this.node.LS_Cls.LS_Painters.settings.pipingSettings.action
-                .options.scale ?? 1.0,
-            min: 0,
-            step: 0.01,
-            style: "width: 30%;",
-            onchange: (e) => {
-              this.node.LS_Cls.LS_Painters.settings.pipingSettings.action.options.scale =
-                +e.currentTarget.value;
-              this.node.LS_Cls.LS_Save();
-            },
-          });
-
-          const scaleLabel = makeElement("label", {
-            textContent: "Scale: ",
-            title: "Change image size (default: 1)",
-          });
-          scaleLabel.append(scale);
-
-          // sendToBack image canvas
-          const backwardsImage = makeElement("input", {
-            type: "checkbox",
-            checked:
-              this.node.LS_Cls.LS_Painters.settings.pipingSettings.action
-                .options.sendToBack ?? true,
-            onchange: (e) => {
-              this.node.LS_Cls.LS_Painters.settings.pipingSettings.action.options.sendToBack =
-                e.currentTarget.checked;
-              this.node.LS_Cls.LS_Save();
-            },
-          });
-          const sendToBackLabel = makeElement("label", {
-            textContent: "Send to back: ",
-            title: "Sending to back image on the canvas (default: true)",
-          });
-          sendToBackLabel.append(backwardsImage);
-
-          custom_options_piping_box.append(scaleLabel, sendToBackLabel);
-
-          other_options_radio.append(custom_options_piping_box);
-        }
-      }
+      custom_options_piping_box.style.display =
+        currentTarget.value !== "image" ? "none" : "flex";
     }
 
     // Radios click
@@ -541,9 +516,9 @@ class Painter {
       const { currentTarget } = e;
       checkRadioOptionsSelect.call(this, currentTarget);
 
-      this.node.LS_Cls.LS_Painters.settings.pipingSettings.action.name =
+      this.storageCls.settings_painter_node.settings.pipingSettings.action.name =
         currentTarget.value;
-      this.node.LS_Cls.LS_Save();
+      this.saveSettingsPainterNode();
     }
 
     const radio_name = `painter_radio_piping_${this.node.name.replace(
@@ -564,9 +539,59 @@ class Painter {
       },
     ];
 
-    const other_options_radio = makeElement("div", {
-      class: ["painter_other_options_radio"],
+    // Panel custom_options_piping_box
+    const custom_options_piping_box = makeElement("div", {
+      class: ["custom_options_piping_box"],
+      style:
+        "border: 1px solid #0069ff; padding: 6px; display: none; flex-direction: column; gap: 3px; justify-content: center; align-items: flex-end; text-align: right; border-radius: 6px;",
     });
+
+    // Scale option image
+    const scale = makeElement("input", {
+      type: "number",
+      value:
+        this.storageCls.settings_painter_node.settings.pipingSettings.action
+          .options.scale ?? 1.0,
+      min: 0,
+      step: 0.01,
+      style: "width: 30%;",
+      onchange: (e) => {
+        e.stopPropagation();
+        this.storageCls.settings_painter_node.settings.pipingSettings.action.options.scale =
+          +e.currentTarget.value;
+        this.saveSettingsPainterNode();
+      },
+    });
+
+    const scaleLabel = makeElement("label", {
+      textContent: "Scale: ",
+      title: "Change image size (default: 1)",
+      id: "painter_input_scale",
+    });
+    scaleLabel.append(scale);
+
+    // sendToBack image canvas
+    const backwardsImage = makeElement("input", {
+      type: "checkbox",
+      class: ["pipingBackSendImage_checkbox"],
+      checked:
+        this.storageCls.settings_painter_node.settings.pipingSettings.action
+          .options.sendToBack ?? true,
+      onchange: (e) => {
+        this.storageCls.settings_painter_node.settings.pipingSettings.action.options.sendToBack =
+          !!e.target.checked;
+        this.saveSettingsPainterNode();
+      },
+    });
+    const sendToBackLabel = makeElement("label", {
+      textContent: "Send to back: ",
+      title: "Sending to back image on the canvas (default: true)",
+    });
+    sendToBackLabel.append(backwardsImage);
+
+    custom_options_piping_box.append(scaleLabel, sendToBackLabel);
+
+    // end - Panel custom_options_piping_box
 
     const radiosElements = [];
     radios.forEach((radio, idx) => {
@@ -593,8 +618,8 @@ class Painter {
       radiosElements.push(radioBox);
 
       if (
-        this.node.LS_Cls.LS_Painters.settings.pipingSettings.action.name ===
-        value
+        this.storageCls.settings_painter_node.settings.pipingSettings.action
+          .name === value
       ) {
         radEl.checked = true;
         checkRadioOptionsSelect.call(this, radEl);
@@ -607,49 +632,14 @@ class Painter {
         style: "color: rgb(15, 132, 205);",
       }),
       ...radiosElements,
-      other_options_radio,
+      custom_options_piping_box,
       labelPipingChangeSize,
       labelPipingUpdateImage
     );
 
-    // LocalStorage fieldset
-    const lSettingsBoxSettingsBox = makeElement("fieldset", {
-      style:
-        "display: flex; flex-direction: column; gap: 5px; text-align: left; border-color: #ffb710; border-radius: 4px;",
-      class: ["lSettingsBoxSettingsBox"],
-    });
-
-    const labelLSSave = makeElement("label", {
-      textContent: "Save canvas:",
-      style: "font-size: 10px; display: block; text-align: right;",
-      title: "Save canvas to local storage",
-    });
-
-    const checkBoxLSSave = makeElement("input", {
-      type: "checkbox",
-      class: ["lsSave_checkbox"],
-      checked: this.node.LS_Cls.LS_Painters.settings?.lsSavePainter ?? true,
-      onchange: (e) => {
-        this.node.LS_Cls.LS_Painters.settings.lsSavePainter =
-          checkBoxLSSave.checked;
-        this.node.LS_Cls.LS_Save();
-      },
-      customSize: { w: 10, h: 10, fs: 10 },
-    });
-
-    labelLSSave.append(checkBoxLSSave);
-    lSettingsBoxSettingsBox.append(
-      makeElement("legend", {
-        textContent: "Local Storage",
-        style: "color: #ffb710;",
-      }),
-      labelLSSave
-    );
-    // end - LocalStorage fieldset
-
     this.painter_wrapper_settings = createWindowModal({
       textTitle: "Settings",
-      textBody: [pipingSettingsBox, lSettingsBoxSettingsBox],
+      textBody: [pipingSettingsBox],
       stylesBox: {
         borderColor: "#13e9c5ad",
         boxShadow: "2px 2px 4px #13e9c5ad",
@@ -658,7 +648,7 @@ class Painter {
       stylesBody: { width: "100%", alignItems: "auto" },
     });
 
-    this.canvas.wrapperEl.append(this.painter_wrapper_settings);
+    this.panelPaintBoxRight.append(this.painter_wrapper_settings);
     // === end - Settings box ===
   }
 
@@ -671,7 +661,7 @@ class Painter {
     this.canvas.requestRenderAll();
 
     this.addToHistory();
-    this.canvasSaveSettingsPainter();
+    this.saveSettingsPainterNode(true);
     this.uploadPaintFile(this.node.name);
   }
 
@@ -728,6 +718,7 @@ class Painter {
         "input[class*=painter_position]"
       );
     }
+
     this.elemX.value = object.left;
     this.elemY.value = object.top;
 
@@ -880,6 +871,8 @@ class Painter {
       );
       // Position and scale remove
       this.position_sizes_box.remove();
+      this.elemX = null;
+      this.elemY = null;
     }
 
     this.canvas.discardActiveObject();
@@ -1094,7 +1087,6 @@ class Painter {
       title: "MyPaint Brush",
       textContent: "MyPaint",
     });
-    BrushMyPaint.customSize = { w: 50, h: 25, fs: 10 };
 
     const buttonBrushSymmetry = makeElement("button", {
       dataset: [{ shape: "BrushSymmetry" }, { prop: "prop_BrushSymmetry" }],
@@ -1106,17 +1098,15 @@ class Painter {
 
     // Second panel setting brushes
     this.property_brushesSecondBox = makeElement("div", {
-      class: ["property_brushesSecondBox"],
+      class: ["property_brushesSecondBox", "comfy-menu-btns"],
     });
 
-    property_brushesBox.append(
-      BrushMyPaint,
-      buttonBrushSymmetry,
-      separator,
+    property_brushesBox.append(BrushMyPaint, buttonBrushSymmetry, separator);
+
+    this.painter_drawning_box_property.append(
+      property_brushesBox,
       this.property_brushesSecondBox
     );
-
-    this.painter_drawning_box_property.append(property_brushesBox);
   }
 
   async createToolbarOptions(type) {
@@ -1150,7 +1140,7 @@ class Painter {
   selectPropertyToolbar(type) {
     this.painter_drawning_box_property.innerHTML = "";
     if (["Textbox", "Brush"].includes(this.type)) {
-      this.painter_drawning_box_property.style.display = "block";
+      this.painter_drawning_box_property.style.display = "flex";
 
       switch (this.type) {
         case "Textbox":
@@ -1170,16 +1160,21 @@ class Painter {
     if (
       confirmChange &&
       this.node.isInputConnected(0) &&
-      this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingChangeSize &&
-      (new_width !== this.currentCanvasSize.width ||
-        new_height !== this.currentCanvasSize.height)
+      this.storageCls.settings_painter_node.settings.pipingSettings
+        .pipingChangeSize &&
+      (new_width !==
+        this.storageCls.settings_painter_node.settings.currentCanvasSize
+          .width ||
+        new_height !==
+          this.storageCls.settings_painter_node.settings.currentCanvasSize
+            .height)
     ) {
       if (await comfyuiDesktopConfirm("Disable change size piping?")) {
         this.canvas.wrapperEl.querySelector(
           ".pipingChangeSize_checkbox"
         ).checked = false;
-        this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingChangeSize = false;
-        this.node.LS_Cls.LS_Save();
+        this.storageCls.settings_painter_node.settings.pipingSettings.pipingChangeSize = false;
+        this.saveSettingsPainterNode();
       }
     }
 
@@ -1188,14 +1183,15 @@ class Painter {
       height: new_height,
     });
 
-    this.currentCanvasSize = { width: new_width, height: new_height };
-    this.node.LS_Cls.LS_Painters.settings["currentCanvasSize"] =
-      this.currentCanvasSize;
+    Object.assign(
+      this.storageCls.settings_painter_node.settings.currentCanvasSize,
+      { width: new_width, height: new_height }
+    );
+
     this.node.title = `${this.node.type} - ${new_width}x${new_height}`;
     this.canvas.renderAll();
     app.graph.setDirtyCanvas(true, false);
     this.node.onResize();
-    this.node.LS_Cls.LS_Save();
   }
 
   setDefaultValuesInputs() {
@@ -1490,6 +1486,7 @@ class Painter {
       this.canvas.setBackgroundImage(null);
       this.canvas.backgroundColor = this.bgColor.value;
       this.canvas.renderAll();
+      this.uploadPaintFile(this.node.name);
     };
 
     const fileReaderFunc = (e, func) => {
@@ -1503,7 +1500,9 @@ class Painter {
       reader.readAsDataURL(file);
     };
 
-    this.bgColor.oninput = this.reset_set_bg;
+    this.bgColor.oninput = () => {
+      this.reset_set_bg();
+    };
 
     // Event input bg image
     this.bgImageFile.onchange = (e) => {
@@ -1575,16 +1574,15 @@ class Painter {
         }
       }
 
-      let width = await checkSized("width", this.currentCanvasSize.width),
-        height = await checkSized("height", this.currentCanvasSize.height);
+      const { width: curWidth, height: curHeight } =
+        this.storageCls.settings_painter_node.settings.currentCanvasSize;
 
-      if (
-        width === this.currentCanvasSize.width &&
-        height === this.currentCanvasSize.height
-      )
-        return;
+      let new_width = await checkSized("width", curWidth),
+        new_height = await checkSized("height", curHeight);
 
-      this.setCanvasSize(width, height, true);
+      if (new_width === curWidth && new_height === curHeight) return;
+
+      this.setCanvasSize(new_width, new_height, true);
       this.uploadPaintFile(this.node.name);
     });
 
@@ -1642,8 +1640,6 @@ class Painter {
             this.uploadPaintFile(this.node.name);
           }
         };
-
-    this.bgColor.onchange = () => this.uploadPaintFile(this.node.name);
 
     // Event change stroke and erase width
     this.eraseWidth.onchange = () => {
@@ -1895,8 +1891,8 @@ class Painter {
 
         // Skip BrushMyPaint mouseup is empty objects array, loading canvas as image, upload when object add to canvas
         if (!["BrushMyPaint"].includes(this.type)) {
-          this.addToHistory();
           this.canvas.renderAll();
+          this.addToHistory();
           this.uploadPaintFile(this.node.name);
         }
       },
@@ -1906,6 +1902,14 @@ class Painter {
       // Object moving event
       "object:moving": (o) => {
         this.canvas.isDrawingMode = false;
+        this.canvas.renderAll();
+      },
+
+      "object:scaling": (o) => {
+        this.canvas.renderAll();
+      },
+      "object:rotating": (o) => {
+        this.canvas.renderAll();
       },
 
       // Object modify event
@@ -1942,42 +1946,12 @@ class Painter {
 
   // Save canvas data to localStorage or JSON
   canvasSaveSettingsPainter() {
-    if (!this.node.LS_Cls.LS_Painters.settings.lsSavePainter) return;
-
     try {
-      const data = this.canvas.toJSON(["mypaintlib"]);
-      if (
-        this.node.LS_Cls.LS_Painters &&
-        !isEmptyObject(this.node.LS_Cls.LS_Painters)
-      ) {
-        this.node.LS_Cls.LS_Painters.canvas_settings = painters_settings_json
-          ? data
-          : JSON.stringify(data);
-
-        this.node.LS_Cls.LS_Painters.settings["currentCanvasSize"] =
-          this.currentCanvasSize;
-
-        this.node.LS_Cls.LS_Save();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  setCanvasLoadData(data) {
-    const obj_data =
-      typeof data === "string" || data instanceof String
-        ? JSON.parse(data)
-        : data;
-
-    const canvas_settings = data.canvas_settings;
-    const settings = data.settings;
-
-    this.canvas.loadFromJSON(canvas_settings, () => {
-      this.canvas.renderAll();
-      this.uploadPaintFile(this.node.name);
-      this.bgColor.value = getColorHEX(data.background).color || "";
-    });
+      Object.assign(
+        this.storageCls.settings_painter_node.canvas_settings,
+        this.canvas.toJSON(["mypaintlib"])
+      );
+    } catch (e) {}
   }
 
   undoRedoLoadData(data) {
@@ -1988,23 +1962,32 @@ class Painter {
   }
 
   // Load canvas data from localStorage or JSON
-  canvasLoadSettingPainter() {
-    try {
-      if (
-        this.node.LS_Cls.LS_Painters &&
-        this.node.LS_Cls.LS_Painters.hasOwnProperty("canvas_settings")
-      ) {
+  canvasLoadSettingPainter(data_canvas) {
+    return new Promise((res) => {
+      try {
+        if (!data_canvas) {
+          res({ success: false, error: new Error("Invalid canvas data!") });
+          return;
+        }
+
         const data =
-          typeof this.node.LS_Cls.LS_Painters === "string" ||
-          this.node.LS_Cls.LS_Painters instanceof String
-            ? JSON.parse(this.node.LS_Cls.LS_Painters)
-            : this.node.LS_Cls.LS_Painters;
-        this.setCanvasLoadData(data);
-        this.addToHistory();
+          typeof data_canvas === "string" || data_canvas instanceof String
+            ? JSON.parse(data_canvas)
+            : data_canvas;
+
+        if (data && data.hasOwnProperty("canvas_settings")) {
+          this.canvas.loadFromJSON(data.canvas_settings, () => {
+            this.canvas.renderAll();
+            this.uploadPaintFile(this.node.name);
+            this.bgColor.value = getColorHEX(data.background).color || "";
+            this.addToHistory();
+            res({ success: true });
+          });
+        }
+      } catch (e) {
+        res({ success: false, error: e });
       }
-    } catch (e) {
-      console.error(e);
-    }
+    });
   }
 
   undo() {
@@ -2086,8 +2069,12 @@ class Painter {
       !painterSize &&
       (await comfyuiDesktopConfirm("Stretch image to fit canvas Painter node?"))
     ) {
-      img_.scaleToHeight(this.currentCanvasSize.width);
-      img_.scaleToWidth(this.currentCanvasSize.height);
+      img_.scaleToHeight(
+        this.storageCls.settings_painter_node.settings.currentCanvasSize.width
+      );
+      img_.scaleToWidth(
+        this.storageCls.settings_painter_node.settings.currentCanvasSize.height
+      );
     }
 
     this.canvas.add(img_).renderAll();
@@ -2125,56 +2112,61 @@ class Painter {
   }
 
   async addImageToCanvas(image, options = {}) {
-    const uploadFile = async (file) => {
-      try {
-        const body = new FormData();
-        body.append("image", file);
+    const formData = new FormData();
+    formData.append("image", image);
 
-        const resp = await api.fetchApi("/upload/image", {
-          method: "POST",
-          body,
-        });
-
-        if (resp.status === 200) {
-          const data = await resp.json();
-          let path = data.name;
-          if (data.subfolder) path = data.subfolder + "/" + path;
-
-          return await this.getImageByName(path);
-        } else {
-          console.log(`${resp.status} - ${resp.statusText}`);
-          return resp.statusText;
+    this.uploadFileToServer(formData)
+      .then(async (jsonData) => {
+        if (!jsonData.success) {
+          throw new Error(jsonData.error);
         }
-      } catch (err) {
-        console.log(err);
-        return err;
-      }
-    };
+        const data = jsonData.data;
+        let path = data.name;
+        if (data.subfolder) path = data.subfolder + "/" + path;
 
-    image = await uploadFile(image);
+        this.getImageByName(path).then(async (image) => {
+          if (image?.tagName !== "IMG") {
+            createWindowModal({
+              textTitle: "ERROR",
+              textBody: [
+                makeElement("div", {
+                  innerHTML: image ?? "Error load image",
+                }),
+              ],
+              ...THEMES_MODAL_WINDOW.error,
+              options: {
+                auto: { autohide: true, autoshow: true, autoremove: true },
+                close: { showClose: false },
+                parent: this.canvas.wrapperEl,
+              },
+            });
+            return;
+          }
 
-    if (image?.tagName !== "IMG") {
-      createWindowModal({
-        textTitle: "ERROR",
-        textBody: [
-          makeElement("div", {
-            innerHTML: image ?? "Error load image",
-          }),
-        ],
-        ...THEMES_MODAL_WINDOW.error,
-        options: {
-          auto: { autohide: true, autoshow: true, autoremove: true },
-          close: { showClose: false },
-          parent: this.canvas.wrapperEl,
-        },
+          if (await comfyuiDesktopConfirm("Past as background?")) {
+            this.pastAsBackground(image, options);
+          } else if (await comfyuiDesktopConfirm("Past as image?")) {
+            this.pastAsImage(image, options);
+          }
+        });
+      })
+      .catch((err) => console.error(err));
+  }
+
+  async uploadFileToServer(formData) {
+    try {
+      const resp = await api.fetchApi("/upload/image", {
+        method: "POST",
+        body: formData,
       });
-      return;
-    }
 
-    if (await comfyuiDesktopConfirm("Past as background?")) {
-      this.pastAsBackground(image, options);
-    } else if (await comfyuiDesktopConfirm("Past as image?")) {
-      this.pastAsImage(image, options);
+      if (resp.status !== 200) {
+        return { success: false, error: `${resp.status} - ${resp.statusText}` };
+      }
+
+      return { success: true, data: await resp.json() };
+    } catch (error) {
+      return { success: false, error };
     }
   }
 
@@ -2211,27 +2203,32 @@ class Painter {
           a_obs.hasControls = false;
           a_obs.hasBorders = false;
         });
-        this.canvas.renderAll();
       }
     }
 
+    this.canvasSaveSettingsPainter();
+
     await new Promise((res) => {
-      const uploadFile = async (blobFile) => {
-        try {
-          const resp = await api.fetchApi("/upload/image", {
-            method: "POST",
-            body: blobFile,
-          });
+      this.canvas.lowerCanvasEl.toBlob((blob) => {
+        const formData = new FormData();
+        formData.append("image", blob, fileName);
+        formData.append("overwrite", "true");
+        //formData.append("type", "temp");
 
-          if (resp.status === 200) {
-            const data = await resp.json();
-
-            if (!this.image.options.values.includes(data.name)) {
-              this.image.options.values.push(data.name);
+        this.uploadFileToServer(formData)
+          .then((jsonData) => {
+            if (!jsonData.success) {
+              throw new Error(jsonData.error);
             }
 
-            this.image.value = data.name;
-            this.showImage(data.name);
+            const { name } = jsonData.data;
+
+            if (!this.image.options.values.includes(name)) {
+              this.image.options.values.push(name);
+            }
+
+            // this.image.value = name;
+            this.showImage(name);
 
             if (activeObj && !this.drawning) {
               activeObj.hasControls = true;
@@ -2243,191 +2240,63 @@ class Painter {
               });
               this.canvas.renderAll();
             }
-            this.canvasSaveSettingsPainter();
+            this.saveSettingsPainterNode(false);
             res(true);
-          } else {
-            comfyuiDesktopAlert(resp.status + " - " + resp.statusText);
-          }
-        } catch (error) {
-          console.log(error);
-        }
-      };
-
-      this.canvas.lowerCanvasEl.toBlob(function (blob) {
-        let formData = new FormData();
-        formData.append("image", blob, fileName);
-        formData.append("overwrite", "true");
-        //formData.append("type", "temp");
-        uploadFile(formData);
+          })
+          .catch((error) => {
+            console.log(error);
+            res(false);
+          });
       }, "image/png");
     });
 
     // - end
-
-    const callb = this.node.callback,
-      self = this;
-    this.image.callback = function () {
-      self.image.value = self.node.name;
-      if (callb) {
-        return callb.apply(this, arguments);
-      }
-    };
   }
 }
 // ================= END CLASS PAINTER ================
 
 // ================= CREATE PAINTER WIDGET ============
 function PainterWidget(node, inputName, inputData, app) {
-  node.name = inputName;
-  const widget = {
-    type: "painter_widget",
-    name: `w${inputName}`,
-    callback: () => {},
-    draw: function (ctx, _, widgetWidth, y, widgetHeight) {
-      const margin = 10,
-        left_offset = 8,
-        top_offset = 50,
-        visible = app.canvas.ds.scale > 0.6 && this.type === "painter_widget",
-        w = widgetWidth - margin * 2 - 80,
-        clientRectBound = ctx.canvas.getBoundingClientRect(),
-        transform = new DOMMatrix()
-          .scaleSelf(
-            clientRectBound.width / ctx.canvas.width,
-            clientRectBound.height / ctx.canvas.height
-          )
-          .multiplySelf(ctx.getTransform())
-          .translateSelf(margin, margin + y),
-        scale = new DOMMatrix().scaleSelf(transform.a, transform.d);
-
-      let aspect_ratio = 1;
-      if (node?.imgs && typeof node.imgs !== undefined) {
-        aspect_ratio = node.imgs[0].naturalHeight / node.imgs[0].naturalWidth;
-      }
-
-      Object.assign(this.painter_wrap.style, {
-        left: `${
-          transform.a * margin * left_offset +
-          transform.e +
-          clientRectBound.left
-        }px`,
-        top: `${
-          transform.d + transform.f + top_offset + clientRectBound.top
-        }px`,
-        width: `${w * transform.a}px`,
-        height: `${w * transform.d}px`,
-        position: "absolute",
-        zIndex: 9,
-      });
-
-      Object.assign(this.painter_wrap.children[0].style, {
-        transformOrigin: "0 0",
-        transform: scale,
-        width: w + "px",
-        height: w * aspect_ratio + "px",
-      });
-
-      Object.assign(this.painter_wrap.children[1].style, {
-        transformOrigin: "0 0",
-        transform: scale,
-        width: w + "px",
-        height: w * aspect_ratio + "px",
-      });
-
-      Array.from(
-        this.painter_wrap.children[2].querySelectorAll(
-          "input, button, input:after, span, div.painter_drawning_box"
-        )
-      ).forEach((element) => {
-        if (element.type == "number") {
-          Object.assign(element.style, {
-            width: `${40 * transform.a}px`,
-            height: `${21 * transform.d}px`,
-            fontSize: `${transform.d * 10.0}px`,
-          });
-        } else if (element.tagName == "SPAN") {
-          // NOPE
-        } else if (element.tagName == "DIV") {
-          Object.assign(element.style, {
-            width: `${88 * transform.a}px`,
-            left: `${-90 * transform.a}px`,
-          });
-        } else {
-          let sizesEl = { w: 25, h: 25, fs: 10 };
-
-          if (element?.customSize) {
-            sizesEl = element.customSize;
-          }
-
-          if (element.id.includes("lock")) sizesEl = { w: 75, h: 15, fs: 10 };
-          if (element.id.includes("zpos")) sizesEl = { w: 80, h: 15, fs: 7 };
-          if (
-            ["painter_change_mode", "painter_canvas_size"].includes(element.id)
-          )
-            sizesEl.w = 75;
-          if (element.hasAttribute("painter_object"))
-            sizesEl = { w: 58, h: 16, fs: 10 };
-          if (element.hasAttribute("bgImage"))
-            sizesEl = { w: 60, h: 20, fs: 10 };
-
-          Object.assign(element.style, {
-            cursor: "pointer",
-            width: `${sizesEl.w * transform.a}px`,
-            height: `${sizesEl.h * transform.d}px`,
-            fontSize: `${transform.d * sizesEl.fs}px`,
-          });
-        }
-      });
-      this.painter_wrap.hidden = !visible;
-    },
-  };
-
-  // Fabric canvas
-  let canvasPainter = makeElement("canvas", {
-    width: 512,
-    height: 512,
-  });
-  node.painter = new Painter(node, canvasPainter);
-
-  node.painter.canvas.setWidth(node.painter.currentCanvasSize.width);
-  node.painter.canvas.setHeight(node.painter.currentCanvasSize.height);
-
-  resizeCanvas(node, node.painter.canvas);
-
-  widget.painter_wrap = node.painter.canvas.wrapperEl;
-  widget.parent = node;
-  widget.painter_wrap.hidden = true;
-
-  node.painter.image.value = node.name;
-
-  node.painter.propertiesLS();
-  node.painter.makeElements();
-
-  document.body.appendChild(widget.painter_wrap);
-
   node.addWidget("button", "Clear Canvas", "clear_painer", () => {
     node.painter.list_objects_panel__items.innerHTML = "";
     node.painter.clearCanvas();
   });
 
-  // Add customWidget to node
-  node.addCustomWidget(widget);
+  const wrapperPainter = makeElement("div", {
+    class: ["wrapperPainter"],
+  });
 
-  node.onRemoved = () => {
-    //this.LS_Cls.removeData();
+  // Fabric canvas
+  const canvasPainter = makeElement("canvas", {
+    width: 512,
+    height: 512,
+  });
+  node.painter = new Painter(node, canvasPainter);
 
-    // When removing this node we need to remove the input from the DOM
-    for (let y in node.widgets) {
-      if (node.widgets[y].painter_wrap) {
-        node.widgets[y].painter_wrap.remove();
-      }
+  const widget = node.addDOMWidget(
+    "painter_widget",
+    "painter",
+    wrapperPainter,
+    {
+      setValue(v) {
+        node.painter.storageCls.settings_painter_node = v;
+      },
+      getValue() {
+        return node.painter.storageCls.settings_painter_node;
+      },
     }
-  };
+  );
 
-  widget.onRemove = () => {
-    widget.painter_wrap?.remove();
-  };
+  widget.callback = function (v) {};
+
+  widget.wrapperPainter = wrapperPainter;
+  widget.painter_wrap = node.painter.canvas.wrapperEl;
+  widget.parent = node;
+
+  node.painter.makeElements(wrapperPainter);
 
   node.onResize = function () {
+    const minSize = 600;
     let [w, h] = this.size;
     let aspect_ratio = 1;
 
@@ -2437,18 +2306,17 @@ function PainterWidget(node, inputName, inputData, app) {
     let buffer = 90;
 
     if (w > this.painter.maxNodeSize) w = w - (w - this.painter.maxNodeSize);
-    if (w < 600) w = 600;
+    if (w < minSize) w = minSize;
 
     h = w * aspect_ratio + buffer;
 
-    if (h < 600) h = 600 + h / 2;
+    if (h < minSize) h = minSize + h / 2;
 
     this.size = [w, h];
   };
 
   node.onDrawBackground = function (ctx) {
     if (!this.flags.collapsed) {
-      node.painter.canvas.wrapperEl.hidden = false;
       if (this.imgs && this.imgs.length) {
         if (app.canvas.ds.scale > 0.8) {
           let [dw, dh] = this.size;
@@ -2474,12 +2342,8 @@ function PainterWidget(node, inputName, inputData, app) {
           ctx.fillText("Mask", w / 2, dh - 10);
         }
       }
-    } else {
-      node.painter.canvas.wrapperEl.hidden = true;
     }
   };
-
-  node.onConnectInput = () => console.log(`Connected input ${node.name}`);
 
   // DragDrop past image
   node.onDragOver = function (e) {
@@ -2504,13 +2368,21 @@ function PainterWidget(node, inputName, inputData, app) {
   };
   // end - DragDrop past image
 
+  // Node serialize
+  node.onSerialize = (n) => {
+    if (painters_settings_json) {
+      n.widgets_values[3] = null;
+    }
+  };
+
   // Get piping image input, when node executing...
   api.addEventListener("alekpet_get_image", async ({ detail }) => {
     const { images, unique_id } = detail;
 
     if (
       !images.length ||
-      !node.LS_Cls.LS_Painters.settings.pipingSettings.pipingUpdateImage ||
+      !node.painter.storageCls.settings_painter_node.settings.pipingSettings
+        .pipingUpdateImage ||
       +unique_id !== node.id
     ) {
       return;
@@ -2522,13 +2394,18 @@ function PainterWidget(node, inputName, inputData, app) {
         // Change size piping input image
         const { naturalWidth: w, naturalHeight: h } = img;
         if (
-          node.LS_Cls.LS_Painters.settings.pipingSettings.pipingChangeSize &&
-          (w !== node.painter.currentCanvasSize.width ||
-            h !== node.painter.currentCanvasSize.height)
+          node.painter.storageCls.settings_painter_node.settings.pipingSettings
+            .pipingChangeSize &&
+          (w !==
+            node.painter.storageCls.settings_painter_node.settings
+              .currentCanvasSize.width ||
+            h !==
+              node.painter.storageCls.settings_painter_node.settings
+                .currentCanvasSize.height)
         ) {
           node.painter.setCanvasSize(w, h);
         } else {
-          node.title = `${node.type} - ${node.painter.currentCanvasSize.width}x${node.painter.currentCanvasSize.height}`;
+          node.title = `${node.type} - ${node.painter.storageCls.settings_painter_node.settings.currentCanvasSize.width}x${node.painter.storageCls.settings_painter_node.settings.currentCanvasSize.height}`;
         }
 
         const img_ = new fabric.Image(img, {
@@ -2545,11 +2422,15 @@ function PainterWidget(node, inputName, inputData, app) {
       img.src = images[0];
     })
       .then(async (result) => {
-        switch (node.LS_Cls.LS_Painters.settings.pipingSettings.action.name) {
+        switch (
+          node.painter.storageCls.settings_painter_node.settings.pipingSettings
+            .action.name
+        ) {
           case "image":
             await new Promise(async (res) => {
               let { scale, sendToBack = true } =
-                node.LS_Cls.LS_Painters.settings.pipingSettings.action.options;
+                node.painter.storageCls.settings_painter_node.settings
+                  .pipingSettings.action.options;
 
               if (typeof scale === "number") result.scale(scale);
 
@@ -2608,32 +2489,16 @@ function PainterWidget(node, inputName, inputData, app) {
       });
   });
 
-  app.canvas.onDrawBackground = function () {
-    // Draw node isnt fired once the node is off the screen
-    // if it goes off screen quickly, the input may not be removed
-    // this shifts it off screen so it can be moved back if the node is visible.
-    for (let n in app.graph._nodes) {
-      const currnode = app.graph._nodes[n];
-      for (let w in currnode.widgets) {
-        let wid = currnode.widgets[w];
-        if (Object.hasOwn(wid, "painter_widget")) {
-          wid.painter_wrap.style.left = -8000 + "px";
-          wid.painter_wrap.style.position = "absolute";
-        }
-      }
-    }
-  };
-
   node.onResize();
   app.graph.setDirtyCanvas(true, false);
 
-  return { widget: widget };
+  return widget;
 }
 // ================= END CREATE PAINTER WIDGET ============
 
 // ================= CREATE EXTENSION ================
 
-const extensionName = "alekpet.PainterNode";
+let setEventsPromise = null;
 
 app.registerExtension({
   name: extensionName,
@@ -2642,68 +2507,21 @@ app.registerExtension({
     addStylesheet("css/painternode/painter_node_styles.css", import.meta.url);
     addStylesheet("css/painternode/painter_node_fonts.css", import.meta.url);
 
-    // Add settings params painter node
+    // -- Settings
+    // Managing data
     app.ui.settings.addSetting({
-      id: `${extensionName}.SaveSettingsJson`,
-      name: "🔸 Painter Node",
+      id: `${extensionName}.ManagingData`,
+      name: "🔸 Managing JSON data storage",
       defaultValue: false,
       type: (name, sett, val) => {
-        const newUI = document.querySelector(".p-dialog-header");
         return makeElement("tr", {
           children: [
-            !newUI
-              ? makeElement("td", {
-                  children: [
-                    makeElement("label", {
-                      textContent: name,
-                      for: convertIdClass(
-                        `${extensionName}.save_settings_json_checkbox`
-                      ),
-                    }),
-                  ],
-                })
-              : "",
             makeElement("td", {
               children: [
-                makeElement("label", {
-                  style: { display: "block" },
-                  textContent: "Save settings to json file: ",
-                  for: convertIdClass(
-                    `${extensionName}.save_settings_json_checkbox`
-                  ),
-                  children: [
-                    makeElement("input", {
-                      id: convertIdClass(
-                        `${extensionName}.save_settings_json_checkbox`
-                      ),
-                      type: "checkbox",
-                      checked: val,
-                      onchange: (e) => {
-                        const checked = !!e.target.checked;
-                        painters_settings_json = checked;
-
-                        // Settings all painter nodes save in the JSON or LocalStorage
-                        const PainerNodes = app.graph._nodes.filter(
-                          (wi) => wi.type == "PainterNode"
-                        );
-
-                        if (PainerNodes.length) {
-                          PainerNodes.map((n) => {
-                            n.LS_Cls.painters_settings_json =
-                              painters_settings_json;
-                          });
-                        }
-                        //
-
-                        sett(checked);
-                      },
-                    }),
-                  ],
-                }),
                 makeElement("button", {
                   textContent: "Managing Data",
                   onclick: () => {
-                    new PainterStorageDialog().show(painters_settings_json);
+                    new PainterStorageDialog().show();
                   },
                   style: {
                     display: "block",
@@ -2715,18 +2533,24 @@ app.registerExtension({
         });
       },
     });
-  },
-  async setup(app) {
-    let PainerNode = app.graph._nodes.filter((wi) => wi.type == "PainterNode");
 
-    if (PainerNode.length) {
-      PainerNode.map(async (n) => {
-        console.log(`Setup PainterNode: ${n.name}`);
-        // Resize window
-        window.addEventListener("resize", (e) => resizeCanvas(n), false);
-      });
-    }
+    // Add settings params painter node
+    app.ui.settings.addSetting({
+      id: `${extensionName}.SaveSettingsJson`,
+      name: "🔸 Save settings to JSON file (BETA)",
+      defaultValue: false,
+      type: "boolean",
+      onChange: (e) => {
+        painters_settings_json = !!e;
+        localStorage.setItem(
+          `${extensionName}.SaveSettingsJson`,
+          painters_settings_json
+        );
+      },
+    });
+    // end -- Settings
   },
+  async setup(app) {},
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === "PainterNode") {
       if (!STATES.fontsLoaded) {
@@ -2749,17 +2573,14 @@ app.registerExtension({
         const nodeName = `Paint_${node_id}`;
         const nodeNamePNG = `${nodeName}.png`;
 
-        console.log(`Create PainterNode: ${nodeName}`);
+        this.name = nodeNamePNG;
 
-        this.LS_Cls = new LS_Class(nodeNamePNG, painters_settings_json);
+        console.log(`🔨 Created PainterNode: ${this.name}`);
 
         // Find widget update_node and hide him
         for (const w of this.widgets) {
           if (w.name === "update_node") {
             w.type = "converted-widget";
-            w.value =
-              this.LS_Cls.LS_Painters.settings?.pipingSettings
-                ?.pipingUpdateImage ?? true;
             w.computeSize = () => [0, -4];
             if (!w.linkedWidgets) continue;
             for (const l of w.linkedWidgets) {
@@ -2769,40 +2590,113 @@ app.registerExtension({
           }
         }
 
-        await PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
-        await this.LS_Cls.LS_Init(this);
-        let painter_ls = this.LS_Cls.LS_Painters;
+        this.storageCls = new StorageClass(this, DEBUG);
 
-        const widgetImage = this.widgets.find((w) => w.name == "image");
+        const widget = PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
 
-        if (painter_ls && typeof lsData === "string") {
-          painter_ls = JSON.parse(painter_ls);
-        }
+        //this.painter.uploadPaintFile(nodeNamePNG);
+        this.title = `${this.type} - ${this.painter.storageCls.settings_painter_node.settings.currentCanvasSize.width}x${this.painter.storageCls.settings_painter_node.settings.currentCanvasSize.height}`;
 
-        if (widgetImage && painter_ls && !isEmptyObject(painter_ls)) {
-          // Load settings elements
-          this.painter.setValueElementsLS();
-
-          painter_ls.hasOwnProperty("objects_canvas") &&
-            delete painter_ls.objects_canvas; // remove old property
-
-          if (painter_ls?.settings?.currentCanvasSize) {
-            this.painter.currentCanvasSize =
-              painter_ls.settings.currentCanvasSize;
-
-            this.painter.setCanvasSize(
-              this.painter.currentCanvasSize.width,
-              this.painter.currentCanvasSize.height
-            );
-          }
-          this.painter.canvasLoadSettingPainter();
-        }
-
-        this.painter.canvas.renderAll();
-        this.painter.uploadPaintFile(nodeNamePNG);
-        this.title = `${this.type} - ${this.painter.currentCanvasSize.width}x${this.painter.currentCanvasSize.height}`;
-
+        // Resize window
+        window.addEventListener("resize", (e) => resizeCanvas(this), false);
         return r;
+      };
+
+      const onConfigure = nodeType.prototype.onConfigure;
+      nodeType.prototype.onConfigure = async function (widget) {
+        onConfigure?.apply(this, arguments);
+
+        await this.getTitle();
+
+        if (painters_settings_json) {
+          if (this.storageCls.workflowStateManager.currentWorkflow) {
+            DEBUG &&
+              console.log(
+                `⚠️ [PainterNode] currentWorkflow is already set, skip: ${this.name} -> ${this.storageCls.workflowStateManager.currentWorkflow}`
+              );
+          }
+
+          // Если `setEvents` уже выполняется, ждем его завершения
+          if (setEventsPromise) {
+            DEBUG &&
+              console.log(
+                `⏳ [PainterNode] Waiting for setEvents to complete...`
+              );
+
+            await setEventsPromise;
+            DEBUG &&
+              console.log(`✅ [PainterNode] setEvents completed, continue`);
+          } else {
+            // Если это первый узел, запускаем `setEvents`
+            DEBUG &&
+              console.log(`🚀 [PainterNode] The first node calls setEvents...`);
+            setEventsPromise = this.storageCls.workflowStateManager.setEvents();
+            await setEventsPromise;
+            DEBUG && console.log(`✅ [PainterNode] setEvents completed`);
+          }
+        }
+
+        setTimeout(async () => {
+          console.log(`🔧 Configure PainterNode: ${this.name}`);
+
+          const painter_idx = this.widgets.findIndex(
+            (w) => w.type === "painter"
+          );
+
+          if (painter_idx < 0) return;
+          let data = widget.widgets_values[painter_idx];
+
+          if (painters_settings_json && data === null) {
+            data = await this.painter.storageCls.getData();
+
+            if (!data) {
+              data = JSON.parse(
+                JSON.stringify(
+                  this.painter.storageCls.settings_painter_node_default
+                )
+              );
+            }
+
+            this.painter.storageCls.settings_painter_node = data;
+          }
+
+          Object.assign(this.widgets[painter_idx].value, data);
+
+          if (data) {
+            if (data?.settings) {
+              const {
+                currentCanvasSize: { width, height },
+              } = data.settings;
+
+              // -- Settings piping
+              this.painter.setValueElementsLS();
+
+              // -- Settings size
+              if (width && height) {
+                this.painter.storageCls.settings_painter_node.settings.currentCanvasSize =
+                  {
+                    width,
+                    height,
+                  };
+
+                this.painter.setCanvasSize(width, height);
+              }
+            }
+
+            // Loading canvas data
+            if (data?.canvas_settings) {
+              this.painter.canvasLoadSettingPainter(data).then((result) => {
+                if (result) {
+                  this.painter.canvas.renderAll();
+                  this.painter.uploadPaintFile(this.name);
+                }
+              });
+            }
+
+            this.setSize(arguments[0].size);
+            app.graph.setDirtyCanvas(true, false);
+          }
+        });
       };
 
       // ExtraMenuOptions
@@ -2846,10 +2740,19 @@ app.registerExtension({
             const self = this;
 
             removeButton.callback = async function () {
+              const nodeName = Array.from(arguments).find((f) => f?.name).name;
               remove_callback.apply(this, arguments);
 
-              if (await comfyuiDesktopConfirm("Remove storage data?")) {
-                self.LS_Cls.removeData();
+              if (!painters_settings_json) return;
+
+              if (
+                await comfyuiDesktopConfirm(
+                  `Remove data ${nodeName} from JSON?`
+                )
+              ) {
+                self.storageCls.workflowStateManager.removeData(null, [
+                  nodeName,
+                ]);
               }
             };
           }

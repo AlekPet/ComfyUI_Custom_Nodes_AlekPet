@@ -5,46 +5,45 @@ import { ComfyDialog } from "../../../../../scripts/ui.js";
 import {
   makeElement,
   createWindowModal,
+  animateClick,
   THEMES_MODAL_WINDOW,
   comfyuiDesktopConfirm,
 } from "../../utils.js";
 
 export class PainterStorageDialog extends ComfyDialog {
   // Remove record in LocalStorage or JSON file
-  async removeRecord(name, type) {
-    if (!(await comfyuiDesktopConfirm(`Delete record "${name}"?`))) return;
+  async removeRecord(workflow_name, painters_data = []) {
+    if (!(await comfyuiDesktopConfirm(`Delete record "${workflow_name}"?`)))
+      return;
+    try {
+      const rawResponse = await fetch("/alekpet/remove_node_settings", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: workflow_name,
+          painters_data: painters_data,
+        }),
+      });
 
-    if (type === "ls") {
-      if (localStorage.getItem(name)) {
-        localStorage.removeItem(name);
-        return true;
-      } else {
-        return false;
+      if (rawResponse.status !== 200) {
+        throw new Error(
+          `Error painter remove file settings: ${rawResponse.statusText}`
+        );
       }
-    } else if (type === "json") {
-      try {
-        const rawResponse = await fetch("/alekpet/remove_node_settings", {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ name: name }),
-        });
 
-        if (rawResponse.status !== 200) {
-          throw new Error(
-            `Error painter remove file settings: ${rawResponse.statusText}`
-          );
-        }
+      const jsonData = await rawResponse.json();
 
-        if (rawResponse.status == 200) {
-          return true;
-        }
-      } catch (e) {
-        console.log(e);
-        return false;
-      }
+      return {
+        status: true,
+        remove_info: jsonData?.workflow_info,
+        message: jsonData.message,
+      };
+    } catch (e) {
+      console.log(e);
+      return { status: false, remove_info: null, message: e.message };
     }
   }
 
@@ -69,9 +68,9 @@ export class PainterStorageDialog extends ComfyDialog {
         makeElement("div", {
           class: ["painter_storage_grid", "painter_storage_items_header"],
           children: [
+            makeElement("div", { textContent: "👓" }),
             makeElement("div", { textContent: "#" }),
-            makeElement("div", { textContent: "Preview" }),
-            makeElement("div", { textContent: "Name" }),
+            makeElement("div", { textContent: "Name workflow" }),
             makeElement("div", { textContent: "Size" }),
             makeElement("div", { textContent: "Action" }),
           ],
@@ -79,57 +78,151 @@ export class PainterStorageDialog extends ComfyDialog {
       ],
     });
 
-    for (const [idx, { name, value }] of data.entries()) {
-      const item = makeElement("div", {
-        class: ["painter_storage_grid", "painter_storage_item"],
-        style: {
-          background: `var(${
-            (idx + 1) % 2 !== 0 ? "--tr-odd-bg-color" : "--tr-even-bg-color"
-          })`,
-        },
-        parent: itemBox,
-      });
+    // Check if body item is empty, show message no records
+    async function checkNoItems() {
+      if (
+        document.querySelector(".painter_storage_body").children.length === 1
+      ) {
+        const data = await this.loadingDataJSON();
 
-      const numEl = makeElement("div", { textContent: idx + 1 });
-      const previewEl = makeElement("div", {
-        class: ["painter_storage_item_preview"],
-      });
-
-      // Create canvas from preview
-      const canvasEl = makeElement("canvas", {
-        class: ["painter_storage_item_preview_canvas"],
-      });
-      previewEl.append(canvasEl);
-
-      // Fabric canvas load
-      const fcanvas = new fabric.StaticCanvas(canvasEl);
-      const canvasValue = typeof value === "string" ? JSON.parse(value) : value;
-      if (canvasValue?.settings?.currentCanvasSize) {
-        const { width, height } = canvasValue.settings.currentCanvasSize;
-
-        fcanvas.setDimensions({ width, height }, { backstoreOnly: true });
+        if (data) this.updateBodyData(data);
       }
+    }
 
-      fcanvas.loadFromJSON(canvasValue.canvas_settings, () => {
-        fcanvas.renderAll();
+    // Sort workflows for size
+    function sortWorkflowSize(paint_data) {
+      return Object.keys(paint_data.painters_data)
+        .map((w) => ({
+          painter_name: w,
+          painter_data: paint_data.painters_data[w],
+        }))
+        .sort((a, b) => {
+          a = JSON.stringify(a.painter_data).length;
+          b = JSON.stringify(b.painter_data).length;
+          return b - a;
+        });
+    }
+
+    // Create painters elements
+    function createItemsPainters(workflow_name, workflow_data) {
+      // Wrapper
+      const itemPaintersWrapper = makeElement("div", {
+        class: ["painter_storage_painters_wrapper"],
+        style: { display: "none", opacity: 0, transition: "all 0.4s" },
       });
 
-      const nameEl = makeElement("div", { textContent: name });
-      const sizeEl = makeElement("div", {
-        innerHTML: formatBytes(new Blob([JSON.stringify(value)]).size),
+      // Header
+      const itemPainterHeader = makeElement("div", {
+        class: [
+          "painter_storage_grid",
+          "painter_storage_painters_header",
+          "painter_storage_painters_grid",
+        ],
+        children: [
+          makeElement("div", { textContent: "#" }),
+          makeElement("div", { textContent: "Painter name" }),
+          makeElement("div", { textContent: "Preview" }),
+          makeElement("div", { textContent: "Size" }),
+          makeElement("div", { textContent: "Action" }),
+        ],
+        parent: itemPaintersWrapper,
       });
 
-      const removeButtonEl = makeElement("button", {
-        style: { color: "var(--error-text)", padding: "7px", fontSize: "1rem" },
-        textContent: "Delete",
-        title: "Delete record!",
-        onclick: async (e) => {
-          const readioType = document.querySelector(
-            "[name=painter_storage_radio]:checked"
-          ).value;
-          const result = await this.removeRecord(name, readioType);
+      for (const [idx, { painter_name, painter_data }] of sortWorkflowSize(
+        workflow_data
+      ).entries()) {
+        const itemPainter = makeElement("div", {
+          class: [
+            "painter_storage_grid",
+            "painter_storage_painters_item",
+            "painter_storage_painters_grid",
+          ],
+        });
 
-          if (result) {
+        const numPainter = makeElement("div", { textContent: idx + 1 });
+        const namePainter = makeElement("div", {
+          class: ["painter_storage_painters_item_name"],
+          textContent: painter_name,
+          title: painter_name,
+        });
+        const previewPainter = makeElement("div", {
+          class: ["painter_storage_painters_item_preview"],
+        });
+
+        // Create canvas from preview
+        const canvasEl = makeElement("canvas", {
+          class: ["painter_storage_painters_item_preview_canvas"],
+        });
+        previewPainter.append(canvasEl);
+
+        // Fabric canvas load
+        const fcanvas = new fabric.StaticCanvas(canvasEl);
+        const canvasValue =
+          typeof painter_data === "string"
+            ? JSON.parse(painter_data)
+            : painter_data;
+        if (canvasValue?.settings?.currentCanvasSize) {
+          const { width, height } = canvasValue.settings.currentCanvasSize;
+          fcanvas.setDimensions({ width, height }, { backstoreOnly: true });
+        }
+
+        fcanvas.loadFromJSON(canvasValue.canvas_settings, () => {
+          fcanvas.renderAll();
+        });
+
+        const sizePainter = makeElement("div", {
+          innerHTML: formatBytes(new Blob([JSON.stringify(painter_data)]).size),
+        });
+        const removeButtonPainter = makeElement("button", {
+          style: {
+            color: "var(--error-text)",
+            padding: "7px",
+            fontSize: "1rem",
+          },
+          textContent: "Delete",
+          title: "Delete painter!",
+          onclick: async (e) => {
+            e.stopPropagation();
+            if (!confirm(`Delete painter record "${painter_name}"?`)) return;
+
+            const result = await this.removeRecord(workflow_name, [
+              painter_name,
+            ]);
+
+            if (!result.status) {
+              createWindowModal({
+                ...THEMES_MODAL_WINDOW.error,
+                stylesBox: {
+                  ...THEMES_MODAL_WINDOW.error.stylesBox,
+                  lineHeight: 1.5,
+                },
+
+                textTitle: "Error",
+                textBody: result.message,
+                options: {
+                  parent: document.body,
+                  overlay: { overlay_enabled: true },
+                  auto: {
+                    autoshow: true,
+                    autoremove: true,
+                    autohide: true,
+                    timewait: 500,
+                  },
+                  close: { showClose: false },
+                },
+              });
+              return;
+            }
+
+            let textMessage = `<div>Painter name <span style="color: chartreuse; font-weight: 600;">"${painter_name}"</span> deleted from json file workflow <span style="color: darkseagreen; font-weight: 600;">"${workflow_name}"</span>!</div>`;
+
+            if (
+              result.remove_info.workflow_record &&
+              result.remove_info.paint_record
+            ) {
+              textMessage = `<div>Workflow name <span style="color: chartreuse; font-weight: 600;">"${workflow_name}"</span> and record <span style="color: darkseagreen; font-weight: 600;">"${painter_name}"</span> deleted from json file!</div>`;
+            }
+
             createWindowModal({
               ...THEMES_MODAL_WINDOW.normal,
               stylesBox: {
@@ -138,9 +231,7 @@ export class PainterStorageDialog extends ComfyDialog {
               },
 
               textTitle: "Information",
-              textBody: `Record name "${name}" deleted from ${
-                readioType === "ls" ? "local storage" : "json files"
-              }!`,
+              textBody: textMessage,
               options: {
                 parent: document.body,
                 overlay: { overlay_enabled: true },
@@ -154,16 +245,134 @@ export class PainterStorageDialog extends ComfyDialog {
               },
             });
 
-            const data =
-              readioType === "ls"
-                ? this.loadingDataLocalStorage()
-                : await this.loadingDataJSON();
+            if (
+              result.remove_info.workflow_record &&
+              result.remove_info.paint_record
+            ) {
+              itemPainter.closest(".painter_storage_painters_wrapper").remove();
+              checkNoItems.call(this);
+              return;
+            }
 
-            if (data) this.updateBodyData(data);
-          }
+            itemPainter.remove();
+          },
+        });
+
+        itemPainter.append(
+          numPainter,
+          namePainter,
+          previewPainter,
+          sizePainter,
+          removeButtonPainter
+        );
+        itemPaintersWrapper.append(itemPainter);
+      }
+
+      return itemPaintersWrapper;
+    }
+
+    // Create workflows elements
+    function createWorkflowStorage(idx, workflow_name, workflow_value) {
+      const itemWorkflow = makeElement("div", {
+        class: ["painter_storage_grid", "painter_storage_workflows_item"],
+        title: `Show painters records workflow ${workflow_name}`,
+        onclick: (e) => {
+          const target = e.currentTarget;
+          animateClick(target.nextElementSibling).then((res) => {
+            target.children[0].textContent = res ? "▼" : "►";
+            target.title = `Hide painters records workflow ${workflow_name}`;
+          });
         },
       });
-      item.append(numEl, previewEl, nameEl, sizeEl, removeButtonEl);
+
+      const showWorkflow = makeElement("div", { textContent: "►" });
+      const numEl = makeElement("div", { textContent: idx + 1 });
+      const nameEl = makeElement("div", { textContent: workflow_name });
+      const sizeEl = makeElement("div", {
+        innerHTML: formatBytes(new Blob([JSON.stringify(workflow_value)]).size),
+      });
+
+      const removeButtonEl = makeElement("button", {
+        style: { color: "var(--error-text)", padding: "7px", fontSize: "1rem" },
+        textContent: "Delete",
+        title: "Delete workflow!",
+        onclick: async (e) => {
+          e.stopPropagation();
+          if (!confirm(`Delete workflow "${workflow_name}"?`)) return;
+
+          const result = await this.removeRecord(workflow_name);
+
+          if (!result.status) {
+            createWindowModal({
+              ...THEMES_MODAL_WINDOW.error,
+              stylesBox: {
+                ...THEMES_MODAL_WINDOW.error.stylesBox,
+                lineHeight: 1.5,
+              },
+
+              textTitle: "Error",
+              textBody: result.message,
+              options: {
+                parent: document.body,
+                overlay: { overlay_enabled: true },
+                auto: {
+                  autoshow: true,
+                  autoremove: true,
+                  autohide: true,
+                  timewait: 500,
+                },
+                close: { showClose: false },
+              },
+            });
+            return;
+          }
+
+          createWindowModal({
+            ...THEMES_MODAL_WINDOW.normal,
+            stylesBox: {
+              ...THEMES_MODAL_WINDOW.normal.stylesBox,
+              lineHeight: 1.5,
+            },
+
+            textTitle: "Information",
+            textBody: `<div>Workflow name <span style="color: chartreuse; font-weight: 600;">"${workflow_name}"</span> deleted from json files!</div>`,
+            options: {
+              parent: document.body,
+              overlay: { overlay_enabled: true },
+              auto: {
+                autoshow: true,
+                autoremove: true,
+                autohide: true,
+                timewait: 500,
+              },
+              close: { showClose: false },
+            },
+          });
+
+          itemWorkflow.closest(".painter_storage_painters_wrapper").remove();
+          checkNoItems.call(this);
+        },
+      });
+
+      itemWorkflow.append(showWorkflow, numEl, nameEl, sizeEl, removeButtonEl);
+
+      return itemWorkflow;
+    }
+
+    for (const [idx, { name, value }] of data.entries()) {
+      const itemWrapper = makeElement("div", {
+        class: ["painter_storage_painters_wrapper"],
+        style: {
+          background: `var(${
+            (idx + 1) % 2 !== 0 ? "--tr-odd-bg-color" : "--tr-even-bg-color"
+          })`,
+        },
+      });
+
+      const itemPaint = createWorkflowStorage.call(this, idx, name, value);
+      const itemWorkflows = createItemsPainters.call(this, name, value);
+      itemWrapper.append(itemPaint, itemWorkflows);
+      itemBox.append(itemWrapper);
     }
 
     return itemBox;
@@ -198,34 +407,19 @@ export class PainterStorageDialog extends ComfyDialog {
   // Get data form LocalStorage
   loadingDataLocalStorage() {
     return Object.keys(localStorage)
-      .filter((v) => v.indexOf("Paint_") !== -1)
-      .map((v) => ({ name: v, value: localStorage.getItem(v) }));
+      .filter((v) => v.indexOf("Painter_") !== -1)
+      .map((v) => ({ name: v, value: JSON.parse(localStorage.getItem(v)) }));
   }
 
-  async changeSourceData(value) {
-    let data = null;
-    if (value === "ls") {
-      data = this.loadingDataLocalStorage();
-    } else if (value === "json") {
-      data = await this.loadingDataJSON();
-    }
-
-    if (data) this.updateBodyData(data);
-  }
-
-  async updateDataStorages(lsStorage) {
+  async updateDataStorages() {
     try {
       this.body.innerHTML = "";
 
-      if (lsStorage === "ls") {
-        let localStorageItems = this.loadingDataLocalStorage();
-        console.log("Loading localStorage data");
-        this.body.append(this.createMenuElements(localStorageItems));
-      } else if (lsStorage === "json") {
-        const json_data_settings = await this.loadingDataJSON();
-        console.log("Loading JSON files data");
-        this.body.append(this.createMenuElements(json_data_settings));
-      }
+      const storagePaintersData = await this.loadingDataJSON();
+      console.log("Loading JSON files data");
+
+      this.body.append(this.createMenuElements(storagePaintersData));
+
       return true;
     } catch (err) {
       return err;
@@ -233,9 +427,7 @@ export class PainterStorageDialog extends ComfyDialog {
   }
 
   // Main function show
-  async show(_lsStorage = true) {
-    const lsStorage = !_lsStorage;
-
+  async show() {
     this.body = makeElement("div", {
       class: ["painter_storage_body"],
     });
@@ -244,35 +436,11 @@ export class PainterStorageDialog extends ComfyDialog {
       class: ["painter_storage_box"],
       children: [
         makeElement("div", {
-          class: ["painter_storage_select"],
+          class: ["painter_storage_header"],
           children: [
-            makeElement("label", {
-              textContent: "Local storage",
-              for: "painter_storage_radio_ls",
-              children: [
-                makeElement("input", {
-                  type: "radio",
-                  name: "painter_storage_radio",
-                  value: "ls",
-                  id: "painter_storage_radio_ls",
-                  checked: lsStorage,
-                  onchange: (e) => this.changeSourceData(e.target.value),
-                }),
-              ],
-            }),
-            makeElement("label", {
-              textContent: "JSON files",
-              for: "painter_storage_radio_json",
-              children: [
-                makeElement("input", {
-                  type: "radio",
-                  name: "painter_storage_radio",
-                  value: "json",
-                  id: "painter_storage_radio_json",
-                  checked: !lsStorage,
-                  onchange: (e) => this.changeSourceData(e.target.value),
-                }),
-              ],
+            makeElement("div", {
+              innerHTML: "<b>JSON</b> storage data",
+              style: { flexBasis: "100%", textAlign: "center" },
             }),
             makeElement("button", {
               textContent: "Refresh",
@@ -284,11 +452,7 @@ export class PainterStorageDialog extends ComfyDialog {
                 target.textContent = "Wait...";
 
                 await new Promise((res, rej) => {
-                  const result = this.updateDataStorages(
-                    document.querySelector(
-                      "[name=painter_storage_radio]:checked"
-                    ).value
-                  );
+                  const result = this.updateDataStorages();
                   result ? res(true) : rej(result);
                 })
                   .then(() => {
@@ -309,7 +473,7 @@ export class PainterStorageDialog extends ComfyDialog {
       ],
     });
 
-    this.updateDataStorages(lsStorage ? "ls" : "json");
+    await this.updateDataStorages();
 
     super.show(box);
     this.element.style.zIndex = 9999;
