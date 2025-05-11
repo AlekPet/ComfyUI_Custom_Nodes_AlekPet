@@ -363,6 +363,11 @@ app.registerExtension({
                   onchange: (e) => {
                     const checked = !!e.target.checked;
                     PreviewImageSize = checked;
+
+                    localStorage.setItem(
+                      `Comfy.Settings.${idExt}.PreviewImage`,
+                      checked
+                    );
                     sett(checked);
                   },
                 }),

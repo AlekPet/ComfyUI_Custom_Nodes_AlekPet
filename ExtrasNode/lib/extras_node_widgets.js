@@ -766,6 +766,7 @@ function createPreiviewSize(node, name, options) {
       fontSize: "0.8rem",
       color: color,
       fontFamily: "monospace",
+      textAlign: "center",
       padding: 0,
       margin: 0,
       outline: 0,
