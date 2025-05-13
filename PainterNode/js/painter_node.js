@@ -167,36 +167,6 @@ class Painter {
         return callb.apply(this, arguments);
       }
     };
-
-    let default_value = this.image.value;
-    Object.defineProperty(this.image, "value", {
-      set: function (value) {
-        this._real_value = value;
-      },
-
-      get: function () {
-        let value = "";
-        if (this._real_value) {
-          value = this._real_value;
-        } else {
-          return default_value;
-        }
-
-        if (value.filename) {
-          let real_value = value;
-          value = "";
-          if (real_value.subfolder) {
-            value = real_value.subfolder + "/";
-          }
-
-          value += real_value.filename;
-
-          if (real_value.type && real_value.type !== "input")
-            value += ` [${real_value.type}]`;
-        }
-        return value;
-      },
-    });
   }
 
   async saveSettingsPainterNode() {
@@ -2187,7 +2157,6 @@ class Painter {
     img.src = api.apiURL(
       `/view?filename=${name}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}&${new Date().getTime()}`
     );
-    this.node.setSizeForImage?.();
   }
 
   async uploadPaintFile(fileName) {
