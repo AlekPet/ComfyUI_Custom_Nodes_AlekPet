@@ -526,18 +526,21 @@ app.registerExtension({
         }
 
         if (this?.inputs?.length) {
+          const not_showing = ["language", "pycode"];
           for (let i = 0; i < this.inputs.length; i++) {
             const { name, type } = this.inputs[i];
+            if (not_showing.includes(name)) continue;
+            console.log();
             const colorType = LGraphCanvas.link_type_colors[type.toUpperCase()];
             const nameSize = ctx.measureText(name);
 
-            ctx.fillStyle = colorType === "" ? "#AAA" : colorType;
+            ctx.fillStyle = !colorType || colorType === "" ? "#AAA" : colorType;
             ctx.font = "12px Arial, sans-serif";
             ctx.textAlign = "left";
             ctx.fillText(
               `[${type === "*" ? "any" : type.toLowerCase()}]`,
               nameSize.width + 25,
-              i * 20 + 19
+              i * 20 + 19 - not_showing.length * 20
             );
           }
         }
