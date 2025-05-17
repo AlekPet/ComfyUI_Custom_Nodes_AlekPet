@@ -465,7 +465,6 @@ class OpenPose {
     img.src = api.apiURL(
       `/view?filename=${name}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}&${app.getRandParam()}`
     );
-    this.node.setSizeForImage?.();
   }
 
   uploadPoseFile(fileName) {

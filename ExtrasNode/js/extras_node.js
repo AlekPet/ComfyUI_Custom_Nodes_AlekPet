@@ -8,7 +8,7 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
 import { $el } from "../../scripts/ui.js";
-import { isValidStyle } from "./utils.js";
+import { isValidStyle, comfyuiDesktopConfirm } from "./utils.js";
 import { addStylesheet } from "../../scripts/utils.js";
 import {
   SpeechWidget,
@@ -363,6 +363,11 @@ app.registerExtension({
                   onchange: (e) => {
                     const checked = !!e.target.checked;
                     PreviewImageSize = checked;
+
+                    localStorage.setItem(
+                      `Comfy.Settings.${idExt}.PreviewImage`,
+                      checked
+                    );
                     sett(checked);
                   },
                 }),
@@ -488,9 +493,16 @@ app.registerExtension({
                   ),
                   type: "checkbox",
                   checked: val,
-                  onchange: (e) => {
+                  onchange: async (e) => {
                     const checked = !!e.target.checked;
                     SpeechAndRecognationSpeech = checked;
+                    localStorage.setItem(
+                      `Comfy.Settings.${idExt}.SpeechAndRecognationSpeech`,
+                      checked
+                    );
+                    if (await comfyuiDesktopConfirm("Reload page?")) {
+                      location.reload();
+                    }
                     sett(checked);
                   },
                 }),
@@ -811,7 +823,7 @@ app.registerExtension({
           await new Promise((res) =>
             setTimeout(() => {
               res();
-            }, 16 * this.widgets.length)
+            }, 16 * this.widgets?.length ?? 1)
           );
 
           if (!isIncludesSpeech && widgetsTextMulti.length) {
@@ -833,7 +845,7 @@ app.registerExtension({
             await new Promise((res) =>
               setTimeout(() => {
                 res();
-              }, 16 * this.widgets.length)
+              }, 16 * this.widgets?.length ?? 1)
             );
 
             const ids_speech_clear = this.widgets.reduce(function (

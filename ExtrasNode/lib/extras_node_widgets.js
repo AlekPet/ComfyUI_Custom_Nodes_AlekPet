@@ -219,15 +219,9 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
     draw(ctx, node, widget_width, y, widget_height) {
       const hidden = widgetsText?.element?.hidden;
 
-      widget.element.dataset.shouldHide = hidden ? "true" : "false";
-      const isInVisibleNodes =
-        widget.element.dataset.isInVisibleNodes === "true";
-      const isCollapsed = widget.element.dataset.collapsed === "true";
-      const actualHidden = hidden || !isInVisibleNodes || isCollapsed;
-      const wasHidden = widget.element.hidden;
-      widget.element.hidden = actualHidden;
-      widget.element.style.display = actualHidden ? "none" : "flex";
-      if (actualHidden && !wasHidden) {
+      widget.element.style.display =
+        hidden || app.canvas.ds.scale < 0.6 ? "none" : "flex";
+      if (hidden) {
         widget.options.onHide?.(widget);
       }
 
@@ -653,7 +647,7 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
 
   widget.element = $el(
     "div.alekpet_extras_node_speechrecognition_box",
-    { hidden: true, style: { display: "none" } },
+    { style: { display: "none" } },
     [
       $el("div.alekpet_extras_node_speechrecognition_row", [...buttons]),
       $el("div.alekpet_extras_node_info", [
@@ -704,7 +698,6 @@ function makeColorWidget(node, inputName, inputData, widget) {
     style: {
       textAlign: "center",
       fontSize: "20px",
-      height: "20px",
       fontWeight: "600",
       lineHeight: 1.5,
       background: "var(--comfy-menu-bg)",
@@ -766,6 +759,7 @@ function createPreiviewSize(node, name, options) {
       fontSize: "0.8rem",
       color: color,
       fontFamily: "monospace",
+      textAlign: "center",
       padding: 0,
       margin: 0,
       outline: 0,

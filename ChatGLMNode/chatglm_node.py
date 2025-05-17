@@ -13,33 +13,51 @@ ALL_CODES_LANGS = ['af', 'sq', 'am', 'ar', 'hy', 'as', 'ay', 'az', 'bm', 'eu', '
 
 ENDPOINT_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 
-ZHIPUAI_API_KEY = None
+def getConfigData():
+    # Directory node and config file
+    dir_node = os.path.dirname(__file__)
+    config_path = os.path.join(os.path.abspath(dir_node), "config.json")
+    config = {
+                "__comment": "Register on the site https://bigmodel.cn and get a key and add it to the field ZHIPUAI_API_KEY. Change default translate languages ​​'from' and 'to' you use",
+                "from_translate": "ru",
+                "to_translate": "en",
+                "ZHIPUAI_API_KEY": "your_api_key"
+            }
 
-# Directory node and config file
-dir_node = os.path.dirname(__file__)
-config_path = os.path.join(os.path.abspath(dir_node), "config.json")
+    # Load config.js file
+    if not os.path.exists(config_path):
+        print("[ChatGLMNode] File config.js file not found! Create default config.json...")
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, ensure_ascii=False, indent=4)
+            return config
+    else:
+        with open(config_path, "r") as f:
+            config = json.load(f)
+            return config
+        # =====
 
-# Load config.js file
-if not os.path.exists(config_path):
-    print("File config.js file not found! Reinstall extensions!")
-else:
-    with open(config_path, "r") as f:
-        CONFIG = json.load(f)
+def checkPropValue(obj, key, not_include = []):
+    checkVal = lambda v: v is None or v.strip() == "" or v in not_include
 
-        # GET ZHIPUAI_API_KEY from json
-        ZHIPUAI_API_KEY = CONFIG.get("ZHIPUAI_API_KEY")
-    # =====
+    prop_val = obj.get(key)
 
+    if checkVal(prop_val):
+        obj.update(getConfigData())
+        return True if checkVal(obj.get(key)) else False
+
+    else:
+        return False
+
+
+CONFIG = getConfigData()
 
 def createRequest(payload):
-    global ZHIPUAI_API_KEY
+    global CONFIG
 
-    if (
-        ZHIPUAI_API_KEY is None
-        or ZHIPUAI_API_KEY.strip() == ""
-        or ZHIPUAI_API_KEY == "your_api_key"
-    ):
+    if checkPropValue(CONFIG, "ZHIPUAI_API_KEY", ["your_api_key"]):
         raise ValueError("ZHIPUAI_API_KEY value is empty or missing")
+
+    ZHIPUAI_API_KEY = CONFIG.get("ZHIPUAI_API_KEY")
 
     # Headers
     headers = {
@@ -92,15 +110,17 @@ def translate(prompt, srcTrans, toTrans, model, max_tokens, temperature, top_p):
 class ChatGLM4TranslateCLIPTextEncodeNode:
     @classmethod
     def INPUT_TYPES(self):
+        from_lng = CONFIG.get("from_translate") if CONFIG.get("from_translate") in ALL_CODES_LANGS else "ru"
+        to_lng = CONFIG.get("to_translate") if CONFIG.get("to_translate") in ALL_CODES_LANGS else "en"
         return {
             "required": {
                 "from_translate": (
                     ALL_CODES_LANGS,
-                    {"default": "ru", "tooltip": "Translation from"},
+                    {"default": from_lng, "tooltip": "Translation from"},
                 ),
                 "to_translate": (
                     ALL_CODES_LANGS,
-                    {"default": "en", "tooltip": "Translation to"},
+                    {"default": to_lng, "tooltip": "Translation to"},
                 ),
                 "model": (
                     [
