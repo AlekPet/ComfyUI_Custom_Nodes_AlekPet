@@ -826,7 +826,7 @@ app.registerExtension({
             }, 16 * this.widgets?.length ?? 1)
           );
 
-          if (!isIncludesSpeech && widgetsTextMulti.length) {
+          if (!isIncludesSpeech && widgetsTextMulti?.length) {
             widgetsTextMulti.forEach(async (w) => {
               this.addCustomWidget(
                 SpeechWidget(this, "speak_and_recognation", [false, true], w)

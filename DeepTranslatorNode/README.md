@@ -38,6 +38,10 @@ https=34.195.196.27:8080
 http=34.195.196.27:8080
 ```
 
+## Note:
+
+Inside `config.json` there is an option to hide your keys used for the service, the `"hide_keys": false` property, it does not display your keys in the Authorization data field.
+
 ## Image:
 
 ![DeepTranslatorCLIPTextEncodeNode](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/DeepTranslatorNode/image_DeepTranslator_Node.jpg)
