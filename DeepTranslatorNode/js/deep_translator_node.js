@@ -14,7 +14,7 @@ const CONVERTED_TYPE = "converted-widget";
  *  Code line: https://github.com/TinyTerra/ComfyUI_tinyterraNodes/blob/main/js/ttNdynamicWidgets.js#L9
  */
 function toggleWidget(node, widget, show = false, button = {}, suffix = "") {
-  if (!widget || doesInputWithNameExist(node, widget.name)) return;
+  if (!widget) return;
 
   if (!properties_widget[widget.name]) {
     properties_widget[widget.name] = {
@@ -39,6 +39,8 @@ function toggleWidget(node, widget, show = false, button = {}, suffix = "") {
   widget.computeSize = show
     ? properties_widget[widget.name].origComputeSize
     : () => [0, -4];
+
+  widget.hidden = show ? false : true;
 
   widget.linkedWidgets?.forEach((w) =>
     toggleWidget(node, w, ":" + widget.name, show)

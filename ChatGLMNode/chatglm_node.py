@@ -31,7 +31,7 @@ def getConfigData():
             json.dump(config, f, ensure_ascii=False, indent=4)
             return config
     else:
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
             return config
         # =====

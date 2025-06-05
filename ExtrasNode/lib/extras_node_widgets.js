@@ -217,7 +217,7 @@ function SpeechWidget(node, inputName, inputData, widgetsText) {
     options: { hideOnZoom: true },
     text_element: widgetsText?.inputEl,
     draw(ctx, node, widget_width, y, widget_height) {
-      const hidden = widgetsText?.element?.hidden;
+      const hidden = widgetsText?.element?.hidden || widgetsText.hidden;
 
       widget.element.style.display =
         hidden || app.canvas.ds.scale < 0.6 ? "none" : "flex";
