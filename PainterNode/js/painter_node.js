@@ -47,6 +47,12 @@ const removeIcon =
 const removeImg = makeElement("img");
 removeImg.src = removeIcon;
 
+const cropIcon =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' version='1.0' width='300.000000pt' height='300.000000pt' viewBox='0 0 300.000000 300.000000' preserveAspectRatio='xMidYMid meet'%3E%3Crect xmlns='http://www.w3.org/2000/svg' x='0' y='0' width='300' height='300' style='fill: rgb(0, 0, 0);' rx='58.194' ry='58.194'/%3E%3Cg transform='translate(0.000000,300.000000) scale(0.100000,-0.100000)' fill='%23ffffff' stroke='none'%3E%3Cpath d='M664 2836 l-34 -34 0 -1052 0 -1052 34 -34 34 -34 1052 0 1052 0 34 34 c30 30 34 40 34 86 0 46 -4 56 -34 86 l-34 34 -966 0 -966 0 0 966 0 966 -34 34 c-30 30 -40 34 -86 34 -46 0 -56 -4 -86 -34z m137 -25 l24 -19 5 -957 5 -957 28 -24 28 -24 945 0 945 0 24 -25 c33 -32 33 -78 0 -110 l-24 -25 -1031 0 -1031 0 -24 25 -25 24 0 1031 0 1031 25 24 c29 30 74 32 106 6z'/%3E%3Cpath d='M164 2336 c-50 -50 -50 -122 0 -172 l34 -34 106 0 c123 0 155 11 180 64 20 43 20 69 0 112 -25 53 -57 64 -180 64 l-106 0 -34 -34z m258 -20 c27 -20 39 -62 27 -93 -17 -45 -37 -52 -137 -53 -86 0 -95 2 -117 25 -16 15 -25 36 -25 55 0 19 9 40 25 55 22 23 31 25 117 25 60 -1 99 -5 110 -14z'/%3E%3Cpath d='M1059 2355 c-29 -15 -59 -70 -59 -105 0 -36 31 -90 61 -105 23 -13 112 -15 549 -15 l520 0 0 -520 c0 -576 -1 -563 64 -594 43 -20 69 -20 112 0 66 31 64 9 64 680 l0 606 -34 34 -34 34 -609 0 c-506 -1 -612 -3 -634 -15z m1246 -50 l25 -24 0 -591 c0 -359 -4 -598 -10 -609 -5 -10 -23 -24 -40 -31 -37 -15 -81 0 -99 33 -8 15 -12 175 -14 529 l-2 507 -23 23 -23 23 -507 2 c-354 2 -514 6 -529 14 -33 18 -48 62 -33 99 7 17 20 35 29 40 9 6 255 10 609 10 l593 0 24 -25z'/%3E%3Cpath d='M2192 483 c-51 -25 -62 -57 -62 -179 l0 -106 34 -34 c30 -30 40 -34 86 -34 46 0 56 4 86 34 l34 34 0 106 c0 123 -11 155 -64 180 -43 20 -72 20 -114 -1z m116 -56 c20 -18 22 -30 22 -114 0 -86 -2 -96 -25 -118 -32 -33 -78 -33 -110 0 -23 22 -25 31 -25 117 1 99 8 120 51 137 30 12 57 5 87 -22z'/%3E%3C/g%3E%3C/svg%3E";
+
+const cropImg = makeElement("img");
+cropImg.src = cropIcon;
+
 const convertIdClass = (text) => text.replaceAll(".", "_");
 
 function renderIcon(icon) {
@@ -66,6 +72,12 @@ function removeObject(eventData, transform) {
   canvas.remove(target);
   canvas.requestRenderAll();
   this.viewListObjects(this.list_objects_panel__items);
+}
+
+// [Crop] Crop icons
+function cropIconClick(eventData, transform) {
+  this.cropCanvas();
+  console.log("Crop");
 }
 
 function resizeCanvas(node, sizes) {
@@ -139,6 +151,9 @@ class Painter {
     this.redo_history = [];
 
     this.storageCls = this.node.storageCls;
+
+    // [Crop] Object
+    this.crop_object = null;
 
     this.fonts = {
       Arial: { type: "default" },
@@ -292,6 +307,7 @@ class Painter {
                 <button data-shape='Line' title="Draw line">|</button>
                 <button data-shape='Image' title="Add picture">P</button>
                 <button data-shape='Textbox' title="Add text">T</button>
+                <button data-shape='Crop' title="Crop">C</button>
             </div>
             <div class="painter_colors_box fieldset_box" f_name="Colors">
                 <div class="painter_grid_style painter_colors_alpha">
@@ -631,7 +647,7 @@ class Painter {
     this.canvas.requestRenderAll();
 
     this.addToHistory();
-    this.saveSettingsPainterNode(true);
+    this.saveSettingsPainterNode();
     this.uploadPaintFile(this.node.name);
   }
 
@@ -718,6 +734,9 @@ class Painter {
     let target = b.target,
       nextElement = target.parentElement.nextElementSibling,
       panelListObjects = target.nextElementSibling;
+
+    // [Crop] Crop reset
+    this.cropReset();
 
     if (["Image", "Textbox"].includes(this.type)) {
       this.drawning = true;
@@ -922,16 +941,19 @@ class Painter {
   }) {
     let shape = null;
 
-    if (type == "Rect") {
+    if (type === "Rect") {
       shape = new fabric.Rect();
-    } else if (type == "Circle") {
+    } else if (type === "Circle") {
       shape = new fabric.Circle();
-    } else if (type == "Triangle") {
+    } else if (type === "Triangle") {
       shape = new fabric.Triangle();
-    } else if (type == "Line") {
+    } else if (type === "Line") {
       shape = new fabric.Line(points);
-    } else if (type == "Path") {
+    } else if (type === "Path") {
       shape = new fabric.Path(path);
+    } else if (type === "Crop") {
+      // [Crop] Create crop object
+      return this.createCrop(left, top);
     }
 
     Object.assign(shape, {
@@ -950,6 +972,72 @@ class Painter {
     });
 
     return shape;
+  }
+
+  // [Crop] Crop canvas
+  cropReset() {
+    if (this.crop_object) {
+      this.canvas.remove(this.crop_object);
+      this.crop_object = null;
+    }
+  }
+
+  createCrop(left, top) {
+    this.crop_object = new fabric.Rect();
+    Object.assign(this.crop_object, {
+      left: left,
+      top: top,
+      originX: "left",
+      originY: "top",
+      strokeWidth: 1,
+      stroke: "#ccc",
+      transparentCorners: false,
+      hasBorders: false,
+      hasControls: true,
+      fill: "transparent",
+      strokeDashArray: [5, 5],
+      absolutePositioned: true,
+      name: "crop",
+    });
+
+    return this.crop_object;
+  }
+
+  cropCanvas() {
+    this.crop_object.visible = false;
+    const croppedImg = new Image();
+
+    croppedImg.onload = () => {
+      this.canvas.clear();
+      this.canvas.backgroundColor = this.bgColor.value || "#000000";
+      this.canvas.requestRenderAll();
+
+      const image = new fabric.Image(croppedImg);
+      image.left = this.crop_object.left;
+      image.top = this.crop_object.top;
+
+      if (confirm("Resize canvas to new size clip?")) {
+        image.left = 0;
+        image.top = 0;
+        this.setCanvasSize(this.crop_object.width, this.crop_object.height);
+      }
+
+      this.cropReset();
+
+      image.setCoords();
+      this.canvas.add(image);
+      this.canvas.sendToBack(image);
+      this.canvas.renderAll();
+      this.saveSettingsPainterNode();
+      this.uploadPaintFile(this.node.name);
+    };
+
+    croppedImg.src = this.canvas.toDataURL({
+      left: this.crop_object.left,
+      top: this.crop_object.top,
+      width: this.crop_object.width,
+      height: this.crop_object.height,
+    });
   }
 
   // Toolbars
@@ -1158,7 +1246,9 @@ class Painter {
       { width: new_width, height: new_height }
     );
 
-    this.node.title = `${this.node.type} - ${new_width}x${new_height}`;
+    this.node.title = `${this.node.type} - ${Math.floor(
+      new_width
+    )}x${Math.floor(new_height)}`;
     this.canvas.renderAll();
     app.graph.setDirtyCanvas(true, false);
     this.node.onResize();
@@ -1180,6 +1270,11 @@ class Painter {
         currentTarget = target.dataset?.shape;
       if (currentTarget) {
         this.type = currentTarget;
+
+        // [Crop] Crop reset
+        if (currentTarget !== "Crop") {
+          this.cropReset();
+        }
 
         // Set default brush width if width < 1 (for fabricjs)
         this.setDefaultValuesInputs();
@@ -1606,6 +1701,9 @@ class Painter {
       this.fillColor.onchange =
       this.fillColorTransparent.onchange =
         () => {
+          // [Crop]
+          if (this.type === "Crop") return;
+
           if (this.canvas.getActiveObject()) {
             this.uploadPaintFile(this.node.name);
           }
@@ -1619,6 +1717,9 @@ class Painter {
     };
 
     this.strokeWidth.onchange = () => {
+      // [Crop]
+      if (this.type === "Crop") return;
+
       if (
         ["Brush", "BrushMyPaint", "BrushSymmetry", "Textbox", "Image"].includes(
           this.type
@@ -1636,6 +1737,14 @@ class Painter {
     this.setInputsStyleObject = () => {
       let targets = this.canvas.getActiveObjects();
       if (!targets || targets.length == 0) return;
+
+      // [Crop]
+      if (
+        this.type === "Crop" &&
+        targets.filter((t) => t?.name === "crop").length
+      ) {
+        return;
+      }
 
       // Selected tools
       const setProps = (style, value) => {
@@ -1732,30 +1841,43 @@ class Painter {
         )
           return;
 
-        if (this.type != "Textbox") {
-          let { x: left, y: top } = this.canvas.getPointer(o.e),
-            colors = ["red", "blue", "green", "yellow", "purple", "orange"],
-            strokeWidth = +this.strokeWidth.value,
-            stroke =
-              strokeWidth == 0
-                ? "transparent"
-                : toRGBA(
-                    this.strokeColor.value,
-                    this.strokeColorTransparent.value
-                  ) || colors[Math.floor(Math.random() * colors.length)],
-            fill = toRGBA(
-              this.fillColor.value,
-              this.fillColorTransparent.value
-            ),
-            shape = this.shapeCreate({
-              type: this.type,
-              left,
-              top,
-              stroke,
-              fill,
-              strokeWidth,
-              points: [left, top, left, top],
-            });
+        if (this.type !== "Textbox") {
+          const { x: left, y: top } = this.canvas.getPointer(o.e);
+
+          // [Crop] Mouse down
+          if (this.type === "Crop") {
+            if (this.crop_object) {
+              this.crop_object.set({ left, top });
+              this.crop_object.visible = true;
+              this.crop_object.maxPosX = left;
+              this.crop_object.maxPosY = top;
+              this.canvas.setActiveObject(this.crop_object);
+              return;
+            }
+          }
+
+          const colors = ["red", "blue", "green", "yellow", "purple", "orange"];
+          const strokeWidth = +this.strokeWidth.value;
+          const stroke =
+            strokeWidth == 0
+              ? "transparent"
+              : toRGBA(
+                  this.strokeColor.value,
+                  this.strokeColorTransparent.value
+                ) || colors[Math.floor(Math.random() * colors.length)];
+          const fill = toRGBA(
+            this.fillColor.value,
+            this.fillColorTransparent.value
+          );
+          const shape = this.shapeCreate({
+            type: this.type,
+            left,
+            top,
+            stroke,
+            fill,
+            strokeWidth,
+            points: [left, top, left, top],
+          });
 
           this.originX = left;
           this.originY = top;
@@ -1805,7 +1927,7 @@ class Painter {
           activeObj.set({ top: pointer.y });
         }
 
-        if (this.type == "Circle") {
+        if (this.type === "Circle") {
           let radius =
             Math.max(
               Math.abs(this.originY - pointer.y),
@@ -1814,7 +1936,7 @@ class Painter {
           if (radius > activeObj.strokeWidth)
             radius -= activeObj.strokeWidth / 2;
           activeObj.set({ radius: radius });
-        } else if (this.type == "Line") {
+        } else if (this.type === "Line") {
           activeObj.set({ x2: pointer.x, y2: pointer.y });
         } else {
           activeObj.set({ width: Math.abs(this.originX - pointer.x) });
@@ -1828,19 +1950,36 @@ class Painter {
       "mouse:up": (o) => {
         this.canvas._objects.forEach((object) => {
           if (!object.hasOwnProperty("controls")) {
-            object.controls = {
-              ...object.controls,
-              removeControl: new fabric.Control({
-                x: 0.5,
-                y: -0.5,
-                offsetY: -16,
-                offsetX: 16,
-                cursorStyle: "pointer",
-                mouseUpHandler: removeObject.bind(this),
-                render: renderIcon(removeImg),
-                cornerSize: 24,
-              }),
-            };
+            // [Crop] Controls icon
+            if (this.type === "Crop") {
+              object.controls = {
+                ...object.controls,
+                removeControl: new fabric.Control({
+                  x: 0.5,
+                  y: -0.5,
+                  offsetY: -16,
+                  offsetX: 16,
+                  cursorStyle: "pointer",
+                  mouseDownHandler: cropIconClick.bind(this),
+                  render: renderIcon(cropImg),
+                  cornerSize: 24,
+                }),
+              };
+            } else {
+              object.controls = {
+                ...object.controls,
+                removeControl: new fabric.Control({
+                  x: 0.5,
+                  y: -0.5,
+                  offsetY: -16,
+                  offsetX: 16,
+                  cursorStyle: "pointer",
+                  mouseUpHandler: removeObject.bind(this),
+                  render: renderIcon(removeImg),
+                  cornerSize: 24,
+                }),
+              };
+            }
           }
         });
 
@@ -1860,7 +1999,8 @@ class Painter {
           this.canvas.isDrawingMode = false;
 
         // Skip BrushMyPaint mouseup is empty objects array, loading canvas as image, upload when object add to canvas
-        if (!["BrushMyPaint"].includes(this.type)) {
+        // [Crop] Skip
+        if (!["BrushMyPaint", "Crop"].includes(this.type)) {
           this.canvas.renderAll();
           this.addToHistory();
           this.uploadPaintFile(this.node.name);
