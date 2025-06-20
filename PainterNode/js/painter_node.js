@@ -489,8 +489,6 @@ class Painter {
     labelPipingUpdateImage.append(pipingUpdateImageCheckbox);
     // end - Piping update image
 
-    // === Settings box ===
-
     // Function click on the radio and show/hide custom settings
     function checkRadioOptionsSelect(currentTarget) {
       custom_options_piping_box.style.display =
@@ -623,9 +621,51 @@ class Painter {
       labelPipingUpdateImage
     );
 
+    // end -- Piping fieldset
+
+    // Settings fieldset
+    const settingsBox = makeElement("fieldset", {
+      style:
+        "display: flex; flex-direction: column; gap: 5px; text-align: left; border-color:rgb(205, 202, 15); border-radius: 4px;",
+      class: ["settingsBox"],
+    });
+
+    // Save image
+    const labelSaveImage = makeElement("label", {
+      textContent: "Save change canvas: ",
+      style: "font-size: 10px; display: block; text-align: right;",
+      title: "Saves changes made on the canvas to the workflow.",
+    });
+
+    const saveImageCheckbox = makeElement("input", {
+      type: "checkbox",
+      class: ["pipingSaveImage_checkbox"],
+      checked:
+        this.storageCls.settings_painter_node.settings?.saveImage ?? true,
+      onchange: (e) => {
+        const checked = !!e.target.checked;
+        this.storageCls.settings_painter_node.settings.saveImage = checked;
+
+        this.saveSettingsPainterNode();
+      },
+    });
+
+    labelSaveImage.append(saveImageCheckbox);
+    // end - Save image
+
+    settingsBox.append(
+      makeElement("legend", {
+        textContent: "Settings",
+        style: "color: rgb(205, 202, 15);",
+      }),
+      labelSaveImage
+    );
+
+    // end - Settings fieldset
+
     this.painter_wrapper_settings = createWindowModal({
       textTitle: "Settings",
-      textBody: [pipingSettingsBox],
+      textBody: [pipingSettingsBox, settingsBox],
       stylesBox: {
         borderColor: "#13e9c5ad",
         boxShadow: "2px 2px 4px #13e9c5ad",
@@ -2056,6 +2096,11 @@ class Painter {
 
   // Save canvas data to localStorage or JSON
   canvasSaveSettingsPainter() {
+    const save_data =
+      this.storageCls.settings_painter_node.settings.saveImage ?? true;
+
+    if (!save_data) return;
+
     try {
       Object.assign(
         this.storageCls.settings_painter_node.canvas_settings,
@@ -2349,7 +2394,7 @@ class Painter {
               });
               this.canvas.renderAll();
             }
-            this.saveSettingsPainterNode(false);
+            this.saveSettingsPainterNode();
             res(true);
           })
           .catch((error) => {
