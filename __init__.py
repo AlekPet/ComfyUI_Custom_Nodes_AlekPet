@@ -66,7 +66,11 @@ def log(*text):
 def information(datas):
     for info in datas:
         if not DEBUG:
-            print(info, end="\r", flush=True)
+            try:
+                print(info, end="\r", flush=True)
+            except UnicodeError:
+                safe_text = info.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
+                print(safe_text, end="\r", flush=True)
 
 
 def printColorInfo(text, color="\033[92m"):
@@ -164,6 +168,8 @@ def module_install(commands, cwd="."):
         stderr=subprocess.PIPE,
         text=True,
         bufsize=1,
+        encoding='utf-8',
+        errors='replace'
     )
     out = threading.Thread(target=information, args=(result.stdout,))
     err = threading.Thread(target=information, args=(result.stderr,))
