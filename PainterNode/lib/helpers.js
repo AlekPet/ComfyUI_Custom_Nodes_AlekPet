@@ -406,6 +406,7 @@ class StorageClass {
       redo_history: [],
       canvas_settings: { background: "#000000" },
       settings: {
+        saveImage: true,
         pipingSettings: {
           action: {
             name: "background",
