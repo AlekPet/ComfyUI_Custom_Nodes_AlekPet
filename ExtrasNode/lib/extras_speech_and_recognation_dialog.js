@@ -1,6 +1,12 @@
+/*
+ * Title: Extras extension - Speech And Recognition Dialog
+ * Author: AlekPet
+ * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/tree/master/ExtrasNode
+ */
+
 import { ComfyDialog } from "../../../../../scripts/ui.js";
 import { makeElement } from "../../utils.js";
-import { speakSynthesisUtterance } from "./extras_node_widgets.js";
+import { speakSynthesisUtterance } from "./extras_speech_and_recognation_widget.js";
 
 const idExt = "alekpet.ExtrasNode";
 
@@ -34,7 +40,7 @@ export class RecognationSpeechDialog extends ComfyDialog {
       class: ["panel_settings_recognation_speech"],
       style: {
         display: "grid",
-        gridTemplateColumns: "1fr 1fr 1fr",
+        gridTemplateColumns: "0.2fr 1fr 0.2fr",
         alignItems: "center",
         justifyContent: "center",
         gap: "5px",
@@ -200,6 +206,7 @@ export class RecognationSpeechDialog extends ComfyDialog {
       style: {
         width: "80vw",
         color: "var(--input-text)",
+        padding: "20px",
       },
       children: [await this.createPanelSettings()],
     });
