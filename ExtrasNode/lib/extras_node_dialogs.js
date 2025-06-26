@@ -198,7 +198,7 @@ export class RecognationSpeechDialog extends ComfyDialog {
     const box = makeElement("div", {
       class: ["box_recognation_speech"],
       style: {
-        width: "25vw",
+        width: "80vw",
         color: "var(--input-text)",
       },
       children: [await this.createPanelSettings()],
