@@ -109,10 +109,10 @@ if not os.path.exists(config_path):
     with open(config_path, "w", encoding="utf-8") as f:
         defaultJSON = {
             "settings": {
-                "__commnet": "Please check the list of available languages ​​before specifying, especially target_lang! Property run_deeplx disable DeepLXTranslate nodes. See README file",
+                "__commnet": "Please check the list of available languages ​​before specifying, especially target_lang! Property run_deeplx enable or disable DeepLXTranslate nodes. See README file",
                 "source_lang": "Russian",
                 "target_lang": "English",
-                "run_deeplx": True
+                "run_deeplx": False
             }
         }
         json.dump(defaultJSON, f, ensure_ascii=False, indent=4)
@@ -153,9 +153,9 @@ PATH_TO_DEEPLX_SERVER = os.path.join(NODE_DIR, "DeepLX")
 PATH_TO_GO = os.path.join(NODE_DIR, "go", "bin")
 
 # We check whether the user has disabled the launch of the DeepLX server.
-if not SETTINGS.get("run_deeplx", True): # Setting whether to run DeepLX server
+if not SETTINGS.get("run_deeplx", False): # Setting whether to run DeepLX server
     DEEPLX_SERVER_RUNNING = False
-    raise Exception("User disabled DeepLX server startup in config.json (proprety: 'run_deeplx')")
+    raise Exception("DeepLX nodes are disabled by default, read README: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/tree/master/DeepLXTranslateNode#note", "warning")
     
 
 ### Automatical install Golang (Go) and DeepLX ###

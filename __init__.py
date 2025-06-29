@@ -499,19 +499,29 @@ failed_nodes_text = ""
 len_nodes = len(nodes_list_dict)
 for key, node in enumerate(nodes_list_dict):
     currentNode = nodes_list_dict[node]
-    if currentNode.get("error", None) is None:
+
+    currentNodeVals = currentNode.get("error")
+
+    if currentNodeVals is None:
         status = "\033[92m[Loading]"
     else:
-        status = "\033[1;31;40m[Failed]"
+        color_error = "\033[1;31;40m"
+        status = color_error + " [Failed]"
         error_message = currentNode.get("error", "Error")
-        failed_nodes_text += f"\033[93m{node} -> \033[1;31;40m{error_message}\033[0m\n"
+
+        if(len(currentNodeVals.args) == 2 and currentNodeVals.args[1] == "warning"):
+            color_error = "\033[33m"
+            status = color_error + "[Warning]"
+            error_message = currentNodeVals.args[0]
+
+        failed_nodes_text += f"\033[93m{node} -> {color_error}{error_message}\033[0m\n"
 
     message = currentNode.get("message", "No message available")
     printColorInfo(f"{message}{status}\033[0m")
 
     if key == len_nodes - 1 and failed_nodes_text:
         printColorInfo(
-            f"\n\033[1;31;40m* Nodes have been temporarily disabled due to the error *\033[0m\n{failed_nodes_text}"
+            f"\n\033[1;31;40m* Nodes have been temporarily disabled due to the error or specially *\033[0m\n{failed_nodes_text}"
         )
 
 printColorInfo(f"### [END] ComfyUI AlekPet Nodes ###", "\033[1;35m")
