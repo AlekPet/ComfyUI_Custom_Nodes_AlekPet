@@ -32,7 +32,7 @@ import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
 
-const DEBUG = !false;
+const DEBUG = false;
 const extensionName = "alekpet.PainterNode";
 
 // Save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
@@ -46,12 +46,6 @@ const removeIcon =
 
 const removeImg = makeElement("img");
 removeImg.src = removeIcon;
-
-const cropIcon =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' version='1.0' width='300px' height='300px' viewBox='0 0 300 300'%3E%3Crect xmlns='http://www.w3.org/2000/svg' x='0' y='0' width='300' height='300' style='fill: rgb(0, 0, 0);' rx='58.194' ry='58.194'/%3E%3Cg transform='translate(0.000000,300.000000) scale(0.100000,-0.100000)' fill='%23ffffff' stroke='none'%3E%3Cpath d='M664 2836 l-34 -34 0 -1052 0 -1052 34 -34 34 -34 1052 0 1052 0 34 34 c30 30 34 40 34 86 0 46 -4 56 -34 86 l-34 34 -966 0 -966 0 0 966 0 966 -34 34 c-30 30 -40 34 -86 34 -46 0 -56 -4 -86 -34z m137 -25 l24 -19 5 -957 5 -957 28 -24 28 -24 945 0 945 0 24 -25 c33 -32 33 -78 0 -110 l-24 -25 -1031 0 -1031 0 -24 25 -25 24 0 1031 0 1031 25 24 c29 30 74 32 106 6z'/%3E%3Cpath d='M164 2336 c-50 -50 -50 -122 0 -172 l34 -34 106 0 c123 0 155 11 180 64 20 43 20 69 0 112 -25 53 -57 64 -180 64 l-106 0 -34 -34z m258 -20 c27 -20 39 -62 27 -93 -17 -45 -37 -52 -137 -53 -86 0 -95 2 -117 25 -16 15 -25 36 -25 55 0 19 9 40 25 55 22 23 31 25 117 25 60 -1 99 -5 110 -14z'/%3E%3Cpath d='M1059 2355 c-29 -15 -59 -70 -59 -105 0 -36 31 -90 61 -105 23 -13 112 -15 549 -15 l520 0 0 -520 c0 -576 -1 -563 64 -594 43 -20 69 -20 112 0 66 31 64 9 64 680 l0 606 -34 34 -34 34 -609 0 c-506 -1 -612 -3 -634 -15z m1246 -50 l25 -24 0 -591 c0 -359 -4 -598 -10 -609 -5 -10 -23 -24 -40 -31 -37 -15 -81 0 -99 33 -8 15 -12 175 -14 529 l-2 507 -23 23 -23 23 -507 2 c-354 2 -514 6 -529 14 -33 18 -48 62 -33 99 7 17 20 35 29 40 9 6 255 10 609 10 l593 0 24 -25z'/%3E%3Cpath d='M2192 483 c-51 -25 -62 -57 -62 -179 l0 -106 34 -34 c30 -30 40 -34 86 -34 46 0 56 4 86 34 l34 34 0 106 c0 123 -11 155 -64 180 -43 20 -72 20 -114 -1z m116 -56 c20 -18 22 -30 22 -114 0 -86 -2 -96 -25 -118 -32 -33 -78 -33 -110 0 -23 22 -25 31 -25 117 1 99 8 120 51 137 30 12 57 5 87 -22z'/%3E%3C/g%3E%3C/svg%3E";
-
-const cropImg = makeElement("img");
-cropImg.src = cropIcon;
 
 const convertIdClass = (text) => text.replaceAll(".", "_");
 
@@ -298,12 +292,12 @@ class Painter {
                 <button class="active" data-shape='Brush' title="Brush">B</button>
                 <button data-shape='Erase' title="Erase">E</button>
                 <button data-shape='Circle' title="Draw circle">◯</button>
-                <button data-shape='Rect' title="Draw rectangle">▭</button>
+                <button data-shape='Rect' title="Draw rectangle">☐</button>
                 <button data-shape='Triangle' title="Draw triangle">△</button>
                 <button data-shape='Line' title="Draw line">|</button>
                 <button data-shape='Image' title="Add picture">P</button>
                 <button data-shape='Textbox' title="Add text">T</button>
-                <button data-shape='Crop' title="Crop">C</button>
+                <button data-shape='Crop' title="Crop">✂</button>
             </div>
             <div class="painter_colors_box fieldset_box" f_name="Colors">
                 <div class="painter_grid_style painter_colors_alpha">
@@ -681,6 +675,13 @@ class Painter {
     this.cropReset();
 
     this.canvas.clear();
+
+    const image = new fabric.Image("");
+    this.canvas.setBackgroundImage(
+      image,
+      this.canvas.renderAll.bind(this.canvas)
+    );
+
     this.canvas.backgroundColor = this.bgColor.value || "#000000";
     this.canvas.requestRenderAll();
 
@@ -703,9 +704,12 @@ class Painter {
         }),
         obEl = makeElement("button"),
         countType = objectNames.filter((t) => t == type).length + 1,
-        text_value = !o.hasOwnProperty("mypaintlib")
-          ? type + `_${countType}`
-          : `mypaint_${countType}`;
+        addTypeCheck = o.hasOwnProperty("mypaintlib")
+          ? "mypaint"
+          : o.hasOwnProperty("cropimage")
+          ? "cropimage"
+          : type,
+        text_value = addTypeCheck + `_${countType}`;
 
       obEl.setAttribute("painter_object", text_value);
       obEl.textContent = text_value;
@@ -773,12 +777,19 @@ class Painter {
       nextElement = target.parentElement.nextElementSibling,
       panelListObjects = target.nextElementSibling;
 
-    // [Crop] Crop reset
-    this.cropReset();
-
     if (["Image", "Textbox"].includes(this.type)) {
       this.drawning = true;
     }
+
+    // [Crop] Crop
+    if (this.type === "CropMove" || this.type === "Crop") {
+      this.type = "Crop";
+      this.canvas.isDrawingMode = false;
+      this.drawning = true;
+      this.mouseDown = null;
+    }
+
+    this.cropReset();
 
     if (this.drawning) {
       this.canvas.isDrawingMode = false;
@@ -949,6 +960,8 @@ class Painter {
       let a_obs = this.canvas.getActiveObjects();
       if (a_obs) {
         a_obs.forEach((a_o) => {
+          if (a_o.hasOwnProperty("cropimage") && !this.mode) return;
+
           this.setActiveStyle(
             "strokeWidth",
             parseInt(this.strokeWidth.value, 10),
@@ -1071,7 +1084,7 @@ class Painter {
       image.top = this.crop_object.top;
       image.selectable = true;
 
-      if (confirm("Resize canvas to new size clip?")) {
+      if (await comfyuiDesktopConfirm("Resize canvas to new size clip?")) {
         image.left = 0;
         image.top = 0;
         this.setCanvasSize(this.crop_object.width, this.crop_object.height);
@@ -1086,6 +1099,47 @@ class Painter {
       this.canvas.add(image);
       this.canvas.sendToBack(image);
       this.canvas.renderAll();
+      this.saveSettingsPainterNode();
+      this.uploadPaintFile(this.node.name);
+    };
+  }
+
+  cropCanvasPath() {
+    const croppedImg = new Image();
+
+    this.crop_object.visible = false;
+    croppedImg.src = this.canvas.toDataURL();
+
+    croppedImg.onload = async () => {
+      this.crop_object.visible = true;
+      this.canvas.clear();
+      this.canvas.backgroundColor = this.bgColor.value || "#000000";
+
+      this.canvas.requestRenderAll();
+
+      const image = new fabric.Image(croppedImg);
+      image.set({
+        selectable: true,
+        evented: true,
+        cropimage: true,
+        strokeWidth: 0,
+        stroke: null,
+      });
+
+      image.setCoords();
+      this.canvas.add(image);
+
+      this.crop_object.set({ fill: this.canvas.backgroundColor });
+      image.clipPath = this.crop_object;
+
+      this.canvas.isDrawingMode = false;
+      this.drawning = false;
+      this.type = "CropMove";
+      this.cropReset();
+
+      this.canvas.sendToBack(image);
+      this.canvas.renderAll();
+
       this.saveSettingsPainterNode();
       this.uploadPaintFile(this.node.name);
     };
@@ -1185,6 +1239,7 @@ class Painter {
     this.painter_drawning_box_property.append(property_textbox);
   }
 
+  // Brush Toolbar
   createBrushesToolbar() {
     // First panel
     const property_brushesBox = makeElement("div", {
@@ -1244,11 +1299,83 @@ class Painter {
 
     app.graph.setDirtyCanvas(true, false);
   }
+
+  // Crop Toolbar
+  createCropToolbar() {
+    const property_crop = makeElement("div", {
+      style: {
+        display: "flex",
+        gap: "5px",
+      },
+      class: ["property_cropBox", "comfy-menu-btns"],
+    });
+
+    const cropImg = makeElement("img");
+    cropImg.src =
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' version='1.0' width='21px' height='24px' viewBox='0 0 300 300'%3E%3Cg transform='translate(0.000000,300.000000) scale(0.100000,-0.100000)' fill='%23ffffff' stroke='none'%3E%3Cpath d='M664 2836 l-34 -34 0 -1052 0 -1052 34 -34 34 -34 1052 0 1052 0 34 34 c30 30 34 40 34 86 0 46 -4 56 -34 86 l-34 34 -966 0 -966 0 0 966 0 966 -34 34 c-30 30 -40 34 -86 34 -46 0 -56 -4 -86 -34z m137 -25 l24 -19 5 -957 5 -957 28 -24 28 -24 945 0 945 0 24 -25 c33 -32 33 -78 0 -110 l-24 -25 -1031 0 -1031 0 -24 25 -25 24 0 1031 0 1031 25 24 c29 30 74 32 106 6z'/%3E%3Cpath d='M164 2336 c-50 -50 -50 -122 0 -172 l34 -34 106 0 c123 0 155 11 180 64 20 43 20 69 0 112 -25 53 -57 64 -180 64 l-106 0 -34 -34z m258 -20 c27 -20 39 -62 27 -93 -17 -45 -37 -52 -137 -53 -86 0 -95 2 -117 25 -16 15 -25 36 -25 55 0 19 9 40 25 55 22 23 31 25 117 25 60 -1 99 -5 110 -14z'/%3E%3Cpath d='M1059 2355 c-29 -15 -59 -70 -59 -105 0 -36 31 -90 61 -105 23 -13 112 -15 549 -15 l520 0 0 -520 c0 -576 -1 -563 64 -594 43 -20 69 -20 112 0 66 31 64 9 64 680 l0 606 -34 34 -34 34 -609 0 c-506 -1 -612 -3 -634 -15z m1246 -50 l25 -24 0 -591 c0 -359 -4 -598 -10 -609 -5 -10 -23 -24 -40 -31 -37 -15 -81 0 -99 33 -8 15 -12 175 -14 529 l-2 507 -23 23 -23 23 -507 2 c-354 2 -514 6 -529 14 -33 18 -48 62 -33 99 7 17 20 35 29 40 9 6 255 10 609 10 l593 0 24 -25z'/%3E%3Cpath d='M2192 483 c-51 -25 -62 -57 -62 -179 l0 -106 34 -34 c30 -30 40 -34 86 -34 46 0 56 4 86 34 l34 34 0 106 c0 123 -11 155 -64 180 -43 20 -72 20 -114 -1z m116 -56 c20 -18 22 -30 22 -114 0 -86 -2 -96 -25 -118 -32 -33 -78 -33 -110 0 -23 22 -25 31 -25 117 1 99 8 120 51 137 30 12 57 5 87 -22z'/%3E%3C/g%3E%3C/svg%3E";
+
+    const cropAction1 = makeElement("button", {
+      dataset: { prop: "prop_cropAction1" },
+      title: "Crop",
+      children: [
+        makeElement("span", {
+          styke: { padding: "5px" },
+          textContent: "Crop",
+        }),
+        cropImg,
+      ],
+      onclick: (e) => {
+        if (
+          this.crop_object &&
+          this.canvas.getActiveObject() === this.crop_object
+        ) {
+          this.cropCanvas();
+        } else {
+          app.extensionManager.toast.add({
+            severity: "warn",
+            summary: "Warning",
+            detail: "No area selected for canvas cropping!",
+            life: 5000,
+          });
+        }
+      },
+    });
+
+    const cropAction2 = makeElement("button", {
+      dataset: { prop: "prop_cropAction2" },
+      title: "Crop 2",
+      children: [
+        makeElement("span", {
+          styke: { padding: "5px" },
+          textContent: "Crop path",
+        }),
+        cropImg.cloneNode(true),
+      ],
+      onclick: (e) => {
+        if (
+          this.crop_object &&
+          this.canvas.getActiveObject() === this.crop_object
+        ) {
+          this.cropCanvasPath();
+        } else {
+          app.extensionManager.toast.add({
+            severity: "warn",
+            summary: "Warning",
+            detail: "No area selected for canvas cropping!",
+            life: 5000,
+          });
+        }
+      },
+    });
+
+    property_crop.append(cropAction1, cropAction2);
+    this.painter_drawning_box_property.append(property_crop);
+  }
   // end - Toolbars
 
   selectPropertyToolbar(type) {
     this.painter_drawning_box_property.innerHTML = "";
-    if (["Textbox", "Brush"].includes(this.type)) {
+    if (["Textbox", "Brush", "Crop"].includes(this.type)) {
       this.painter_drawning_box_property.style.display = "flex";
 
       switch (this.type) {
@@ -1257,6 +1384,9 @@ class Painter {
           break;
         case "Brush":
           this.createBrushesToolbar();
+          break;
+        case "Crop":
+          this.createCropToolbar();
           break;
       }
     } else {
@@ -1323,7 +1453,7 @@ class Painter {
         this.type = currentTarget;
 
         // [Crop] Crop
-        if (currentTarget === "CropMove") {
+        if (this.type === "CropMove") {
           this.type = "Crop";
           this.canvas.isDrawingMode = false;
           this.drawning = true;
@@ -1608,9 +1738,14 @@ class Painter {
         }
       }
     };
+
     // Event input bgcolor
     this.reset_set_bg = () => {
-      this.canvas.setBackgroundImage(null);
+      const image = new fabric.Image("");
+      this.canvas.setBackgroundImage(
+        image,
+        this.canvas.renderAll.bind(this.canvas)
+      );
       this.canvas.backgroundColor = this.bgColor.value;
       this.canvas.renderAll();
       this.uploadPaintFile(this.node.name);
@@ -1882,9 +2017,23 @@ class Painter {
       // Mouse button down event
       "mouse:down": (o) => {
         const { x: left, y: top } = this.canvas.getPointer(o.e);
+        const activeObject = this.canvas.getActiveObject();
 
-        if (!this.canvas.isDrawingMode && this.bringFrontSelected)
-          this.canvas.bringToFront(this.canvas.getActiveObject());
+        if (
+          !this.canvas.isDrawingMode &&
+          this.bringFrontSelected &&
+          !["Crop", "CropMove"].includes(this.type)
+        ) {
+          if (
+            activeObject &&
+            activeObject?.hasOwnProperty("cropimage") &&
+            !this.mode
+          ) {
+            this.canvas.bringToFront(activeObject);
+          } else {
+            this.canvas.bringToFront(activeObject);
+          }
+        }
 
         this.canvas.isDrawingMode = this.drawning;
         if (!this.canvas.isDrawingMode) {
@@ -2062,24 +2211,24 @@ class Painter {
 
         if (activeObject) {
           if (this.type === "Crop" && !this.mode) {
-            activeObject.controls = {
-              ...activeObject.controls,
-              removeControl: new fabric.Control({
-                x: 0.5,
-                y: -0.5,
-                offsetY: -16,
-                offsetX: 16,
-                cursorStyle: "pointer",
-                mouseUpHandler: (e) => e.stopPropagation(),
-                mouseDownHandler: (eventData, transform) => {
-                  eventData.stopPropagation();
-                  this.cropCanvas();
-                  return true;
-                },
-                render: renderIcon(cropImg),
-                cornerSize: 24,
-              }),
-            };
+            // activeObject.controls = {
+            //   ...activeObject.controls,
+            //   removeControl: new fabric.Control({
+            //     x: 0.5,
+            //     y: -0.5,
+            //     offsetY: -16,
+            //     offsetX: 16,
+            //     cursorStyle: "pointer",
+            //     mouseUpHandler: (e) => e.stopPropagation(),
+            //     mouseDownHandler: (eventData, transform) => {
+            //       eventData.stopPropagation();
+            //       this.cropCanvas();
+            //       return true;
+            //     },
+            //     render: renderIcon(cropImg),
+            //     cornerSize: 24,
+            //   }),
+            // };
           } else {
             activeObject.controls = {
               ...activeObject.controls,
@@ -2501,7 +2650,12 @@ class Painter {
 
 // ================= CREATE PAINTER WIDGET ============
 function PainterWidget(node, inputName, inputData, app) {
-  node.addWidget("button", "Clear Canvas", "clear_painer", () => {
+  node.addWidget("button", "Clear Canvas", "clear_painer", async () => {
+    if (
+      !(await comfyuiDesktopConfirm("Do you really want to clear the canvas?"))
+    ) {
+      return;
+    }
     node.painter.list_objects_panel__items.innerHTML = "";
     node.painter.clearCanvas();
   });
