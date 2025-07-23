@@ -1,6 +1,6 @@
 # Title: ComfyUI Install Customs Nodes and javascript files
 # Author: AlekPet
-# Version: 2024.08.08
+# Version: 2025.06.26
 import os
 import importlib.util
 import subprocess
@@ -32,7 +32,8 @@ extension_dirs = [
 DEBUG = False
 
 NODE_CLASS_MAPPINGS = dict()  # dynamic class nodes append in mappings
-NODE_DISPLAY_NAME_MAPPINGS = dict()  # dynamic display names nodes append mappings names
+# dynamic display names nodes append mappings names
+NODE_DISPLAY_NAME_MAPPINGS = dict()
 
 humanReadableTextReg = re.compile("(?<=[a-z0-9])([A-Z])|(?<=[A-Z0-9])([A-Z][a-z]+)")
 module_name_cut_version = re.compile("[>=<]")
@@ -47,9 +48,7 @@ def get_version_extension():
     if os.path.isfile(toml_file):
         try:
             with open(toml_file, "r") as v:
-                version = list(
-                    filter(lambda l: l.startswith("version"), v.readlines())
-                )[0]
+                version = list(filter(lambda l: l.startswith("version"), v.readlines()))[0]
                 version = version.split("=")[1].replace('"', "").strip()
                 return f" \033[1;34mv{version}\033[0m\033[1;35m"
         except Exception as e:
@@ -69,7 +68,7 @@ def information(datas):
             try:
                 print(info, end="\r", flush=True)
             except UnicodeError:
-                safe_text = info.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
+                safe_text = info.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
                 print(safe_text, end="\r", flush=True)
 
 
@@ -80,11 +79,7 @@ def printColorInfo(text, color="\033[92m"):
 
 def get_classes(code):
     tree = ast.parse(code)
-    return [
-        n.name
-        for n in ast.walk(tree)
-        if isinstance(n, ast.ClassDef) and "Node" in n.name
-    ]
+    return [n.name for n in ast.walk(tree) if isinstance(n, ast.ClassDef) and "Node" in n.name]
 
 
 def addComfyUINodesToMapping(nodeElement):
@@ -102,9 +97,7 @@ def addComfyUINodesToMapping(nodeElement):
             # remove extensions .py
             module_without_py = f.replace(ext[1], "")
             # Import module
-            spec = importlib.util.spec_from_file_location(
-                module_without_py, os.path.join(node_folder, f)
-            )
+            spec = importlib.util.spec_from_file_location(module_without_py, os.path.join(node_folder, f))
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             classes_names = list(
@@ -115,22 +108,11 @@ def addComfyUINodesToMapping(nodeElement):
             )
             for class_module_name in classes_names:
                 # Check module
-                if (
-                    class_module_name
-                    and class_module_name not in NODE_CLASS_MAPPINGS.keys()
-                ):
-                    log(
-                        f"    [*] Class node found '{class_module_name}' add to NODE_CLASS_MAPPINGS..."
-                    )
-                    NODE_CLASS_MAPPINGS.update(
-                        {class_module_name: getattr(module, class_module_name)}
-                    )
+                if class_module_name and class_module_name not in NODE_CLASS_MAPPINGS.keys():
+                    log(f"    [*] Class node found '{class_module_name}' add to NODE_CLASS_MAPPINGS...")
+                    NODE_CLASS_MAPPINGS.update({class_module_name: getattr(module, class_module_name)})
                     NODE_DISPLAY_NAME_MAPPINGS.update(
-                        {
-                            class_module_name: humanReadableTextReg.sub(
-                                " \\1\\2", class_module_name
-                            )
-                        }
+                        {class_module_name: humanReadableTextReg.sub(" \\1\\2", class_module_name)}
                     )
 
 
@@ -168,8 +150,8 @@ def module_install(commands, cwd="."):
         stderr=subprocess.PIPE,
         text=True,
         bufsize=1,
-        encoding='utf-8',
-        errors='replace'
+        encoding="utf-8",
+        errors="replace",
     )
     out = threading.Thread(target=information, args=(result.stdout,))
     err = threading.Thread(target=information, args=(result.stderr,))
@@ -197,17 +179,13 @@ def checkModules(nodeElement):
         log("  -> File 'requirements.txt' found!")
         with open(file_requir) as f:
             required_modules = {
-                module_name_cut_version.split(line.strip())[0]
-                for line in f
-                if not line.startswith("#")
+                module_name_cut_version.split(line.strip())[0] for line in f if not line.startswith("#")
             }
 
         modules_to_install = required_modules - installed_modules
 
         if modules_to_install:
-            module_install(
-                [sys.executable, "-m", "pip", "install", *modules_to_install]
-            )
+            module_install([sys.executable, "-m", "pip", "install", *modules_to_install])
 
 
 nodes_list_dict = {}
@@ -318,7 +296,8 @@ try:
     )
 
 except Exception as e:
-    nodes_list_dict["ArgosTranslateNode"]["error"] = e
+    if "ArgosTranslateNode" in nodes_list_dict:
+        nodes_list_dict["ArgosTranslateNode"]["error"] = e
 
 
 # DeepTranslatorNode
@@ -342,31 +321,8 @@ try:
     )
 
 except Exception as e:
-    nodes_list_dict["DeepTranslatorNode"]["error"] = e
-
-
-# DeepLXTranslateNode
-try:
-    from .DeepLXTranslateNode.deeplx_translate_node import (
-        DeepLXTranslateCLIPTextEncodeNode,
-        DeepLXTranslateTextNode,
-    )
-
-    NODE_CLASS_MAPPINGS.update(
-        {
-            "DeepLXTranslateCLIPTextEncodeNode": DeepLXTranslateCLIPTextEncodeNode,
-            "DeepLXTranslateTextNode": DeepLXTranslateTextNode,
-        }
-    )
-    NODE_DISPLAY_NAME_MAPPINGS.update(
-        {
-            "DeepLXTranslateCLIPTextEncodeNode": "DeepLX Translate CLIP Text Encode Node",
-            "DeepLXTranslateTextNode": "DeepLX Translate Text Node",
-        }
-    )
-
-except Exception as e:
-    nodes_list_dict["DeepLXTranslateNode"]["error"] = e
+    if "DeepTranslatorNode" in nodes_list_dict:
+        nodes_list_dict["DeepTranslatorNode"]["error"] = e
 
 
 # GoogleTranslateNode
@@ -390,83 +346,157 @@ try:
     )
 
 except Exception as e:
-    nodes_list_dict["GoogleTranslateNode"]["error"] = e
+    if "GoogleTranslateNode" in nodes_list_dict:
+        nodes_list_dict["GoogleTranslateNode"]["error"] = e
+
 
 # ChatGLMNode
-from .ChatGLMNode.chatglm_node import (
-    ChatGLM4TranslateCLIPTextEncodeNode,
-    ChatGLM4TranslateTextNode,
-    ChatGLM4InstructNode,
-    ChatGLM4InstructMediaNode,
-)
+try:
+    from .ChatGLMNode.chatglm_node import (
+        ChatGLM4TranslateCLIPTextEncodeNode,
+        ChatGLM4TranslateTextNode,
+        ChatGLM4InstructNode,
+        ChatGLM4InstructMediaNode,
+    )
+
+    NODE_CLASS_MAPPINGS.update(
+        {
+            "ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
+            "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
+            "ChatGLM4InstructNode": ChatGLM4InstructNode,
+            "ChatGLM4InstructMediaNode": ChatGLM4InstructMediaNode,
+        }
+    )
+
+    NODE_DISPLAY_NAME_MAPPINGS.update(
+        {
+            "ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
+            "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node",
+            "ChatGLM4InstructNode": "ChatGLM-4 Instruct Node",
+            "ChatGLM4InstructMediaNode": "ChatGLM-4 Instruct Media Node",
+        }
+    )
+
+except Exception as e:
+    if "ChatGLMNode" in nodes_list_dict:
+        nodes_list_dict["ChatGLMNode"]["error"] = e
+
 
 # ExtrasNode
-from .ExtrasNode.extras_node import PreviewTextNode, HexToHueNode, ColorsCorrectNode
+try:
+    from .ExtrasNode.extras_node import PreviewTextNode, HexToHueNode, ColorsCorrectNode
+
+    NODE_CLASS_MAPPINGS.update(
+        {
+            "PreviewTextNode": PreviewTextNode,
+            "HexToHueNode": HexToHueNode,
+            "ColorsCorrectNode": ColorsCorrectNode,
+        }
+    )
+    NODE_DISPLAY_NAME_MAPPINGS.update(
+        {
+            "PreviewTextNode": "Preview Text Node",
+            "HexToHueNode": "HEX to HUE Node",
+            "ColorsCorrectNode": "Colors Correct Node",
+        }
+    )
+except Exception as e:
+    if "ExtrasNode" in nodes_list_dict:
+        nodes_list_dict["ExtrasNode"]["error"] = e
+
 
 # PainterNode
-from .PainterNode.painter_node import PainterNode
+try:
+    from .PainterNode.painter_node import PainterNode
+
+    NODE_CLASS_MAPPINGS.update(
+        {
+            "PainterNode": PainterNode,
+        }
+    )
+    NODE_DISPLAY_NAME_MAPPINGS.update(
+        {
+            "PainterNode": "Painter Node",
+        }
+    )
+
+except Exception as e:
+    if "PainterNode" in nodes_list_dict:
+        nodes_list_dict["PainterNode"]["error"] = e
+
 
 # PoseNode
-from .PoseNode.pose_node import PoseNode
+try:
+    from .PoseNode.pose_node import PoseNode
+
+    NODE_CLASS_MAPPINGS.update(
+        {
+            "PoseNode": PoseNode,
+        }
+    )
+
+    NODE_DISPLAY_NAME_MAPPINGS.update(
+        {
+            "PoseNode": "Pose Node",
+        }
+    )
+
+except Exception as e:
+    if "PoseNode" in nodes_list_dict:
+        nodes_list_dict["PoseNode"]["error"] = e
+
 
 # IDENode
-from .IDENode.ide_node import IDENode
+try:
+    from .IDENode.ide_node import IDENode
 
+    NODE_CLASS_MAPPINGS.update(
+        {
+            "IDENode": IDENode,
+        }
+    )
 
-NODE_CLASS_MAPPINGS.update(
-    {
-        "ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
-        "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
-        "ChatGLM4InstructNode": ChatGLM4InstructNode,
-        "ChatGLM4InstructMediaNode": ChatGLM4InstructMediaNode,
-        "PreviewTextNode": PreviewTextNode,
-        "HexToHueNode": HexToHueNode,
-        "ColorsCorrectNode": ColorsCorrectNode,
-        "PainterNode": PainterNode,
-        "PoseNode": PoseNode,
-        "IDENode": IDENode,
-    }
-)
+    NODE_DISPLAY_NAME_MAPPINGS.update(
+        {
+            "IDENode": "IDE Node",
+        }
+    )
 
-
-NODE_DISPLAY_NAME_MAPPINGS.update(
-    {
-        "ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
-        "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node",
-        "ChatGLM4InstructNode": "ChatGLM-4 Instruct Node",
-        "ChatGLM4InstructMediaNode": "ChatGLM-4 Instruct Media Node",
-        "PreviewTextNode": "Preview Text Node",
-        "HexToHueNode": "HEX to HUE Node",
-        "ColorsCorrectNode": "Colors Correct Node",
-        "PainterNode": "Painter Node",
-        "PoseNode": "Pose Node",
-        "IDENode": "IDE Node",
-    }
-)
+except Exception as e:
+    if "IDENode" in nodes_list_dict:
+        nodes_list_dict["IDENode"]["error"] = e
 
 
 # Information
-printColorInfo(
-    f"\n### [START] ComfyUI AlekPet Nodes{get_version_extension()} ###", "\033[1;35m"
-)
+printColorInfo(f"\n### [START] ComfyUI AlekPet Nodes{get_version_extension()} ###", "\033[1;35m")
 
 failed_nodes_text = ""
 len_nodes = len(nodes_list_dict)
 for key, node in enumerate(nodes_list_dict):
     currentNode = nodes_list_dict[node]
-    if currentNode.get("error", None) is None:
+
+    currentNodeVals = currentNode.get("error")
+
+    if currentNodeVals is None:
         status = "\033[92m[Loading]"
     else:
-        status = "\033[1;31;40m[Failed]"
+        color_error = "\033[1;31;40m"
+        status = color_error + " [Failed]"
         error_message = currentNode.get("error", "Error")
-        failed_nodes_text += f"\033[93m{node} -> \033[1;31;40m{error_message}\033[0m\n"
+
+        if(len(currentNodeVals.args) == 2 and currentNodeVals.args[1] == "warning"):
+            color_error = "\033[33m"
+            status = color_error + "[Warning]"
+            error_message = currentNodeVals.args[0]
+
+        failed_nodes_text += f"\033[93m{node} -> {color_error}{error_message}\033[0m\n"
 
     message = currentNode.get("message", "No message available")
     printColorInfo(f"{message}{status}\033[0m")
 
     if key == len_nodes - 1 and failed_nodes_text:
         printColorInfo(
-            f"\n\033[1;31;40m* Nodes have been temporarily disabled due to the error *\033[0m\n{failed_nodes_text}"
+            f"\n\033[1;31;40m* Nodes have been temporarily disabled due to the error or specially *\033[0m\n{failed_nodes_text}"
         )
 
 printColorInfo(f"### [END] ComfyUI AlekPet Nodes ###", "\033[1;35m")
