@@ -372,7 +372,7 @@ class PainterNode(object):
     DESCRIPTION = "PainterNode allows you to draw in the node window, for later use in the ControlNet or in any other node."
     CATEGORY = "AlekPet Nodes/image"
 
-    def painter_execute(self, image, unique_id, update_node=True, images=None):
+    async def painter_execute(self, image, unique_id, update_node=True, images=None):
         # Piping image input
         if unique_id not in PAINTER_DICT:
             PAINTER_DICT[unique_id] = self
@@ -391,7 +391,7 @@ class PainterNode(object):
             PromptServer.instance.send_sync(
                 "alekpet_get_image", {"unique_id": unique_id, "images": input_images}
             )
-            if not asyncio.run(wait_canvas_change(unique_id)):
+            if await wait_canvas_change(unique_id):
                 print(f"Painter_{unique_id}: Failed to get image!")
             else:
                 print(f"Painter_{unique_id}: Image received, canvas changed!")
