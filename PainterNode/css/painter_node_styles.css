@@ -48,8 +48,12 @@
   min-height: 55px;
 }
 
-.property_brushesBox > button {
+.property_brushesBox > button,
+.property_cropBox > button {
   width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .painter_drawning_box_property select {
