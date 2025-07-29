@@ -1084,7 +1084,11 @@ class Painter {
       image.top = this.crop_object.top;
       image.selectable = true;
 
-      if (await comfyuiDesktopConfirm("Resize canvas to new size clip?")) {
+      if (
+        await comfyuiDesktopConfirm(
+          "Resize the canvas to fit the updated clip size?"
+        )
+      ) {
         image.left = 0;
         image.top = 0;
         this.setCanvasSize(this.crop_object.width, this.crop_object.height);
@@ -2803,7 +2807,13 @@ function PainterWidget(node, inputName, inputData, app) {
         ) {
           node.painter.setCanvasSize(w, h);
         } else {
-          node.title = `${node.type} - ${node.painter.storageCls.settings_painter_node.settings.currentCanvasSize.width}x${node.painter.storageCls.settings_painter_node.settings.currentCanvasSize.height}`;
+          node.title = `${node.type} - ${Math.floor(
+            node.painter.storageCls.settings_painter_node.settings
+              .currentCanvasSize.width
+          )}x${Math.floor(
+            node.painter.storageCls.settings_painter_node.settings
+              .currentCanvasSize.height
+          )}`;
         }
 
         const img_ = new fabric.Image(img, {
