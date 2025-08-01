@@ -643,12 +643,36 @@ class Painter {
     labelSaveImage.append(saveImageCheckbox);
     // end - Save image
 
+    // Hide Background in Output
+    const labelHideBackground = makeElement("label", {
+      textContent: "Hide Background in Output: ",
+      style: "font-size: 10px; display: block; text-align: right;",
+      title: "Hides the background layer in the final output image.",
+    });
+
+    const hideBackgroundCheckbox = makeElement("input", {
+      type: "checkbox",
+      class: ["hideBackground_checkbox"],
+      checked:
+        this.storageCls.settings_painter_node.settings?.hideBackground ?? false, // Default to false
+      onchange: (e) => {
+        const checked = !!e.target.checked;
+        this.storageCls.settings_painter_node.settings.hideBackground = checked;
+
+        this.saveSettingsPainterNode();
+      },
+    });
+
+    labelHideBackground.append(hideBackgroundCheckbox);
+    // end - Hide Background in Output
+
     settingsBox.append(
       makeElement("legend", {
         textContent: "Settings",
         style: "color: rgb(205, 202, 15);",
       }),
-      labelSaveImage
+      labelSaveImage,
+      labelHideBackground,
     );
 
     // end - Settings fieldset
@@ -2591,6 +2615,15 @@ class Painter {
       }
     }
 
+    if (this.storageCls.settings_painter_node.settings.hideBackground) {
+      if (this.canvas.backgroundImage) {
+        this.canvas.backgroundImage.set({
+          opacity: 0,
+        });
+        this.canvas.renderAll();
+      }
+    }
+
     this.canvasSaveSettingsPainter();
 
     await new Promise((res) => {
@@ -2633,6 +2666,13 @@ class Painter {
                 activeObj.visible = true;
                 activeObj.hasControls = true;
                 activeObj.hasBorders = false;
+              }
+            }
+            if (this.storageCls.settings_painter_node.settings.hideBackground) {
+              if (this.canvas.backgroundImage) {
+                this.canvas.backgroundImage.set({
+                  opacity: 1,
+                });
               }
             }
             this.canvas.renderAll();
