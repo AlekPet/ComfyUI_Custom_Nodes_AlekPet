@@ -88,7 +88,7 @@
 .painter_drawning_box input[type="color"] {
   width: 1.5rem;
   height: 1.5rem;
-  padding: 0;
+  padding: 2px;
   margin-bottom: 5px;
   color: var(--input-text);
   background-color: var(--comfy-input-bg);
@@ -105,10 +105,24 @@
   content: attr(data-label);
   position: absolute;
   color: var(--input-text);
-  left: 70%;
+  left: 5%;
   font-size: 0.5rem;
-  margin-top: -18%;
+  margin-top: -15%;
 }
+
+.painter_bg_setting_box {
+  display: flex;
+  gap: 5px;
+  align-items: flex-start;
+}
+
+.painter_bg_setting_box > button {
+  width: 25px;
+  height: 25px;
+  margin: 0;
+  padding: 4px;
+}
+
 .painter_colors_box input[type="color"]::-webkit-color-swatch-wrapper,
 .painter_bg_setting input[type="color"]::-webkit-color-swatch-wrapper {
   padding: 1px !important;

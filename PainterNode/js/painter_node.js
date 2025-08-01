@@ -316,7 +316,12 @@ class Painter {
                 <label for="eraseWidth"><span>Erase:</span><input id="eraseWidth" type="number" min="0" max="150" value="5" step="1" title="Erase width"></label>
             </div>
             <div class="painter_grid_style painter_bg_setting fieldset_box comfy-menu-btns" f_name="Background">
-                <input id="bgColor" type="color" value="#000000" data-label="BG" title="Background color">
+                <div class="painter_bg_setting_box">
+                  <input id="bgColor" type="color" value="#000000" data-label="BG" title="Background color">
+                  <button bgImage="img_transparent" title="Set background transparent color">
+                    <img bgImage="img_transparent" style="width: 100%;" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 128 128'%3E%3Cdefs%3E%3Cpattern id='checkerboard' x='0' y='0' width='32' height='32' patternUnits='userSpaceOnUse'%3E%3Crect x='0' y='0' width='16' height='16' fill='%23ccc'/%3E%3Crect x='16' y='16' width='16' height='16' fill='%23ccc'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='128' height='128' fill='url(%23checkerboard)'/%3E%3Cline x1='0' y1='0' x2='128' y2='128' stroke='red' stroke-width='12'/%3E%3C/svg%3E" alt="bg_image_trasnaprent"/>
+                  </button>
+                </div>
                 <button bgImage="img_load" title="Add background image">IMG</button>
                 <button bgImage="img_reset" title="Remove background image">IMG <span style="color: var(--error-text);">✖</span></button>
             </div>
@@ -672,7 +677,7 @@ class Painter {
         style: "color: rgb(205, 202, 15);",
       }),
       labelSaveImage,
-      labelHideBackground,
+      labelHideBackground
     );
 
     // end - Settings fieldset
@@ -693,6 +698,8 @@ class Painter {
   }
 
   async clearCanvas() {
+    let isBgTransparent = this.canvas.backgroundColor === "transparent";
+
     if (await comfyuiDesktopConfirm("Reset canvas size by default 512x512?")) {
       this.setCanvasSize(512, 512);
     }
@@ -706,7 +713,9 @@ class Painter {
       this.canvas.renderAll.bind(this.canvas)
     );
 
-    this.canvas.backgroundColor = this.bgColor.value || "#000000";
+    this.canvas.backgroundColor = isBgTransparent
+      ? "transparent"
+      : this.bgColor.value || "#000000";
     this.canvas.requestRenderAll();
 
     this.addToHistory();
@@ -1767,6 +1776,12 @@ class Painter {
       }
     };
 
+    this.set_transparent_bg = () => {
+      this.canvas.backgroundColor = "transparent";
+      this.canvas.renderAll();
+      this.uploadPaintFile(this.node.name);
+    };
+
     // Event input bgcolor
     this.reset_set_bg = () => {
       const image = new fabric.Image("");
@@ -1827,6 +1842,9 @@ class Painter {
               );
             };
             this.bgImageFile.click();
+            break;
+          case "img_transparent":
+            this.set_transparent_bg();
             break;
           case "img_reset":
             this.reset_set_bg();
