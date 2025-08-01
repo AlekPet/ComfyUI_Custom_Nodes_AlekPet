@@ -383,7 +383,7 @@ class PainterNode(object):
 
             for imgs in images:
                 i = 255.0 * imgs.cpu().numpy()
-                i = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+                i = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8), mode="RGBA")
                 input_images.append(toBase64ImgUrl(i))
 
             PAINTER_DICT[unique_id].canvas_set = False
@@ -401,7 +401,7 @@ class PainterNode(object):
 
         i = Image.open(image_path)
         i = ImageOps.exif_transpose(i)
-        image = i.convert("RGB")
+        image = i.convert("RGBA")
         image = np.array(image).astype(np.float32) / 255.0
         image = torch.from_numpy(image)[None,]
         if "A" in i.getbands():
