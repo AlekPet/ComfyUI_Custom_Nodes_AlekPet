@@ -115,6 +115,7 @@ class OpenPose {
       redo_history: [],
       currentCanvasSize: { width: 512, height: 512 },
       background: null,
+      backgroundColor: null,
     };
 
     this.canvas = this.initCanvas(canvasElement);
@@ -157,7 +158,7 @@ class OpenPose {
 
     if (tmpImage) this.setBackground(tmpImage);
 
-    this.canvas.backgroundColor = "#000";
+    this.canvas.backgroundColor = "#000000";
     this.canvas.renderAll();
 
     const res = [];
@@ -261,7 +262,7 @@ class OpenPose {
 
   initCanvas() {
     this.canvas = new fabric.Canvas(this.canvas, {
-      backgroundColor: "#000",
+      backgroundColor: "#000000",
       preserveObjectStacking: true,
       containerClass: "canvas_container_openpose",
       width: this.settings.currentCanvasSize.width,
@@ -377,7 +378,7 @@ class OpenPose {
         return;
       }
 
-      this.settings.redo_history.length = 0;
+      this.updateHistoryUndoRedo();
       this.uploadPoseFile(this.node.name);
     });
 
@@ -388,30 +389,41 @@ class OpenPose {
     return this.canvas;
   }
 
-  undo() {
-    if (this.settings.undo_history.length > 0) {
-      if (this.settings.undo_history.length > 1)
-        this.settings.redo_history.push(this.settings.undo_history.pop());
+  updateHistoryUndoRedo() {
+    this.settings.undo_history.push(this.getJSON());
+    this.settings.redo_history = [];
+  }
 
-      const content =
+  undo() {
+    console.log("UNDO");
+    if (this.settings.undo_history.length > 1) {
+      const last = this.settings.undo_history.pop();
+      this.settings.redo_history.push(last);
+
+      const previous =
         this.settings.undo_history[this.settings.undo_history.length - 1];
+      this.loadPreset(previous);
+      this.canvas.renderAll();
+      this.uploadPoseFile(this.node.name);
+    }
+  }
+
+  redo() {
+    console.log("RENDO");
+    if (this.settings.redo_history.length > 0) {
+      const content = this.settings.redo_history.pop();
+      this.settings.undo_history.push(content);
+
       this.loadPreset(content);
+
       this.canvas.renderAll();
 
       this.uploadPoseFile(this.node.name);
     }
   }
 
-  redo() {
-    if (this.settings.redo_history.length > 0) {
-      const content = this.settings.redo_history.pop();
-      this.settings.undo_history.push(content);
-      this.loadPreset(content);
-
-      this.canvas.renderAll();
-
-      this.uploadPoseFile(this.node.name);
-    }
+  saveData() {
+    app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
   }
 
   async resetCanvas(reset_size = false) {
@@ -426,7 +438,7 @@ class OpenPose {
 
         const backgroundImg = this.canvas.backgroundImage;
         this.canvas.clear();
-        this.canvas.backgroundColor = "#000";
+        this.canvas.backgroundColor = "#000000";
         this.addPose();
 
         this.setBackground(backgroundImg);
@@ -487,8 +499,6 @@ class OpenPose {
     let tmp_BackgroundImg = this.canvas.backgroundImage;
     this.canvas.backgroundImage = null;
     this.canvas.renderAll();
-
-    this.settings.undo_history.push(this.getJSON());
 
     this.canvas.lowerCanvasEl.toBlob((blob) => {
       const formData = new FormData();
@@ -646,7 +656,8 @@ function createOpenPose(node, inputName, inputData, app) {
   let panelButtons = $el("div.pose_panelButtons.comfy-menu-btns", [
     $el("button", {
       textContent: "Ref",
-      title: "Reference Image (Right click remove)",
+      title:
+        "Reference Image (Right click remove and set transparent background)",
       onclick: () => {
         node.openPose.backgroundInput.value = "";
         node.openPose.backgroundInput.click();
@@ -671,12 +682,24 @@ function createOpenPose(node, inputName, inputData, app) {
                 node.openPose.canvas.backgroundImage = null;
                 node.openPose.canvas.renderAll();
               }
+
+              if (target.classList.contains("transparentBG")) {
+                node.openPose.canvas.backgroundColor = "transparent";
+                node.openPose.settings.backgroundColor = "transparent";
+                node.openPose.canvas.renderAll();
+              }
+
+              node.openPose.saveData();
+              node.openPose.uploadPoseFile(node.name);
             },
             onmouseleave: () => menu && menu.remove(),
           },
           [
             $el("div.pose_btn_context.remBG", {
               textContent: "Remove background",
+            }),
+            $el("div.pose_btn_context.transparentBG", {
+              textContent: "Set transparent background",
             }),
           ]
         );
@@ -685,15 +708,31 @@ function createOpenPose(node, inputName, inputData, app) {
         app.graph.setDirtyCanvas(true, false);
       },
     }),
+    $el("input.pose_SetBackgroundBg", {
+      type: "color",
+      title: "Set background color",
+      value: this.settings?.backgroundColor ?? "#000000",
+      oninput: (e) => {
+        node.openPose.canvas.backgroundColor = e.target.value;
+        node.openPose.settings.backgroundColor = e.target.value;
+        e.target.classList.toggle("lightColor", e.target.value === "#ffffff");
+        node.openPose.canvas.renderAll();
+        node.openPose.saveData();
+      },
+    }),
     $el("button", {
       textContent: "⟲",
       title: "Undo",
-      onclick: () => node.openPose.undo(),
+      onclick: () => {
+        node.openPose.undo();
+      },
     }),
     $el("button", {
       textContent: "⟳",
       title: "Redo",
-      onclick: () => node.openPose.redo(),
+      onclick: () => {
+        node.openPose.redo();
+      },
     }),
     $el("button.clear_history", {
       textContent: "✖",
@@ -709,7 +748,6 @@ function createOpenPose(node, inputName, inputData, app) {
           node.openPose.setPose(default_keypoints);
           node.openPose.undo_history.push(node.openPose.getJSON());
           node.openPose.history_change = true;
-          node.openPose.updateHistoryData();
         }
       },
     }),
@@ -876,6 +914,7 @@ app.registerExtension({
             const {
               currentCanvasSize,
               background,
+              backgroundColor,
               undo_history,
               redo_history,
             } = data;
@@ -889,6 +928,13 @@ app.registerExtension({
                 ? undo_history[undo_history.length - 1]
                 : { keypoints: default_keypoints }
             );
+
+            if (backgroundColor) {
+              this.openPose.canvas.backgroundColor = backgroundColor;
+              this.openPoseWrapper.querySelector(
+                ".pose_SetBackgroundBg"
+              ).value = backgroundColor;
+            }
 
             if (background) {
               fabric.Image.fromURL(background, (img) => {
