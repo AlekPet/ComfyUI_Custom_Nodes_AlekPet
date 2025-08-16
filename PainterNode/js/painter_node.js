@@ -3060,8 +3060,11 @@ app.registerExtension({
 
         const widget = PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
 
-        //this.painter.uploadPaintFile(nodeNamePNG);
         this.title = `${this.type} - ${this.painter.storageCls.settings_painter_node.settings.currentCanvasSize.width}x${this.painter.storageCls.settings_painter_node.settings.currentCanvasSize.height}`;
+
+        if (!painters_settings_json && !this?.widgets_values) {
+          this.painter.uploadPaintFile(nodeNamePNG);
+        }
 
         // Resize window
         window.addEventListener("resize", (e) => resizeCanvas(this), false);
