@@ -382,6 +382,9 @@ class PainterNode(object):
             input_images = []
 
             for imgs in images:
+                # Add alpha channel if not present
+                if imgs.shape[2] == 3:
+                    imgs = torch.cat([imgs, torch.ones((*imgs.shape[:2], 1))], dim=2)
                 i = 255.0 * imgs.cpu().numpy()
                 i = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8), mode="RGBA")
                 input_images.append(toBase64ImgUrl(i))
