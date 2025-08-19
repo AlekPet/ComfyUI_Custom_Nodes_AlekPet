@@ -5,7 +5,7 @@ from server import PromptServer
 from aiohttp import web
 import base64
 from io import BytesIO
-import asyncio
+import time
 from PIL import Image, ImageOps
 import torch
 import numpy as np
@@ -331,7 +331,7 @@ async def check_canvas_changed(request):
     return web.json_response({"status": "Error"}, status=200)
 
 
-async def wait_canvas_change(unique_id, time_out=40):
+def wait_canvas_change(unique_id, time_out=40):
     for _ in range(time_out):
         if (
             hasattr(PAINTER_DICT[unique_id], "canvas_set")
@@ -340,7 +340,7 @@ async def wait_canvas_change(unique_id, time_out=40):
             PAINTER_DICT[unique_id].canvas_set = False
             return True
 
-        await asyncio.sleep(0.1)
+        time.sleep(0.1)
 
     return False
 
@@ -372,7 +372,7 @@ class PainterNode(object):
     DESCRIPTION = "PainterNode allows you to draw in the node window, for later use in the ControlNet or in any other node."
     CATEGORY = "AlekPet Nodes/image"
 
-    async def painter_execute(self, image, unique_id, update_node=True, images=None):
+    def painter_execute(self, image, unique_id, update_node=True, images=None):
         # Piping image input
         if unique_id not in PAINTER_DICT:
             PAINTER_DICT[unique_id] = self
@@ -394,7 +394,8 @@ class PainterNode(object):
             PromptServer.instance.send_sync(
                 "alekpet_get_image", {"unique_id": unique_id, "images": input_images}
             )
-            if await wait_canvas_change(unique_id):
+            
+            if not wait_canvas_change(unique_id):
                 print(f"Painter_{unique_id}: Failed to get image!")
             else:
                 print(f"Painter_{unique_id}: Image received, canvas changed!")
