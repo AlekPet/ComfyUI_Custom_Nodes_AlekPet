@@ -58,7 +58,7 @@ function manual_translate_prompt() {
 }
 
 app.registerExtension({
-  name: "Comfy.GoogleTranslateNode",
+  name: "alekpet.GoogleTranslateNode",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     // --- GoogleTranslateNode
     if (

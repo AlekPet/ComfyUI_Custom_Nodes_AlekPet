@@ -145,16 +145,18 @@ Translation is carried out with the help of artificial intelligence using GLM mo
 
 1. Install my custom nodes in ComfyUI, used [HERE](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet#installing)
 2. To use ChatGMLNode, you need to register on the site [bigmodel.cn](https://bigmodel.cn/) and get an API key. Free model is the `'glm-4-flash'`!
-3. Inside folder **ChatGMLNode** find file `config.json.example` rename to config.json and add API key geting in point 2 in propertu `"ZHIPUAI_API_KEY": "your_api_key"` on your API Key.
+3. Inside folder **ChatGMLNode** find file `config.json.example` rename to config.json and add API key geting in point 2 in property `"ZHIPUAI_API_KEY": "your_api_key"` on your API Key.
 4. Run comfyui and add node `ChatGLM4TranslateCLIPTextEncodeNode` or `ChatGLM4TranslateTextNode`.
 
-Optional: You can also set initial language values ​​when creating nodes in the file `config.json`.
+Optional: You can also set initial language values ​​when creating nodes in the file `config.json` and default models.
 
 ```json
 {
   "__comment": "Register on the site https://bigmodel.cn and get a key and add it to the field ZHIPUAI_API_KEY. Change default translate languages ​​'from' and 'to' you use",
   "from_translate": "ru",
   "to_translate": "en",
+  "default_language_model": "glm-4.5-flash",
+  "default_multimodal_model": "glm-4v-flash",
   "ZHIPUAI_API_KEY": "your_api_key"
 }
 ```

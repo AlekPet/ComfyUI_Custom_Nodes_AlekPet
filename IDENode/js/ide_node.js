@@ -186,7 +186,7 @@ function saveValue() {
 
 // Register extensions
 app.registerExtension({
-  name: "Comfy.ExperimentalNodesAlekPet",
+  name: "alekpet.IDENode",
   getCustomWidgets(app) {
     return {
       PYCODE: (node, inputName, inputData, app) => {

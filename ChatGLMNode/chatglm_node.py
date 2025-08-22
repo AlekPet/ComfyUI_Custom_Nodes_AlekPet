@@ -13,6 +13,40 @@ ALL_CODES_LANGS = ['af', 'sq', 'am', 'ar', 'hy', 'as', 'ay', 'az', 'bm', 'eu', '
 
 ENDPOINT_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 
+# Language models: https://docs.bigmodel.cn/api-reference/%E6%A8%A1%E5%9E%8B-api/%E5%AF%B9%E8%AF%9D%E8%A1%A5%E5%85%A8#%E6%96%87%E6%9C%AC%E6%A8%A1%E5%9E%8B
+LIST_LANGUAGE_MODELS = [
+    # GLM-4
+    "glm-4-plus",
+    "glm-4-air-250414",
+    "glm-4-airx",
+    "glm-4-flashx",
+    "glm-4-flashx-250414",
+    # GLM-4.5
+    "glm-4.5",
+    "glm-4.5-air",
+    "glm-4.5-x",
+    "glm-4.5-airx",
+    "glm-4.5-flash",
+    # GLM-Z1
+    "glm-z1-air",
+    "glm-z1-airx",
+    "glm-z1-flash",
+    "glm-z1-flashx",
+]
+
+# Multimodal models: https://docs.bigmodel.cn/api-reference/%E6%A8%A1%E5%9E%8B-api/%E5%AF%B9%E8%AF%9D%E8%A1%A5%E5%85%A8#%E8%A7%86%E8%A7%89%E6%A8%A1%E5%9E%8B
+LIST_MULTIMODAL_MODELS = [
+    # --- GLM-4v
+    "glm-4v-flash",
+    "glm-4v",
+    "glm-4v-plus-0111",
+    # --- GLM-4.1v
+    "glm-4.1v-thinking-flashx",
+    "glm-4.1v-thinking-flash",
+    # --- GLM-4.5v
+    "glm-4.5v",
+]
+
 def getConfigData():
     # Directory node and config file
     dir_node = os.path.dirname(__file__)
@@ -21,6 +55,8 @@ def getConfigData():
                 "__comment": "Register on the site https://bigmodel.cn and get a key and add it to the field ZHIPUAI_API_KEY. Change default translate languages ​​'from' and 'to' you use",
                 "from_translate": "ru",
                 "to_translate": "en",
+                "default_language_model": "glm-4.5-flash",
+                "default_multimodal_model": "glm-4v-flash",
                 "ZHIPUAI_API_KEY": "your_api_key"
             }
 
@@ -94,7 +130,7 @@ def translate(prompt, srcTrans, toTrans, model, max_tokens, temperature, top_p):
         "messages": [
             {
                 "role": "user",
-                "content": f"Translate from {srcTrans} to {toTrans}: {prompt}",
+                "content": f"Translate from {srcTrans} to {toTrans} and return only the translated text: {prompt}",
             },
         ],
         "max_tokens": round(max_tokens, 2),
@@ -123,18 +159,10 @@ class ChatGLM4TranslateCLIPTextEncodeNode:
                     {"default": to_lng, "tooltip": "Translation to"},
                 ),
                 "model": (
-                    [
-                        "glm-4-plus",
-                        "glm-4-0520",
-                        "glm-4",
-                        "glm-4-air",
-                        "glm-4-airx",
-                        "glm-4-long",
-                        "glm-4-flash",
-                    ],
+                    LIST_LANGUAGE_MODELS,
                     {
-                        "default": "glm-4-flash",
-                        "tooltip": "The model code to be called. Model 'glm-4-flash' is free!",
+                        "default": CONFIG.get("default_language_model", "glm-4.5-flash"),
+                        "tooltip": "The model code to be called. Models with text 'flash' should be free!",
                     },
                 ),
                 "max_tokens": (
@@ -230,18 +258,10 @@ class ChatGLM4InstructNode:
         return {
             "required": {
                 "model": (
-                    [
-                        "glm-4-plus",
-                        "glm-4-0520",
-                        "glm-4",
-                        "glm-4-air",
-                        "glm-4-airx",
-                        "glm-4-long",
-                        "glm-4-flash",
-                    ],
+                    LIST_LANGUAGE_MODELS,
                     {
-                        "default": "glm-4-flash",
-                        "tooltip": "The model code to be called. Model 'glm-4-flash' is free!",
+                        "default": CONFIG.get("default_language_model", "glm-4.5-flash"),
+                        "tooltip": "The model code to be called. Models with text 'flash' should be free!",
                     },
                 ),
                 "max_tokens": (
@@ -344,14 +364,10 @@ class ChatGLM4InstructMediaNode:
             },
             "required": {
                 "model": (
-                    [
-                        "glm-4v-flash",
-                        "glm-4v",
-                        "glm-4v-plus",
-                    ],
+                    LIST_MULTIMODAL_MODELS,
                     {
-                        "default": "glm-4v-flash",
-                        "tooltip": "The model code to be called. Model 'glm-4v-flash' is free!",
+                        "default": CONFIG.get("default_multimodal_model","glm-4v-flash"),
+                        "tooltip": "The model code to be called. Models with text 'flash' should be free!",
                     },
                 ),
                 "max_tokens": (
