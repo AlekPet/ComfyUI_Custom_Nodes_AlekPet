@@ -62,7 +62,7 @@ function get_support_langs() {
 }
 
 app.registerExtension({
-  name: "Comfy.ArgosTranslateNode",
+  name: "alekpet.ArgosTranslateNode",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     // --- Argos Translate Node
     if (

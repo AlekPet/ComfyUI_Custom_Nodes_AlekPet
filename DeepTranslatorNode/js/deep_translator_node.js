@@ -208,7 +208,7 @@ function get_support_langs() {
 }
 
 app.registerExtension({
-  name: "Comfy.TranslateNode",
+  name: "alekpet.TranslateNode",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     // --- DeepTranslatorTextNode and DeepTranslatorCLIPTextEncodeNode
     if (
