@@ -435,15 +435,18 @@ class OpenPose {
 
       if (await comfyuiDesktopConfirm("Reset canvas size?")) {
         this.setCanvasSize(512, 512);
-
-        const backgroundImg = this.canvas.backgroundImage;
-        this.canvas.clear();
-        this.canvas.backgroundColor = "#000000";
-        this.addPose();
-
-        this.setBackground(backgroundImg);
-        this.uploadPoseFile(this.node.name);
       }
+
+      const backgroundImg = this.canvas.backgroundImage;
+      this.canvas.clear();
+      this.canvas.backgroundColor = "#000000";
+
+      if (await comfyuiDesktopConfirm("Add default pose?")) {
+        this.addPose();
+      }
+
+      this.setBackground(backgroundImg);
+      this.uploadPoseFile(this.node.name);
     }
   }
 

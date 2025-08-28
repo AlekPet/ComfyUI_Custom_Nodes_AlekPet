@@ -113,13 +113,13 @@ result = runCode()"""
 
 
         outputs = {}
-
-        for node in extra_pnginfo['workflow']['nodes']:
-            if node['id'] == int(unique_id):
-                outputs_valid = [ouput for ouput in node.get('outputs', []) if ouput.get('name','') != '' and ouput.get('type','') != '']
-                outputs = {ouput['name']: None for ouput in outputs_valid}
-                self.RETURN_TYPES = ByPassTypeTuple(out["type"] for out in outputs_valid)
-                self.RETURN_NAMES = tuple(name for name in outputs.keys())
+        if extra_pnginfo and 'workflow' in extra_pnginfo and extra_pnginfo['workflow']:
+            for node in extra_pnginfo['workflow']['nodes']:
+                if node['id'] == int(unique_id):
+                    outputs_valid = [ouput for ouput in node.get('outputs', []) if ouput.get('name','') != '' and ouput.get('type','') != '']
+                    outputs = {ouput['name']: None for ouput in outputs_valid}
+                    self.RETURN_TYPES = ByPassTypeTuple(out["type"] for out in outputs_valid)
+                    self.RETURN_NAMES = tuple(name for name in outputs.keys())
 
         my_namespace = types.SimpleNamespace()
         my_namespace.__dict__.update(outputs)            
