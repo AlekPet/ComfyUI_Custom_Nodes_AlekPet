@@ -24,9 +24,10 @@ const SpeechAndRecognationSpeechLS = localStorage.getItem(
 );
 
 // Settings set values from LS or default for Speech & Recognition widget settings
+// Default Off: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/166#issuecomment-3107129457
 let SpeechAndRecognationSpeech = SpeechAndRecognationSpeechLS
     ? JSON.parse(SpeechAndRecognationSpeechLS)
-    : true,
+    : false,
   SpeechAndRecognationSpeechSaveAs = JSON.parse(
     localStorage.getItem(`${idExt}.SpeechAndRecognationSpeechSaveAs`),
     false
@@ -46,7 +47,7 @@ app.registerExtension({
     app.ui.settings.addSetting({
       id: `${idExt}.SpeechAndRecognationSpeech`,
       name: "🔸 Speak text & Recognition speech",
-      defaultValue: true,
+      defaultValue: false,
       type: (name, sett, val) => {
         const newUI = document.querySelector(".p-dialog-header");
         return $el("tr", [
@@ -61,6 +62,13 @@ app.registerExtension({
               ])
             : "",
           $el("td", [
+            $el("a", {
+              href: "https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/166#issuecomment-3107129457",
+              title: "Causes a bug with multiline fields",
+              target: "_blank",
+              textContent: "Bug with multiline fields 🐞",
+              style: { textDecoration: "none" },
+            }),
             $el(
               "label",
               {
