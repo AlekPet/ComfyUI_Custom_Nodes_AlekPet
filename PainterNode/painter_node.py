@@ -405,7 +405,7 @@ class PainterNode(object):
 
         i = Image.open(image_path)
         i = ImageOps.exif_transpose(i)
-        image = i.convert("RGBA")
+        image = i.convert("RGB")
         image = np.array(image).astype(np.float32) / 255.0
         image = torch.from_numpy(image)[None,]
         if "A" in i.getbands():
