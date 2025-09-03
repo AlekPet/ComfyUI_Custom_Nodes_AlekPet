@@ -236,7 +236,7 @@ class Painter {
     });
 
     this.painter_history_panel = makeElement("div", {
-      class: ["painter_history_panel", "comfy-menu-btns"],
+      class: ["alekpet_painter_history_panel", "comfy-menu-btns"],
       children: [this.undo_button, this.redo_button],
     });
 
@@ -250,7 +250,7 @@ class Painter {
     wrapperPainter.append(this.panelPaintBoxLeft, this.panelPaintBoxRight);
 
     this.manipulation_box = makeElement("div", {
-      class: ["painter_manipulation_box"],
+      class: ["alekpet_painter_manipulation_box"],
       f_name: "Locks",
       style: { display: "none" },
       innerHTML: `<div class="comfy-menu-btns">
@@ -272,23 +272,23 @@ class Painter {
     });
 
     this.painter_drawning_box_property = makeElement("div", {
-      class: ["painter_drawning_box_property"],
+      class: ["alekpet_painter_drawning_box_property"],
       style: { display: "flex" },
     });
 
     this.painter_drawning_box = makeElement("div", {
-      class: ["painter_drawning_box"],
-      innerHTML: `<div class="painter_mode_box fieldset_box comfy-menu-btns" f_name="Mode">
+      class: ["alekpet_painter_drawning_box"],
+      innerHTML: `<div class="alekpet_painter_mode_box fieldset_box comfy-menu-btns" f_name="Mode">
             <button class="painter_change_mode" title="Enable selection mode">Selection</button>
-            <div class="list_objects_panel" style="display:none;">
-                <div class="list_objects_align">
-                    <div class="list_objects_panel__items"></div>
-                    <div class="painter_shapes_box_modify"></div>
+            <div class="alekpet_list_objects_panel" style="display:none;">
+                <div class="alekpet_list_objects_align">
+                    <div class="alekpet_list_objects_panel__items"></div>
+                    <div class="alekpet_painter_shapes_box_modify"></div>
                 </div>
             </div>
         </div>
         <div class="painter_drawning_elements" style="display:block;">
-            <div class="painter_grid_style painter_shapes_box fieldset_box comfy-menu-btns" f_name="Shapes">
+            <div class="alekpet_painter_grid_style alekpet_painter_shapes_box fieldset_box comfy-menu-btns" f_name="Shapes">
                 <button class="active" data-shape='Brush' title="Brush">B</button>
                 <button data-shape='Erase' title="Erase">E</button>
                 <button data-shape='Circle' title="Draw circle">◯</button>
@@ -299,24 +299,24 @@ class Painter {
                 <button data-shape='Textbox' title="Add text">T</button>
                 <button data-shape='Crop' title="Crop">✂</button>
             </div>
-            <div class="painter_colors_box fieldset_box" f_name="Colors">
-                <div class="painter_grid_style painter_colors_alpha">
+            <div class="alekpet_painter_colors_box fieldset_box" f_name="Colors">
+                <div class="alekpet_painter_grid_style painter_colors_alpha">
                     <span>Fill</span><span>Alpha</span>
                     <input id="fillColor" type="color" value="#FF00FF" title="Fill color">
                     <input id="fillColorTransparent" type="number" max="1.0" min="0" step="0.05" value="0.0" title="Alpha fill value">
                 </div>
-                <div class="painter_grid_style painter_colors_alpha">
+                <div class="alekpet_painter_grid_style painter_colors_alpha">
                     <span>Stroke</span><span>Alpha</span>
                     <input id="strokeColor" type="color" value="#FFFFFF" title="Stroke color">    
                     <input id="strokeColorTransparent" type="number" max="1.0" min="0" step="0.05" value="1.0" title="Stroke alpha value">
                 </div>
             </div>
-            <div class="painter_stroke_box fieldset_box" f_name="Brush/Erase width">
+            <div class="alekpet_painter_stroke_box fieldset_box" f_name="Brush/Erase width">
                 <label for="strokeWidth"><span>Brush:</span><input id="strokeWidth" type="number" min="0" max="150" value="5" step="1" title="Brush width"></label>
                 <label for="eraseWidth"><span>Erase:</span><input id="eraseWidth" type="number" min="0" max="150" value="5" step="1" title="Erase width"></label>
             </div>
-            <div class="painter_grid_style painter_bg_setting fieldset_box comfy-menu-btns" f_name="Background">
-                <div class="painter_bg_setting_box">
+            <div class="alekpet_painter_grid_style alekpet_painter_bg_setting fieldset_box comfy-menu-btns" f_name="Background">
+                <div class="alekpet_painter_bg_setting_box">
                   <input id="bgColor" type="color" value="#000000" data-label="BG" title="Background color">
                   <button bgImage="img_transparent" title="Set background transparent color">
                     <img bgImage="img_transparent" style="width: 100%;" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 128 128'%3E%3Cdefs%3E%3Cpattern id='checkerboard' x='0' y='0' width='32' height='32' patternUnits='userSpaceOnUse'%3E%3Crect x='0' y='0' width='16' height='16' fill='%23ccc'/%3E%3Crect x='16' y='16' width='16' height='16' fill='%23ccc'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='128' height='128' fill='url(%23checkerboard)'/%3E%3Cline x1='0' y1='0' x2='128' y2='128' stroke='red' stroke-width='12'/%3E%3C/svg%3E" alt="bg_image_trasnaprent"/>
@@ -325,7 +325,7 @@ class Painter {
                 <button bgImage="img_load" title="Add background image">IMG</button>
                 <button bgImage="img_reset" title="Remove background image">IMG <span style="color: var(--error-text);">✖</span></button>
             </div>
-            <div class="painter_settings_box fieldset_box comfy-menu-btns" f_name="Settimgs">    
+            <div class="alekpet_painter_settings_box fieldset_box comfy-menu-btns" f_name="Settimgs">    
               <button id="painter_canvas_size" title="Set canvas size">Canvas size</button>
             </div>
         </div>`,
@@ -344,7 +344,7 @@ class Painter {
 
     // Modify in change mode
     this.painter_shapes_box_modify = this.painter_drawning_box.querySelector(
-      ".painter_shapes_box_modify"
+      ".alekpet_painter_shapes_box_modify"
     );
     this.painter_drawning_elements = this.painter_drawning_box.querySelector(
       ".painter_drawning_elements"
@@ -374,7 +374,7 @@ class Painter {
       ".painter_change_mode"
     );
     this.painter_shapes_box = this.painter_drawning_box.querySelector(
-      ".painter_shapes_box"
+      ".alekpet_painter_shapes_box"
     );
     this.strokeWidth = this.painter_drawning_box.querySelector("#strokeWidth");
     this.eraseWidth = this.painter_drawning_box.querySelector("#eraseWidth");
@@ -382,7 +382,7 @@ class Painter {
     this.fillColor = this.painter_drawning_box.querySelector("#fillColor");
 
     this.list_objects_panel__items = this.painter_drawning_box.querySelector(
-      ".list_objects_panel__items"
+      ".alekpet_list_objects_panel__items"
     );
 
     this.strokeColorTransparent = this.painter_drawning_box.querySelector(
@@ -399,7 +399,7 @@ class Painter {
     this.bgColor = this.painter_drawning_box.querySelector("#bgColor");
 
     this.painter_bg_setting = this.painter_drawning_box.querySelector(
-      ".painter_bg_setting"
+      ".alekpet_painter_bg_setting"
     );
 
     this.bgImageFile = document.createElement("input");
@@ -730,7 +730,7 @@ class Painter {
 
     this.canvas.getObjects().forEach((o) => {
       const type = o.type,
-        boxOb = makeElement("div", { class: ["viewlist__itembox"] }),
+        boxOb = makeElement("div", { class: ["alekpet_viewlist__itembox"] }),
         itemRemove = makeElement("img", {
           src: removeIcon,
           title: "Remove object",
@@ -1185,7 +1185,7 @@ class Painter {
   // Toolbars
   createFontToolbar() {
     const property_textbox = makeElement("div", {
-      class: ["property_textBox", "comfy-menu-btns"],
+      class: ["alekpet_property_textBox", "comfy-menu-btns"],
     });
     const buttonItalic = makeElement("button", {
       dataset: { prop: "prop_fontStyle" },
@@ -1205,7 +1205,9 @@ class Painter {
       style: "text-decoration: underline;",
       textContent: "U",
     });
-    const separator = makeElement("div", { class: ["separator"] });
+    const separator = makeElement("div", {
+      class: ["alekpet_painter_separator"],
+    });
     const selectFontFamily = makeElement("select", {
       dataset: { prop: "prop_fontFamily" },
       class: ["font_family_select"],
@@ -1295,7 +1297,9 @@ class Painter {
       textContent: "S",
     });
 
-    const separator = makeElement("div", { class: ["separator"] });
+    const separator = makeElement("div", {
+      class: ["alekpet_painter_separator"],
+    });
 
     // Second panel setting brushes
     this.property_brushesSecondBox = makeElement("div", {
