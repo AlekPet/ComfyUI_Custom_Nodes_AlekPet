@@ -5,6 +5,7 @@ function makeModal({
   type = "info",
   parent = null,
   stylePos = "fixed",
+  classes = [],
 } = {}) {
   const overlay = document.createElement("div");
   Object.assign(overlay.style, {
@@ -38,6 +39,7 @@ function makeModal({
   });
 
   boxModal.className = "alekpet_modal_window";
+  boxModal.classList.add(...classes);
 
   const boxModalBody = document.createElement("div");
   Object.assign(boxModalBody.style, {

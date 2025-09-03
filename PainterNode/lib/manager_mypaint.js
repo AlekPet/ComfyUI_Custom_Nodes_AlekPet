@@ -180,7 +180,7 @@ class MenuBrushes {
         kistey__img.append(imageBrush);
 
         if (brush === this.managerMyPaint.brushName) {
-          imageBrush.classList.add("selected");
+          imageBrush.classList.add("kistey__selected");
           this.prevSelected = imageBrush;
         }
 
@@ -297,8 +297,8 @@ class MenuBrushes {
 
             if (this.prevSelected !== target.children[0].children[0]) {
               if (this.prevSelected)
-                this.prevSelected.classList.remove("selected");
-              target.children[0].children[0].classList.add("selected");
+                this.prevSelected.classList.remove("kistey__selected");
+              target.children[0].children[0].classList.add("kistey__selected");
               this.prevSelected = target.children[0].children[0];
             }
           }
@@ -326,6 +326,15 @@ class MenuBrushes {
           }
 
           if (target.classList.contains("kistey__brushes__info")) {
+            const info_modal =
+              this.managerMyPaint.painterNode.canvas.wrapperEl.querySelector(
+                ".kistey__modalinfo"
+              );
+            if (info_modal) {
+              info_modal.querySelector(".alekpet_modal_close").click();
+              return;
+            }
+
             makeModal({
               title: "Information",
               text: `
@@ -336,6 +345,9 @@ class MenuBrushes {
               .alekpet_modal_body a {
                 color: limegreen;
             }
+              .alekpet_modal_window.kistey__modalinfo{
+                transform: translate(-50%, -35%) !important;
+              }
             </style>
             <div style="text-align: left;">
               <h5 style="margin: 2px;">
@@ -366,6 +378,7 @@ class MenuBrushes {
             </div>`,
               parent: this.managerMyPaint.painterNode.canvas.wrapperEl,
               stylePos: "absolute",
+              classes: ["kistey__modalinfo"],
             });
           }
 
@@ -672,7 +685,9 @@ class MyPaintManager {
   }
 
   appendElements(parent) {
-    const separator = makeElement("div", { class: ["separator"] });
+    const separator = makeElement("div", {
+      class: ["alekpet_painter_separator"],
+    });
 
     parent.append(separator, this.boxButtonsBrushes);
 
@@ -777,7 +792,7 @@ class MyPaintManager {
   async setBrush(data) {
     const { filename: brushName, path: pathToBrush } = data;
 
-    if (brushName === "separator") return;
+    if (brushName === "alekpet_painter_separator") return;
 
     if (pathToBrush === null || pathToBrush === undefined) {
       return new Error("No exist path in dataset!");
