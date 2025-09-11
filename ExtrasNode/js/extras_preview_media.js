@@ -20,6 +20,12 @@ let PreviewImageVideoCombo = PreviewImageVideoComboLS
   ? JSON.parse(PreviewImageVideoComboLS)
   : true;
 
+// Current node type selected and object src path
+let currentNodeType = null;
+const NODES_TYPE_SRC = {
+  LoadImageOutput: "output",
+};
+
 // Preview image, video and audio content loading function
 const SUPPORTS_FORMAT = {
   image: ["jpg", "jpeg", "bmp", "png", "gif", "tiff", "avif"],
@@ -95,6 +101,7 @@ app.registerExtension({
       if (this.root?.preview_content_combo) {
         this.root.preview_content_combo.remove();
         this.root.preview_content_combo = null;
+        currentNodeType = null;
       }
     }
 
@@ -142,6 +149,19 @@ app.registerExtension({
         this.root.preview_content_combo = preview_content_combo;
       }
 
+      LiteGraph.pointerListenerAdd(element, "over", (e) => {
+        const currentTypeNode = e?.relatedTarget?.data?.current_node?.type;
+        if (!currentNodeType) {
+          currentNodeType = currentTypeNode;
+        } else if (
+          currentNodeType &&
+          currentTypeNode &&
+          currentNodeType !== currentTypeNode
+        ) {
+          currentNodeType = currentTypeNode;
+        }
+      });
+
       LiteGraph.pointerListenerAdd(element, "enter", (e) => {
         if (element?.dataset?.value) {
           const body_rect = document.body.getBoundingClientRect();
@@ -153,12 +173,15 @@ app.registerExtension({
 
           const canvas = this.root.preview_content_combo.children[0];
           const ctx = canvas.getContext("2d");
+          const typeSrc = Object.hasOwn(NODES_TYPE_SRC, currentNodeType)
+            ? NODES_TYPE_SRC[currentNodeType]
+            : "input";
 
           loadingContent(
             api.apiURL(
               `/view?filename=${encodeURIComponent(
                 element.dataset.value
-              )}&type=input`
+              )}&type=${typeSrc}`
             )
           ).then(({ raw, type, src }) => {
             this.root.preview_content_combo.style.maxWidth =
