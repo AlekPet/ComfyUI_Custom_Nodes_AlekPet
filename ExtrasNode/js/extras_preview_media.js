@@ -28,8 +28,23 @@ const NODES_TYPE_SRC = {
 
 // Preview image, video and audio content loading function
 const SUPPORTS_FORMAT = {
-  image: ["jpg", "jpeg", "bmp", "png", "gif", "tiff", "avif"],
-  video: ["mp4", "webm"],
+  image: [
+    "avif",
+    "gif",
+    "heif",
+    "ico",
+    "jpeg",
+    "jpg",
+    "png",
+    "pnm",
+    "ppm",
+    "svg",
+    "tiff",
+    "webp",
+    "xbm",
+    "xpm",
+  ],
+  video: ["mp4", "webm", "ogv"],
   audio: ["ogg", "wav", "mp3", "webm"],
 };
 
