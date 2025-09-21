@@ -5,6 +5,7 @@ function makeModal({
   type = "info",
   parent = null,
   stylePos = "fixed",
+  classes = [],
 } = {}) {
   const overlay = document.createElement("div");
   Object.assign(overlay.style, {
@@ -38,6 +39,7 @@ function makeModal({
   });
 
   boxModal.className = "alekpet_modal_window";
+  boxModal.classList.add(...classes);
 
   const boxModalBody = document.createElement("div");
   Object.assign(boxModalBody.style, {
@@ -674,6 +676,148 @@ function createWindowModal({
   return wrapper_settings;
 }
 
+// Prompt
+async function comfyuiDesktopPrompt(title, message, defaultValue) {
+  try {
+    return await app.extensionManager.dialog.prompt({
+      title,
+      message,
+      defaultValue,
+    });
+  } catch (err) {
+    return prompt(title, message);
+  }
+}
+
+// Alert
+function comfyuiDesktopAlert(message) {
+  try {
+    app.extensionManager.toast.addAlert(message);
+  } catch (err) {
+    alert(message);
+  }
+}
+
+// Confirm
+function confirmModal({ title, message }) {
+  return new Promise((res) => {
+    const overlay = makeElement("div", {
+      class: ["alekpet_confOverlay"],
+      style: {
+        background: "rgba(0, 0, 0, 0.7)",
+        position: "fixed",
+        background: "rgba(0 0 0 / 0.8)",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+        userSelect: "none",
+      },
+    });
+
+    const modal = makeElement("div", {
+      class: ["alekpet_confModal"],
+      style: {
+        ...THEME_MODAL_WINDOW_BASE.stylesBox,
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        fontFamily: "monospace",
+        background: "rgb(92 186 255 / 20%)",
+        transform: "translate(-50%, -50%)",
+        borderColor: "rgba(92, 186, 255, 0.63)",
+        boxShadow: "rgba(92, 186, 255, 0.63) 2px 2px 4px",
+      },
+    });
+
+    const titleEl = makeElement("div", {
+      class: ["alekpet_confTitle"],
+      style: {
+        ...THEME_MODAL_WINDOW_BASE.stylesTitle,
+        background: "rgba(92, 186, 255, 0.63)",
+      },
+      textContent: title,
+    });
+
+    const messageEl = makeElement("div", {
+      class: ["alekpet_confMessage"],
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+        gap: "5px",
+        textWrap: "wrap",
+      },
+      textContent: message,
+    });
+
+    const action_box = makeElement("div", {
+      class: ["alekpet_confActions"],
+      style: {
+        display: "flex",
+        gap: "5px",
+        width: "100%",
+        padding: "4px",
+        justifyContent: "flex-end",
+      },
+    });
+
+    const remove = () => {
+      modal.remove();
+      overlay.remove();
+    };
+
+    const ok = makeElement("div", {
+      class: ["alekpet_confButtons", "alekpet_confButtonOk"],
+      style: {
+        background: "linear-gradient(45deg, green, limegreen) rgb(21, 100, 6)",
+      },
+      textContent: "Ok",
+      onclick: (e) => {
+        res(true);
+        remove();
+      },
+    });
+
+    const Cancel = makeElement("div", {
+      class: ["alekpet_confButtons", "alekpet_confButtonCancel"],
+      style: {
+        background: "linear-gradient(45deg, #b64396, #a52a8b) rgb(135 3 161)",
+      },
+      textContent: "Cancel",
+      onclick: (e) => {
+        res(false);
+        remove();
+      },
+    });
+
+    action_box.append(ok, Cancel);
+    modal.append(titleEl, messageEl, action_box);
+    overlay.append(modal);
+    document.body.append(overlay);
+  });
+}
+
+async function comfyuiDesktopConfirm(message) {
+  try {
+    const result = await confirmModal({
+      title: "Confirm",
+      message: message,
+    });
+
+    // Wait update comfyui frontend! Confirm Cancel not return value! Fixed in ComfyUI_frontend ver. v1.10.8
+    // https://github.com/Comfy-Org/ComfyUI_frontend/issues/2649
+    // const result = await app.extensionManager.dialog.confirm({
+    //   title: "Confirm",
+    //   message: message,
+    // });
+    return result;
+  } catch (err) {
+    return confirm(message);
+  }
+}
+
 export {
   makeModal,
   createWindowModal,
@@ -687,4 +831,8 @@ export {
   rgbToHex,
   findWidget,
   THEMES_MODAL_WINDOW,
+  //
+  comfyuiDesktopConfirm,
+  comfyuiDesktopPrompt,
+  comfyuiDesktopAlert,
 };

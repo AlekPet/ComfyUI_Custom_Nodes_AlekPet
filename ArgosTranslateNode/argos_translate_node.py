@@ -1,8 +1,12 @@
 from server import PromptServer
 from aiohttp import web
 
-import argostranslate.package
-import argostranslate.translate
+try:
+    import argostranslate.package
+    import argostranslate.translate
+except:
+    pass
+
 
 # Find packages https://www.argosopentech.com/argospm/index/
 
@@ -131,6 +135,7 @@ def installPackages(srcTrans, toTrans="en"):
 
 
 def preTranslate(prompt, srcTrans, toTrans):
+    translate_text_prompt = None
     if prompt and prompt.strip() != "":
         installed_languages = argostranslate.translate.get_installed_languages()
 
@@ -140,7 +145,7 @@ def preTranslate(prompt, srcTrans, toTrans):
         translation = from_lang.get_translation(to_lang)
         translate_text_prompt = translation.translate(prompt)
 
-    return translate_text_prompt if translate_text_prompt and not None else ""
+    return translate_text_prompt if translate_text_prompt and translate_text_prompt is not None else ""
 
 
 def translate(prompt, srcTrans=None, toTrans="english"):
@@ -152,8 +157,7 @@ def translate(prompt, srcTrans=None, toTrans="english"):
         translate_text_prompt = preTranslate(prompt, srcTransCode, toTransCode)
 
     except Exception as e:
-        print(e)
-        return "[Error] No translate text!"
+        raise e
 
     return translate_text_prompt
 

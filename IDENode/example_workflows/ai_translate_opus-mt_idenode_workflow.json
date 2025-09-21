@@ -1,0 +1,628 @@
+{
+  "id": "7d6a2ae1-9723-4479-bd47-20cd43ab7056",
+  "revision": 0,
+  "last_node_id": 40,
+  "last_link_id": 62,
+  "nodes": [
+    {
+      "id": 31,
+      "type": "KSampler",
+      "pos": [
+        1040,
+        365
+      ],
+      "size": [
+        315,
+        474
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 47
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 57
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 55
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 51
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "slot_index": 0,
+          "links": [
+            52
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.34",
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        752042225209208,
+        "randomize",
+        20,
+        1,
+        "euler",
+        "simple",
+        1
+      ]
+    },
+    {
+      "id": 9,
+      "type": "SaveImage",
+      "pos": [
+        1375,
+        15
+      ],
+      "size": [
+        415,
+        595
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 9
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.34"
+      },
+      "widgets_values": [
+        "ComfyUI"
+      ]
+    },
+    {
+      "id": 35,
+      "type": "FluxGuidance",
+      "pos": [
+        1140,
+        25
+      ],
+      "size": [
+        211.60000610351562,
+        58
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "link": 56
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "slot_index": 0,
+          "links": [
+            57
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.34",
+        "Node name for S&R": "FluxGuidance"
+      },
+      "widgets_values": [
+        3.5
+      ]
+    },
+    {
+      "id": 8,
+      "type": "VAEDecode",
+      "pos": [
+        1145,
+        180
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 52
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 46
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            9
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.34",
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 39,
+      "type": "IDENode",
+      "pos": [
+        85,
+        200
+      ],
+      "size": [
+        530,
+        470
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text_input",
+          "type": "STRING",
+          "link": 58
+        }
+      ],
+      "outputs": [
+        {
+          "name": "result",
+          "type": "*",
+          "links": [
+            62
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_custom_nodes_alekpet",
+        "ver": "c81bc1e882bbbc35d40c99b7232ece5090ef7daf",
+        "Node name for S&R": "IDENode"
+      },
+      "widgets_values": [
+        "python",
+        "monokai",
+        "add_input_variable",
+        "add_output_variable",
+        "clear_code",
+        "from transformers import MarianMTModel, MarianTokenizer\r\n\r\n# Select model https://huggingface.co/Helsinki-NLP?sort_models=downloads#models\r\nmodel_name = \"Helsinki-NLP/opus-mt-ru-en\"\r\n\r\n# Loading tokenizer and model\r\ntokenizer = MarianTokenizer.from_pretrained(model_name)\r\nmodel = MarianMTModel.from_pretrained(model_name)\r\n\r\n# Prepare the text\r\nbatch = tokenizer([text_input], return_tensors=\"pt\", padding=True)\r\n\r\n# Translate\r\ntranslated = model.generate(**batch)\r\n\r\n# Decode result\r\ntranslated_text = tokenizer.decode(translated[0], skip_special_tokens=True)\r\n\r\nresult = translated_text"
+      ],
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 30,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        705,
+        565
+      ],
+      "size": [
+        315,
+        98
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "slot_index": 0,
+          "links": [
+            47
+          ]
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "slot_index": 1,
+          "links": [
+            45,
+            54
+          ]
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "slot_index": 2,
+          "links": [
+            46
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.34",
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        "FLUX\\flux1-dev-fp8.safetensors"
+      ]
+    },
+    {
+      "id": 27,
+      "type": "EmptySD3LatentImage",
+      "pos": [
+        705,
+        405
+      ],
+      "size": [
+        315,
+        106
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "slot_index": 0,
+          "links": [
+            51
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.34",
+        "Node name for S&R": "EmptySD3LatentImage"
+      },
+      "widgets_values": [
+        1024,
+        1024,
+        1
+      ],
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 33,
+      "type": "CLIPTextEncode",
+      "pos": [
+        705,
+        350
+      ],
+      "size": [
+        422.8500061035156,
+        164.30999755859375
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 54
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "slot_index": 0,
+          "links": [
+            55
+          ]
+        }
+      ],
+      "title": "CLIP Text Encode (Negative Prompt)",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.34",
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "",
+        [
+          false,
+          true
+        ]
+      ],
+      "color": "#322",
+      "bgcolor": "#533"
+    },
+    {
+      "id": 6,
+      "type": "CLIPTextEncode",
+      "pos": [
+        705,
+        215
+      ],
+      "size": [
+        420,
+        93
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 45
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 60
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "slot_index": 0,
+          "links": [
+            56
+          ]
+        }
+      ],
+      "title": "CLIP Text Encode (Positive Prompt)",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.34",
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "",
+        [
+          false,
+          true
+        ]
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 40,
+      "type": "PreviewTextNode",
+      "pos": [
+        695,
+        0
+      ],
+      "size": [
+        420,
+        165
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 62
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_custom_nodes_alekpet",
+        "ver": "c81bc1e882bbbc35d40c99b7232ece5090ef7daf",
+        "Node name for S&R": "PreviewTextNode"
+      },
+      "widgets_values": [
+        "A fat, fluffy cat, has a sign in his paws with the text \"IDENode Translate OPUS-MT.\" The cat has big expressive eyes and a happy smile. The background is bright and dynamic, with abstract patterns or flying confetti to create a holiday mood. The style of the drawing is cute and cartoonic, with soft texture to emphasize the fluffyness of the cat. The text on the table is clear and easy to read.",
+        [
+          false,
+          true
+        ]
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 38,
+      "type": "StringConstantMultiline",
+      "pos": [
+        85,
+        5
+      ],
+      "size": [
+        540,
+        140
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            58,
+            60
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-kjnodes",
+        "ver": "bec42252c690c1b5b2064b5a6732ad11cc452759",
+        "Node name for S&R": "StringConstantMultiline"
+      },
+      "widgets_values": [
+        "Толстый пушистый кот. У кота большие выразительные глаза и довольная улыбка. Фон яркий и динамичный, с абстрактными узорами или летающими конфетти для создания праздничного настроения. Стиль рисунка — милый и мультяшный, с мягкой текстурой, чтобы подчеркнуть пушистость кота. Текст на табличке четкий и легко читается",
+        true,
+        [
+          false,
+          true
+        ]
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    }
+  ],
+  "links": [
+    [
+      9,
+      8,
+      0,
+      9,
+      0,
+      "IMAGE"
+    ],
+    [
+      45,
+      30,
+      1,
+      6,
+      0,
+      "CLIP"
+    ],
+    [
+      46,
+      30,
+      2,
+      8,
+      1,
+      "VAE"
+    ],
+    [
+      47,
+      30,
+      0,
+      31,
+      0,
+      "MODEL"
+    ],
+    [
+      51,
+      27,
+      0,
+      31,
+      3,
+      "LATENT"
+    ],
+    [
+      52,
+      31,
+      0,
+      8,
+      0,
+      "LATENT"
+    ],
+    [
+      54,
+      30,
+      1,
+      33,
+      0,
+      "CLIP"
+    ],
+    [
+      55,
+      33,
+      0,
+      31,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      56,
+      6,
+      0,
+      35,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      57,
+      35,
+      0,
+      31,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      58,
+      38,
+      0,
+      39,
+      0,
+      "STRING"
+    ],
+    [
+      60,
+      38,
+      0,
+      6,
+      1,
+      "STRING"
+    ],
+    [
+      62,
+      39,
+      0,
+      40,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.8,
+      "offset": [
+        215.26219462080593,
+        352.8383720440821
+      ]
+    },
+    "frontendVersion": "1.18.10",
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}

@@ -1,0 +1,8 @@
+{
+  "__comment": "Register on the site https://bigmodel.cn and get a key and add it to the field ZHIPUAI_API_KEY. Change default translate languages ​​'from' and 'to' you use",
+  "from_translate": "ru",
+  "to_translate": "en",
+  "default_language_model": "glm-4.5-flash",
+  "default_multimodal_model": "glm-4v-flash",  
+  "ZHIPUAI_API_KEY": "your_api_key"
+}

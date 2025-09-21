@@ -93,7 +93,6 @@ class MenuBrushes {
       textContent: "INFORMATION",
       style: "width: 150px",
     });
-    kistey__brushes__info.customSize = { w: 150, h: 17, fs: 10 };
 
     kistey_dir__name_wrapper.append(kistey_directory_slider);
 
@@ -181,7 +180,7 @@ class MenuBrushes {
         kistey__img.append(imageBrush);
 
         if (brush === this.managerMyPaint.brushName) {
-          imageBrush.classList.add("selected");
+          imageBrush.classList.add("kistey__selected");
           this.prevSelected = imageBrush;
         }
 
@@ -298,8 +297,8 @@ class MenuBrushes {
 
             if (this.prevSelected !== target.children[0].children[0]) {
               if (this.prevSelected)
-                this.prevSelected.classList.remove("selected");
-              target.children[0].children[0].classList.add("selected");
+                this.prevSelected.classList.remove("kistey__selected");
+              target.children[0].children[0].classList.add("kistey__selected");
               this.prevSelected = target.children[0].children[0];
             }
           }
@@ -327,6 +326,15 @@ class MenuBrushes {
           }
 
           if (target.classList.contains("kistey__brushes__info")) {
+            const info_modal =
+              this.managerMyPaint.painterNode.canvas.wrapperEl.querySelector(
+                ".kistey__modalinfo"
+              );
+            if (info_modal) {
+              info_modal.querySelector(".alekpet_modal_close").click();
+              return;
+            }
+
             makeModal({
               title: "Information",
               text: `
@@ -337,6 +345,9 @@ class MenuBrushes {
               .alekpet_modal_body a {
                 color: limegreen;
             }
+              .alekpet_modal_window.kistey__modalinfo{
+                transform: translate(-50%, -35%) !important;
+              }
             </style>
             <div style="text-align: left;">
               <h5 style="margin: 2px;">
@@ -367,6 +378,7 @@ class MenuBrushes {
             </div>`,
               parent: this.managerMyPaint.painterNode.canvas.wrapperEl,
               stylePos: "absolute",
+              classes: ["kistey__modalinfo"],
             });
           }
 
@@ -404,7 +416,6 @@ class MyPaintManager {
       class: ["buttonMenuBrushes"],
       textContent: "Brushes",
     });
-    this.buttonMenuBrushes.customSize = { w: 60, h: 25, fs: 10 };
 
     this.buttonMenuBrushes.addEventListener("click", () => {
       if (!this.menuBrushes.wrapper__kistey) {
@@ -419,7 +430,6 @@ class MyPaintManager {
       class: ["buttonMenuSettings"],
       textContent: "Settings",
     });
-    this.buttonMenuSettings.customSize = { w: 60, h: 25, fs: 10 };
 
     this.buttonMenuSettings.addEventListener("click", () =>
       animateClick(this.kistey_wrapper_settings)
@@ -452,7 +462,7 @@ class MyPaintManager {
 
     await this.loadBrushSetting(
       this.menuBrushes.currentDir === "brushes"
-        ? "/"
+        ? ""
         : this.menuBrushes.currentDir,
       this.brushName
     );
@@ -542,13 +552,14 @@ class MyPaintManager {
       DefaultSize: {
         name: "default size",
         checked:
-          this.painterNode.node.LS_Cls.LS_Painters.settings?.mypaint_settings
-            ?.preset_brush_size ?? true,
+          this.painterNode.storageCls.settings_painter_node.settings
+            ?.mypaint_settings?.preset_brush_size ?? true,
         type: "checkbox",
         title: "Apply size from brush settings",
         events: {
           change: (e) => {
-            const lsPainter = this.painterNode.node.LS_Cls.LS_Painters.settings;
+            const lsPainter =
+              this.painterNode.storageCls.settings_painter_node.settings;
             if (!lsPainter.hasOwnProperty("mypaint_settings"))
               lsPainter.mypaint_settings = {};
 
@@ -556,20 +567,21 @@ class MyPaintManager {
               this.checkbox_brush_default_size.checked;
 
             // Save to localStorage
-            this.painterNode.node.LS_Cls.LS_Save();
+            this.painterNode.saveSettingsPainterNode();
           },
         },
       },
       DefaultColor: {
         name: "default color",
         checked:
-          this.painterNode.node.LS_Cls.LS_Painters.settings?.mypaint_settings
-            ?.preset_brush_color ?? false,
+          this.painterNode.storageCls.settings_painter_node.settings
+            ?.mypaint_settings?.preset_brush_color ?? false,
         type: "checkbox",
         title: "Apply color from brush settings",
         events: {
           change: (e) => {
-            const lsPainter = this.painterNode.node.LS_Cls.LS_Painters.settings;
+            const lsPainter =
+              this.painterNode.storageCls.settings_painter_node.settings;
             if (!lsPainter.hasOwnProperty("mypaint_settings"))
               lsPainter.mypaint_settings = {};
 
@@ -577,7 +589,7 @@ class MyPaintManager {
               this.checkbox_brush_default_color.checked;
 
             // Save to localStorage
-            this.painterNode.node.LS_Cls.LS_Save();
+            this.painterNode.saveSettingsPainterNode();
           },
         },
       },
@@ -610,7 +622,6 @@ class MyPaintManager {
         });
 
         const range = this[`range_brush_${name}`];
-        range.customSize = { w: 100, h: 6, fs: 10 };
         range.style.background = rangeGradient(range);
 
         if (setting?.events && Object.keys(setting.events).length) {
@@ -631,8 +642,6 @@ class MyPaintManager {
         });
 
         const checkbox = this[`checkbox_brush_${name}`];
-
-        checkbox.customSize = { w: 15, h: 15, fs: 10 };
 
         if (setting?.events && Object.keys(setting.events).length) {
           Object.keys(setting.events).forEach((eventName) =>
@@ -676,7 +685,9 @@ class MyPaintManager {
   }
 
   appendElements(parent) {
-    const separator = makeElement("div", { class: ["separator"] });
+    const separator = makeElement("div", {
+      class: ["alekpet_painter_separator"],
+    });
 
     parent.append(separator, this.boxButtonsBrushes);
 
@@ -684,7 +695,7 @@ class MyPaintManager {
   }
 
   async loadBrushSetting(pathToBrush, brushName) {
-    pathToBrush = `brushes/${pathToBrush}/`;
+    pathToBrush = `brushes/${pathToBrush}`;
 
     const pathToJsonBrush = encodeURI(
       `${this.basePath}/${pathToBrush}${brushName}`
@@ -781,14 +792,17 @@ class MyPaintManager {
   async setBrush(data) {
     const { filename: brushName, path: pathToBrush } = data;
 
-    if (brushName === "separator") return;
+    if (brushName === "alekpet_painter_separator") return;
 
     if (pathToBrush === null || pathToBrush === undefined) {
       return new Error("No exist path in dataset!");
     }
 
     this.brushName = brushName;
-    await this.loadBrushSetting(pathToBrush, brushName);
+    await this.loadBrushSetting(
+      pathToBrush === "/" ? "" : pathToBrush + "/",
+      brushName
+    );
 
     this.painterNode.canvas.freeDrawingBrush.brush = new MypaintBrush(
       this.currentBrushSettings,

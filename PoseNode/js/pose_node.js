@@ -9,6 +9,11 @@ import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
 import { $el } from "../../scripts/ui.js";
 import { addStylesheet } from "../../scripts/utils.js";
+import {
+  comfyuiDesktopConfirm,
+  comfyuiDesktopPrompt,
+  comfyuiDesktopAlert,
+} from "./utils.js";
 import { fabric } from "./lib/posenode/fabric.js";
 
 fabric.Object.prototype.transparentCorners = false;
@@ -110,6 +115,7 @@ class OpenPose {
       redo_history: [],
       currentCanvasSize: { width: 512, height: 512 },
       background: null,
+      backgroundColor: null,
     };
 
     this.canvas = this.initCanvas(canvasElement);
@@ -139,7 +145,9 @@ class OpenPose {
 
     this.node.title = `${this.node.type} - ${new_width}x${new_height}`;
     resetPose && this.resetCanvas();
+
     this.canvas.renderAll();
+
     app.graph.setDirtyCanvas(true, false);
     this.node.onResize();
   }
@@ -150,7 +158,7 @@ class OpenPose {
 
     if (tmpImage) this.setBackground(tmpImage);
 
-    this.canvas.backgroundColor = "#000";
+    this.canvas.backgroundColor = "#000000";
     this.canvas.renderAll();
 
     const res = [];
@@ -254,7 +262,7 @@ class OpenPose {
 
   initCanvas() {
     this.canvas = new fabric.Canvas(this.canvas, {
-      backgroundColor: "#000",
+      backgroundColor: "#000000",
       preserveObjectStacking: true,
       containerClass: "canvas_container_openpose",
       width: this.settings.currentCanvasSize.width,
@@ -370,8 +378,7 @@ class OpenPose {
         return;
       }
 
-      this.settings.undo_history.push(this.getJSON());
-      this.settings.redo_history.length = 0;
+      this.updateHistoryUndoRedo();
       this.uploadPoseFile(this.node.name);
     });
 
@@ -382,24 +389,31 @@ class OpenPose {
     return this.canvas;
   }
 
+  updateHistoryUndoRedo() {
+    this.settings.undo_history.push(this.getJSON());
+    this.settings.redo_history = [];
+  }
+
   undo() {
-    if (this.settings.undo_history.length > 0) {
-      if (this.settings.undo_history.length > 1)
-        this.settings.redo_history.push(this.settings.undo_history.pop());
+    console.log("UNDO");
+    if (this.settings.undo_history.length > 1) {
+      const last = this.settings.undo_history.pop();
+      this.settings.redo_history.push(last);
 
-      const content =
+      const previous =
         this.settings.undo_history[this.settings.undo_history.length - 1];
-      this.loadPreset(content);
+      this.loadPreset(previous);
       this.canvas.renderAll();
-
       this.uploadPoseFile(this.node.name);
     }
   }
 
   redo() {
+    console.log("RENDO");
     if (this.settings.redo_history.length > 0) {
       const content = this.settings.redo_history.pop();
       this.settings.undo_history.push(content);
+
       this.loadPreset(content);
 
       this.canvas.renderAll();
@@ -408,24 +422,31 @@ class OpenPose {
     }
   }
 
-  resetCanvas(reset_size = false) {
+  saveData() {
+    app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
+  }
+
+  async resetCanvas(reset_size = false) {
     if (reset_size) {
-      if (confirm("Clear undo/redo?")) {
+      if (await comfyuiDesktopConfirm("Clear undo/redo?")) {
         this.settings.undo_history = [];
         this.settings.redo_history = [];
       }
 
-      if (confirm("Reset canvas size?")) {
+      if (await comfyuiDesktopConfirm("Reset canvas size?")) {
         this.setCanvasSize(512, 512);
-
-        const backgroundImg = this.canvas.backgroundImage;
-        this.canvas.clear();
-        this.canvas.backgroundColor = "#000";
-        this.addPose();
-
-        this.setBackground(backgroundImg);
-        this.uploadPoseFile(this.node.name);
       }
+
+      const backgroundImg = this.canvas.backgroundImage;
+      this.canvas.clear();
+      this.canvas.backgroundColor = "#000000";
+
+      if (await comfyuiDesktopConfirm("Add default pose?")) {
+        this.addPose();
+      }
+
+      this.setBackground(backgroundImg);
+      this.uploadPoseFile(this.node.name);
     }
   }
 
@@ -459,7 +480,6 @@ class OpenPose {
     img.src = api.apiURL(
       `/view?filename=${name}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}&${app.getRandParam()}`
     );
-    this.node.setSizeForImage?.();
   }
 
   uploadPoseFile(fileName) {
@@ -639,7 +659,8 @@ function createOpenPose(node, inputName, inputData, app) {
   let panelButtons = $el("div.pose_panelButtons.comfy-menu-btns", [
     $el("button", {
       textContent: "Ref",
-      title: "Reference Image (Right click remove)",
+      title:
+        "Reference Image (Right click remove and set transparent background)",
       onclick: () => {
         node.openPose.backgroundInput.value = "";
         node.openPose.backgroundInput.click();
@@ -664,12 +685,24 @@ function createOpenPose(node, inputName, inputData, app) {
                 node.openPose.canvas.backgroundImage = null;
                 node.openPose.canvas.renderAll();
               }
+
+              if (target.classList.contains("transparentBG")) {
+                node.openPose.canvas.backgroundColor = "transparent";
+                node.openPose.settings.backgroundColor = "transparent";
+                node.openPose.canvas.renderAll();
+              }
+
+              node.openPose.saveData();
+              node.openPose.uploadPoseFile(node.name);
             },
             onmouseleave: () => menu && menu.remove(),
           },
           [
             $el("div.pose_btn_context.remBG", {
               textContent: "Remove background",
+            }),
+            $el("div.pose_btn_context.transparentBG", {
+              textContent: "Set transparent background",
             }),
           ]
         );
@@ -678,27 +711,46 @@ function createOpenPose(node, inputName, inputData, app) {
         app.graph.setDirtyCanvas(true, false);
       },
     }),
+    $el("input.pose_SetBackgroundBg", {
+      type: "color",
+      title: "Set background color",
+      value: this.settings?.backgroundColor ?? "#000000",
+      oninput: (e) => {
+        node.openPose.canvas.backgroundColor = e.target.value;
+        node.openPose.settings.backgroundColor = e.target.value;
+        e.target.classList.toggle("lightColor", e.target.value === "#ffffff");
+        node.openPose.canvas.renderAll();
+        node.openPose.saveData();
+      },
+    }),
     $el("button", {
       textContent: "⟲",
       title: "Undo",
-      onclick: () => node.openPose.undo(),
+      onclick: () => {
+        node.openPose.undo();
+      },
     }),
     $el("button", {
       textContent: "⟳",
       title: "Redo",
-      onclick: () => node.openPose.redo(),
+      onclick: () => {
+        node.openPose.redo();
+      },
     }),
     $el("button.clear_history", {
       textContent: "✖",
       title: "Clear History",
-      onclick: () => {
-        if (confirm(`Delete all pose history of a node "${node.name}"?`)) {
+      onclick: async () => {
+        if (
+          await comfyuiDesktopConfirm(
+            `Delete all pose history of a node "${node.name}"?`
+          )
+        ) {
           node.openPose.undo_history = [];
           node.openPose.redo_history = [];
           node.openPose.setPose(default_keypoints);
           node.openPose.undo_history.push(node.openPose.getJSON());
           node.openPose.history_change = true;
-          node.openPose.updateHistoryData();
         }
       },
     }),
@@ -708,12 +760,20 @@ function createOpenPose(node, inputName, inputData, app) {
 </svg>`,
       style: { margin: 0, padding: 0 },
       title: "Change canvas size",
-      onclick: () => {
-        function checkSized(prop = "", defaultVal = 512) {
+      onclick: async () => {
+        async function checkSized(prop = "", defaultVal = 512) {
           let inputSize;
-          let correct = false;
-          while (!correct) {
-            inputSize = +prompt(`Enter canvas ${prop}:`, defaultVal);
+
+          while (true) {
+            inputSize = await comfyuiDesktopPrompt(
+              "Canvas size",
+              `Enter canvas ${prop}:`,
+              defaultVal
+            );
+
+            if (inputSize === null) return defaultVal;
+
+            inputSize = +inputSize;
             if (
               Number(inputSize) === inputSize &&
               inputSize % 1 === 0 &&
@@ -721,15 +781,21 @@ function createOpenPose(node, inputName, inputData, app) {
             ) {
               return inputSize;
             }
-            alert(`[${prop}] Invalid number "${inputSize}" or <=0!`);
+
+            comfyuiDesktopAlert(
+              `[${prop}] Invalid number "${inputSize}" or <=0!`
+            );
           }
         }
 
-        const width = checkSized("width", node.openPose.canvas.width),
-          height = checkSized("height", node.openPose.canvas.height);
+        const width = await checkSized("width", node.openPose.canvas.width),
+          height = await checkSized("height", node.openPose.canvas.height);
 
         node.openPose.setCanvasSize(width, height, true);
         node.openPose.uploadPoseFile(node.name);
+
+        // Save data
+        app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
       },
     }),
   ]);
@@ -750,6 +816,15 @@ function createOpenPose(node, inputName, inputData, app) {
   );
 
   widget.callback = (v) => {};
+
+  const origDraw = widget.draw;
+  widget.draw = function () {
+    origDraw?.apply(this, arguments);
+    const [ctx, node, widgetHeight, widgetWidth, y] = arguments;
+    Object.assign(openPoseWrapper.style, {
+      height: widgetHeight + "px",
+    });
+  };
 
   try {
     const data = node.widgets_values[3];
@@ -824,8 +899,6 @@ app.registerExtension({
 
         createOpenPose.apply(this, [this, nodeNamePNG, {}, app]);
 
-        this.setSize([530, 620]);
-
         this.openPose.uploadPoseFile(nodeNamePNG);
 
         // Resize window
@@ -844,6 +917,7 @@ app.registerExtension({
             const {
               currentCanvasSize,
               background,
+              backgroundColor,
               undo_history,
               redo_history,
             } = data;
@@ -857,6 +931,13 @@ app.registerExtension({
                 ? undo_history[undo_history.length - 1]
                 : { keypoints: default_keypoints }
             );
+
+            if (backgroundColor) {
+              this.openPose.canvas.backgroundColor = backgroundColor;
+              this.openPoseWrapper.querySelector(
+                ".pose_SetBackgroundBg"
+              ).value = backgroundColor;
+            }
 
             if (background) {
               fabric.Image.fromURL(background, (img) => {
@@ -879,6 +960,9 @@ app.registerExtension({
 
             this.openPose.canvas.renderAll();
             this.openPose.uploadPoseFile(this.name);
+
+            this.setSize(arguments[0].size);
+            app.graph.setDirtyCanvas(true, false);
           }
         }, 0);
       };

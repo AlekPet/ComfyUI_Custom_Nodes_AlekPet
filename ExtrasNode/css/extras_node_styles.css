@@ -1,130 +1,15 @@
-.alekpet_extras_node_speechrecognition_box {
-  margin: 0px;
-  padding: 0px;
-  position: absolute;
-  text-align: center;
-  cursor: pointer;
-  font-size: 1rem;
-  display: flex;
-  justify-content: center;
-  flex-flow: column;
-  width: 45px;
-  font-family: monospace;
-  align-items: center;
-  margin-top: 3px;
-}
-
-.alekpet_extras_node_speechrecognition_row {
-  position: relative;
-  display: flex;
-  gap: 3px;
-  justify-content: center;
-  align-items: center;
-}
-
-.alekpet_extras_node_recognition_icon {
-  width: 8px;
-  height: 8px;
-  border: 1px solid var(--input-text);
-  background: transparent;
-  border-radius: 50%;
-  padding: 0;
-  margin: 0px 5px 0px 0px;
-  display: inline-block;
-}
-
-.alekpet_extras_node_recognition_icon_active {
-  border: 1px solid var(--input-text);
-  background: var(--error-text);
-  border-radius: 0;
-}
-
-.alekpet_extras_node_recognition_icon_box {
-  display: flex;
-  justify-content: center;
-  align-items: baseline;
-  gap: 3px;
-  transition: all 0.7s;
-  margin-top: 2px;
-}
-
-.alekpet_extras_node_recognition_icon:hover {
-  background: var(--error-text);
-}
-
-.alekpet_extras_node_recognition_aborted {
-  transition: all 0.3s;
-  font-size: 0.6rem;
-}
-
-.alekpet_extras_node_recognition_aborted:hover {
-  color: var(--error-text);
-}
-
-.alekpet_extras_node_info {
-  display: flex;
-  align-self: center;
-}
-
-.alekpet_extras_node_speech_recognition_checkbox {
-  width: 10px;
-  height: 10px;
-  accent-color: var(--input-text);
-  padding: 0;
-  margin: 0;
-}
-
-.alekpet_extras_node_speech_recognition_checkbox:not(:checked) {
-  opacity: 0.5;
-}
-
-.alekpet_extras_node_recognition_save {
-  accent-color: var(--p-red-400);
-}
-
-.alekpet_extras_node_speech_icon {
-  font-size: 0.6em;
-  opacity: 1;
-  line-height: 1;
-  margin-top: 2px;
-}
-
-.alekpet_extras_node_speech_icon_playing {
-  opacity: 0.7;
-}
-
-.alekpet_extras_node_speech_icon_playing::after {
-  content: "✖";
-  position: absolute;
-  right: 3px;
-  color: var(--error-text);
-}
-
-/* Settings */
-.alekpet_extras_node_speech_recognition_settings_props_label {
-  background: #646363;
-  color: #cdcbcb;
-  border-radius: 5px;
+/* Style custom Confirm buttons */
+.alekpet_confButtons {
+  border-radius: 3px;
+  font-weight: 600;
   padding: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: nowrap;
-}
-
-.alekpet_extras_node_speech_recognition_settings_props_label:hover {
-  background: darkgrey;
+  text-align: center;
   color: white;
+  cursor: pointer;
+  transition: all 0.8s;
 }
 
-.alekpet_extras_node_speech_recognition_settings_props_input {
-  max-width: 10px;
-  padding: 0;
-  margin: 0;
-  outline: 0;
-}
-
-.alekpet_extras_node_speech_recognition_settings_button {
-  display: flex;
-  font-size: 0.6rem;
+.alekpet_confButtons:hover {
+  background-blend-mode: multiply;
+  background-color: white;
 }

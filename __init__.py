@@ -208,7 +208,11 @@ def log(*text):
 def information(datas):
     for info in datas:
         if not DEBUG:
-            print(info, flush=True)
+            try:
+                print(info, end="\r", flush=True)
+            except UnicodeError:
+                safe_text = info.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
+                print(safe_text, end="\r", flush=True)
 
 
 def printColorInfo(text, color="\033[92m"):
@@ -307,6 +311,8 @@ def module_install(commands, cwd="."):
         stderr=subprocess.PIPE,
         text=True,
         bufsize=1,
+        encoding='utf-8',
+        errors='replace'
     )
     out = threading.Thread(target=information, args=(result.stdout,))
     err = threading.Thread(target=information, args=(result.stderr,))
@@ -333,11 +339,16 @@ def checkModules(nodeElement):
     if os.path.exists(file_requir):
         log("  -> File 'requirements.txt' found!")
         with open(file_requir) as f:
+            lines = f.readlines()
             required_modules = {
-                module_name_cut_version.split(line.strip())[0]
-                for line in f
-                if not line.startswith("#")
+                module_name_cut_version.split(line.strip())[0] for line in lines if not line.startswith("#")
             }
+
+            # [Hack] argostranslate module checking install
+            if nodeElement == "ArgosTranslateNode" and "argostranslate" in installed_modules and len(lines):
+                if not DEBUG:
+                    printColorInfo("* Argostranslate installed removed from required modules!")
+                required_modules.remove(lines[0])
 
         modules_to_install = required_modules - installed_modules
 
@@ -471,6 +482,7 @@ if not DYNAMIC_NODES_ADD:
 
     except Exception as e:
         NODES_LOAD_FAILED["ArgosTranslateNode"] = e
+
 
     # DeepTranslatorNode
     try:

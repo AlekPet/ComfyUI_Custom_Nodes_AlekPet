@@ -6,6 +6,8 @@ import {
   makeElement,
   findWidget,
   THEMES_MODAL_WINDOW,
+  comfyuiDesktopConfirm,
+  comfyuiDesktopPrompt,
 } from "./utils.js";
 
 ace.config.set(
@@ -134,8 +136,7 @@ result = str(my(23, 9))`,
         widget.type === "converted-widget" ||
         widget.type === "hidden";
 
-      widget.hidden = hidden;
-      widget.codeElement.style.display = hidden ? "none" : null;
+      widget.codeElement.hidden = hidden;
 
       if (hidden) {
         widget.options.onHide?.(widget);
@@ -159,6 +160,7 @@ result = str(my(23, 9))`,
   widget.editor = ace.edit(widget.codeElement);
   widget.editor.setTheme("ace/theme/monokai");
   widget.editor.session.setMode("ace/mode/python");
+  widget.codeElement.hidden = true;
 
   document.body.appendChild(widget.codeElement);
 
@@ -167,11 +169,9 @@ result = str(my(23, 9))`,
     collapse.apply(this, arguments);
     if (this.flags?.collapsed) {
       widget.codeElement.hidden = true;
-      widget.codeElement.style.display = "none";
     } else {
       if (this.flags?.collapsed === false) {
         widget.codeElement.hidden = false;
-        widget.codeElement.style.display = null;
       }
     }
   };
@@ -179,9 +179,14 @@ result = str(my(23, 9))`,
   return widget;
 }
 
+// Save data to workflow forced!
+function saveValue() {
+  app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
+}
+
 // Register extensions
 app.registerExtension({
-  name: "Comfy.ExperimentalNodesAlekPet",
+  name: "alekpet.IDENode",
   getCustomWidgets(app) {
     return {
       PYCODE: (node, inputName, inputData, app) => {
@@ -189,6 +194,7 @@ app.registerExtension({
 
         widget.editor.getSession().on("change", function (e) {
           widget.value = widget.editor.getValue();
+          saveValue();
         });
 
         const themeList = node.addWidget(
@@ -206,10 +212,13 @@ app.registerExtension({
 
         const widgetLang_id = findWidget(node, "language", "name", "findIndex");
         if (widgetLang_id !== -1) {
-          node.widgets[widgetLang_id].callback = (v) => {
+          node.widgets[widgetLang_id].callback = async (v) => {
             widget.editor.setTheme(`ace/theme/${themeList.value}`);
-            confirm("Clear code?") && widget.editor.setValue("");
-            if (confirm("Paste template?")) {
+
+            if (await comfyuiDesktopConfirm("Clear code?"))
+              widget.editor.setValue("");
+
+            if (await comfyuiDesktopConfirm("Paste template?")) {
               let defaultCode = null;
               if (v === "javascript") {
                 defaultCode = DEFAULT_TEMPLATES.js;
@@ -269,17 +278,19 @@ app.registerExtension({
           "button",
           "Add Input variable",
           "add_input_variable",
-          () => {
+          async () => {
             // Input name variable and check
             const nameInput = node?.inputs?.length
               ? `var${node.inputs.length + 1}`
               : "var1";
 
-            const varName = prompt(
+            let varName = await comfyuiDesktopPrompt(
+              "Variable",
               "Enter input variable name:",
               nameInput
-            ).trim();
+            );
 
+            varName = varName.trim();
             if (
               !makeValidVariable(
                 varName,
@@ -289,11 +300,13 @@ app.registerExtension({
               return;
 
             // Type variable and check
-            let type = prompt(
+            let type = await comfyuiDesktopPrompt(
+              "Type",
               "Enter type data output (default: *):",
               "*"
-            ).trim();
+            );
 
+            type = type.trim();
             if (
               !makeValidVariable(
                 type,
@@ -306,6 +319,7 @@ app.registerExtension({
             const currentWidth = node.size[0];
             node.addInput(varName, type);
             node.setSize([currentWidth, node.size[1]]);
+            saveValue();
           }
         );
 
@@ -313,19 +327,22 @@ app.registerExtension({
           "button",
           "Add Output variable",
           "add_output_variable",
-          () => {
+          async () => {
             const currentWidth = node.size[0];
 
             // Output name variable
             const nameOutput = node?.outputs?.length
               ? `result${node.outputs.length + 1}`
               : "result1";
-            const varName = prompt(
+
+            let varName = await comfyuiDesktopPrompt(
+              "Variable",
               "Enter output variable name:",
               nameOutput
-            ).trim();
+            );
 
             // Check output variable name
+            varName = varName.trim();
             if (
               !makeValidVariable(
                 varName,
@@ -335,11 +352,13 @@ app.registerExtension({
               return;
 
             // Type variable and check
-            let type = prompt(
+            let type = await comfyuiDesktopPrompt(
+              "Type",
               "Enter type data output (default: *):",
               "*"
-            ).trim();
+            );
 
+            type = type.trim();
             if (
               !makeValidVariable(
                 type,
@@ -351,11 +370,13 @@ app.registerExtension({
 
             node.addOutput(varName, type);
             node.setSize([currentWidth, node.size[1]]);
+            saveValue();
           }
         );
 
         node.addWidget("button", "Clear", "clear_code", () => {
           widget.editor.setValue("");
+          saveValue();
         });
 
         node.onRemoved = function () {
@@ -505,18 +526,21 @@ app.registerExtension({
         }
 
         if (this?.inputs?.length) {
+          const not_showing = ["language", "pycode"];
           for (let i = 0; i < this.inputs.length; i++) {
             const { name, type } = this.inputs[i];
+            if (not_showing.includes(name)) continue;
+            console.log();
             const colorType = LGraphCanvas.link_type_colors[type.toUpperCase()];
             const nameSize = ctx.measureText(name);
 
-            ctx.fillStyle = colorType === "" ? "#AAA" : colorType;
+            ctx.fillStyle = !colorType || colorType === "" ? "#AAA" : colorType;
             ctx.font = "12px Arial, sans-serif";
             ctx.textAlign = "left";
             ctx.fillText(
               `[${type === "*" ? "any" : type.toLowerCase()}]`,
               nameSize.width + 25,
-              i * 20 + 19
+              i * 20 + 19 - not_showing.length * 20
             );
           }
         }
@@ -586,6 +610,7 @@ app.registerExtension({
                 }
                 this.removeInput(input_idx);
                 this.setSize([currentWidth, this.size[1]]);
+                saveValue();
               },
             });
           }
@@ -605,6 +630,7 @@ app.registerExtension({
                 }
                 this.removeOutput(output_idx);
                 this.setSize([currentWidth, this.size[1]]);
+                saveValue();
               },
             });
           }

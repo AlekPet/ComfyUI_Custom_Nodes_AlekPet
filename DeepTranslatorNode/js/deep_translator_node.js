@@ -14,7 +14,7 @@ const CONVERTED_TYPE = "converted-widget";
  *  Code line: https://github.com/TinyTerra/ComfyUI_tinyterraNodes/blob/main/js/ttNdynamicWidgets.js#L9
  */
 function toggleWidget(node, widget, show = false, button = {}, suffix = "") {
-  if (!widget || doesInputWithNameExist(node, widget.name)) return;
+  if (!widget) return;
 
   if (!properties_widget[widget.name]) {
     properties_widget[widget.name] = {
@@ -39,6 +39,8 @@ function toggleWidget(node, widget, show = false, button = {}, suffix = "") {
   widget.computeSize = show
     ? properties_widget[widget.name].origComputeSize
     : () => [0, -4];
+
+  widget.hidden = show ? false : true;
 
   widget.linkedWidgets?.forEach((w) =>
     toggleWidget(node, w, ":" + widget.name, show)
@@ -186,7 +188,11 @@ function get_support_langs() {
 
         // Auth
         const auth_data = responseData?.auth_data;
-        if (widget_auth_data) {
+        if (
+          widget_auth_data &&
+          auth_data instanceof Object &&
+          Object.keys(auth_data)?.length
+        ) {
           let placeholder = Object.keys(placeholders).find(
             (ph_key) => ph_key.includes(service) || ph_key === service
           );
@@ -202,7 +208,7 @@ function get_support_langs() {
 }
 
 app.registerExtension({
-  name: "Comfy.TranslateNode",
+  name: "alekpet.TranslateNode",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     // --- DeepTranslatorTextNode and DeepTranslatorCLIPTextEncodeNode
     if (
@@ -235,9 +241,6 @@ app.registerExtension({
             toggleWidget(node, w, !properties_widget[w.name].show, this);
           }
         );
-
-        node.widgets[2].type = "toggle";
-        node.widgets[2].value = false;
 
         get_support_langs.apply(node);
       };

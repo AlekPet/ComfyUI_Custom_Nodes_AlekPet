@@ -241,7 +241,7 @@ async def langs_support(request):
         auth_data = {}
         langs_support = selectService(service)
 
-        if service in CONFIG_SERVICES.keys():
+        if service in CONFIG_SERVICES.keys() and not CONFIG_SETTINGS.get("hide_keys", True):
             auth_data = {
                 keyS: servP
                 for keyS, servP in CONFIG_SERVICES.get(service, {}).items()
@@ -520,7 +520,7 @@ def deep_translator_function(
                 print("[Deep Translator] Proxy disabled or input field is empty!")
 
             # Auth prop
-            if auth_data is None:
+            if auth_data is None or not auth_data.strip() and CONFIG_SETTINGS.get("hide_keys", True):
                 prop_data.update(
                     {
                         "auth_data": {
@@ -588,7 +588,7 @@ def makeRequiredFields(langs_support=[]):
     params = {
         "from_translate": (["auto"] + langs_support, {"default": "auto"}),
         "to_translate": (langs_support, {"default": "english"}),
-        "add_proxies": (([True, False],), {"default": False}),
+        "add_proxies": ("BOOLEAN", {"default": False}),
         "proxies": (
             "STRING",
             {

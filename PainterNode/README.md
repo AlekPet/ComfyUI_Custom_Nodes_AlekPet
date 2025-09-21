@@ -4,6 +4,8 @@
 
 ## Changelog:
 
+> 2025.07.29 - Add tool Crop canvas
+
 > 2024.05.10 - Implement piping in an image ([issue in an image](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/24)) ([example Piping in an image](#piping))
 
 > 2024.04.11 - Implement **MyPaint** brush tool ([issue MyPaint Brush make](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/36))

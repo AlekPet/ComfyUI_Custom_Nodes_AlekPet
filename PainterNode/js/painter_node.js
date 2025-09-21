@@ -1,7 +1,6 @@
 /*
  * Title: PainterNode ComflyUI from ControlNet
  * Author: AlekPet
- * Version: 2024.09.25
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet
  */
 
@@ -10,7 +9,11 @@ import { api } from "../../scripts/api.js";
 import { fabric } from "./lib/painternode/fabric.js";
 import "./lib/painternode/mybrush.js";
 import { svgSymmetryButtons } from "./lib/painternode/brushes.js";
-import { toRGBA, getColorHEX, LS_Class } from "./lib/painternode/helpers.js";
+import {
+  toRGBA,
+  getColorHEX,
+  StorageClass,
+} from "./lib/painternode/helpers.js";
 import { PainterStorageDialog } from "./lib/painternode/dialogs.js";
 import { addStylesheet } from "../../scripts/utils.js";
 import {
@@ -19,28 +22,29 @@ import {
   makeModal,
   animateClick,
   createWindowModal,
-  isEmptyObject,
   THEMES_MODAL_WINDOW,
+  comfyuiDesktopConfirm,
+  comfyuiDesktopPrompt,
+  comfyuiDesktopAlert,
 } from "./utils.js";
 import "./lib/painternode/fontfaceobserver.js";
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 // ================= FUNCTIONS ================
 
+const DEBUG = false;
+const extensionName = "alekpet.PainterNode";
+
 // Save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
-const SaveSettingsJsonLS = localStorage.getItem(
-  "Comfy.Settings.alekpet.PainterNode.SaveSettingsJson",
-  false
+let painters_settings_json = JSON.parse(
+  localStorage.getItem(`${extensionName}.SaveSettingsJson`, false)
 );
-let painters_settings_json = SaveSettingsJsonLS
-  ? JSON.parse(SaveSettingsJsonLS)
-  : false;
 //
 
 const removeIcon =
   "data:image/svg+xml,%3Csvg version='1.1' id='Ebene_1' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3C/defs%3E%3Crect x='125.3' y='264.6' width='350.378' height='349.569' style='fill: rgb(237, 0, 0); stroke: rgb(197, 2, 2);' rx='58.194' ry='58.194'%3E%3C/rect%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18' rx='32.772' ry='32.772'%3E%3C/rect%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179' rx='32.772' ry='32.772'%3E%3C/rect%3E%3C/g%3E%3C/svg%3E";
 
-const removeImg = document.createElement("img");
+const removeImg = makeElement("img");
 removeImg.src = removeIcon;
 
 const convertIdClass = (text) => text.replaceAll(".", "_");
@@ -65,7 +69,9 @@ function removeObject(eventData, transform) {
 }
 
 function resizeCanvas(node, sizes) {
-  const { width, height } = sizes ?? node.painter.currentCanvasSize;
+  const { width, height } =
+    sizes ??
+    node.painter.storageCls.settings_painter_node.settings.currentCanvasSize;
 
   node.painter.canvas.setDimensions({
     width: width,
@@ -110,6 +116,8 @@ async function getLoadedFonts() {
 // ================= CLASS PAINTER ================
 class Painter {
   constructor(node, canvas) {
+    this.node = node;
+
     this.originX = 0;
     this.originY = 0;
     this.drawning = true;
@@ -124,15 +132,18 @@ class Painter {
       lockRotation: false,
     };
 
-    this.currentCanvasSize = { width: 512, height: 512 };
     this.maxNodeSize = 1024;
 
     this.max_history_steps = 20;
     this.undo_history = [];
     this.redo_history = [];
 
-    // this.undo_history = this.node.LS_Cls.LS_Painters.undo_history || [];
-    // this.redo_history = this.node.LS_Cls.LS_Painters.redo_history || [];
+    this.storageCls = this.node.storageCls;
+
+    // [Crop] Object
+    this.crop_object = null;
+    this.crop_disabled = false;
+    this.mouseDown = null;
 
     this.fonts = {
       Arial: { type: "default" },
@@ -147,48 +158,38 @@ class Painter {
 
     this.bringFrontSelected = true;
 
-    this.node = node;
     this.history_change = false;
     this.canvas = this.initCanvas(canvas);
     this.image = node.widgets.find((w) => w.name === "image");
+    this.image.value = this.node.name;
 
-    let default_value = this.image.value;
-    Object.defineProperty(this.image, "value", {
-      set: function (value) {
-        this._real_value = value;
-      },
+    const self = this;
+    const callb = this.node.callback;
 
-      get: function () {
-        let value = "";
-        if (this._real_value) {
-          value = this._real_value;
-        } else {
-          return default_value;
-        }
+    this.image.callback = function () {
+      self.image.value = self.node.name;
+      if (callb) {
+        return callb.apply(this, arguments);
+      }
+    };
+  }
 
-        if (value.filename) {
-          let real_value = value;
-          value = "";
-          if (real_value.subfolder) {
-            value = real_value.subfolder + "/";
-          }
+  async saveSettingsPainterNode() {
+    this.canvasSaveSettingsPainter();
+    // Save data
+    app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
 
-          value += real_value.filename;
-
-          if (real_value.type && real_value.type !== "input")
-            value += ` [${real_value.type}]`;
-        }
-        return value;
-      },
-    });
+    if (painters_settings_json) await this.node.storageCls.saveData();
   }
 
   initCanvas(canvasEl) {
     this.canvas = new fabric.Canvas(canvasEl, {
       isDrawingMode: true,
       backgroundColor: "transparent",
-      width: 512,
-      height: 512,
+      width:
+        this.storageCls.settings_painter_node.settings.currentCanvasSize.width,
+      height:
+        this.storageCls.settings_painter_node.settings.currentCanvasSize.height,
       enablePointerEvents: true,
       containerClass: "canvas-container-painter",
     });
@@ -206,45 +207,53 @@ class Painter {
     return this.canvas;
   }
 
-  propertiesLS() {
-    let settingsNode = this.node.LS_Cls.LS_Painters.settings;
+  makeElements(wrapperPainter) {
+    // Main panelpaint box
+    this.panelPaintBoxLeft = makeElement("div", {
+      class: ["panelPaintBoxLeft"],
+    });
 
-    if (!settingsNode) {
-      settingsNode = this.node.LS_Cls.LS_Painters.settings = {
-        lsSavePainter: true,
-        pipingSettings: {
-          action: {
-            name: "background",
-            options: {},
-          },
-          pipingChangeSize: true,
-          pipingUpdateImage: true,
-        },
-      };
-    }
+    this.panelPaintBoxRight = makeElement("div", {
+      class: ["panelPaintBoxRight"],
+    });
 
-    // Save canvas to localStorage if not exists
-    if (typeof settingsNode?.lsSavePainter !== "boolean") {
-      settingsNode.lsSavePainter = true;
-    }
+    const panelPaintBoxRight_options = makeElement("div", {
+      class: ["panelPaintBoxRight_options"],
+    });
 
-    // Piping settings localStorage if not exists
-    if (!settingsNode?.pipingSettings) {
-      settingsNode.pipingSettings = {
-        action: {
-          name: "background",
-          options: {},
-        },
-        pipingChangeSize: true,
-        pipingUpdateImage: true,
-      };
-    }
-  }
+    this.undo_button = makeElement("button", {
+      id: "history_undo",
+      title: "Undo",
+      disabled: true,
+      textContent: "⟲",
+    });
 
-  makeElements() {
-    const panelPaintBox = document.createElement("div");
-    panelPaintBox.innerHTML = `<div class="painter_manipulation_box" f_name="Locks" style="display:none;">
-        <div class="comfy-menu-btns">
+    this.redo_button = makeElement("button", {
+      id: "history_redo",
+      title: "Redo",
+      disabled: true,
+      textContent: "⟳",
+    });
+
+    this.painter_history_panel = makeElement("div", {
+      class: ["alekpet_painter_history_panel", "comfy-menu-btns"],
+      children: [this.undo_button, this.redo_button],
+    });
+
+    this.canvas.wrapperEl.appendChild(this.painter_history_panel);
+
+    this.panelPaintBoxRight.append(
+      panelPaintBoxRight_options,
+      this.canvas.wrapperEl
+    );
+
+    wrapperPainter.append(this.panelPaintBoxLeft, this.panelPaintBoxRight);
+
+    this.manipulation_box = makeElement("div", {
+      class: ["alekpet_painter_manipulation_box"],
+      f_name: "Locks",
+      style: { display: "none" },
+      innerHTML: `<div class="comfy-menu-btns">
             <button id="lockMovementX" title="Lock move X">Lock X</button>
             <button id="lockMovementY" title="Lock move Y">Lock Y</button>
             <button id="lockScalingX" title="Lock scale X">Lock ScaleX</button>
@@ -259,85 +268,88 @@ class Painter {
             <button id="zpos_BringFrontSelected" title="Moves an object or the objects of a multiple selection to the top after mouse click" class="${
               this.bringFrontSelected ? "active" : ""
             }">Bring Up Always</button>
-        </div>
-    </div>
-    <div class="painter_drawning_box_property" style='display:block;'></div>
-    <div class="painter_drawning_box">
-        <div class="painter_mode_box fieldset_box comfy-menu-btns" f_name="Mode">
-            <button id="painter_change_mode" title="Enable selection mode">Selection</button>
-            <div class="list_objects_panel" style="display:none;">
-                <div class="list_objects_align">
-                    <div class="list_objects_panel__items"></div>
-                    <div class="painter_shapes_box_modify"></div>
+        </div>`,
+    });
+
+    this.painter_drawning_box_property = makeElement("div", {
+      class: ["alekpet_painter_drawning_box_property"],
+      style: { display: "flex" },
+    });
+
+    this.painter_drawning_box = makeElement("div", {
+      class: ["alekpet_painter_drawning_box"],
+      innerHTML: `<div class="alekpet_painter_mode_box fieldset_box comfy-menu-btns" f_name="Mode">
+            <button class="painter_change_mode" title="Enable selection mode">Selection</button>
+            <div class="alekpet_list_objects_panel" style="display:none;">
+                <div class="alekpet_list_objects_align">
+                    <div class="alekpet_list_objects_panel__items"></div>
+                    <div class="alekpet_painter_shapes_box_modify"></div>
                 </div>
             </div>
         </div>
         <div class="painter_drawning_elements" style="display:block;">
-            <div class="painter_grid_style painter_shapes_box fieldset_box comfy-menu-btns" f_name="Shapes">
+            <div class="alekpet_painter_grid_style alekpet_painter_shapes_box fieldset_box comfy-menu-btns" f_name="Shapes">
                 <button class="active" data-shape='Brush' title="Brush">B</button>
                 <button data-shape='Erase' title="Erase">E</button>
                 <button data-shape='Circle' title="Draw circle">◯</button>
-                <button data-shape='Rect' title="Draw rectangle">▭</button>
+                <button data-shape='Rect' title="Draw rectangle">☐</button>
                 <button data-shape='Triangle' title="Draw triangle">△</button>
                 <button data-shape='Line' title="Draw line">|</button>
                 <button data-shape='Image' title="Add picture">P</button>
                 <button data-shape='Textbox' title="Add text">T</button>
+                <button data-shape='Crop' title="Crop">✂</button>
             </div>
-            <div class="painter_colors_box fieldset_box" f_name="Colors">
-                <div class="painter_grid_style painter_colors_alpha">
+            <div class="alekpet_painter_colors_box fieldset_box" f_name="Colors">
+                <div class="alekpet_painter_grid_style painter_colors_alpha">
                     <span>Fill</span><span>Alpha</span>
                     <input id="fillColor" type="color" value="#FF00FF" title="Fill color">
                     <input id="fillColorTransparent" type="number" max="1.0" min="0" step="0.05" value="0.0" title="Alpha fill value">
                 </div>
-                <div class="painter_grid_style painter_colors_alpha">
+                <div class="alekpet_painter_grid_style painter_colors_alpha">
                     <span>Stroke</span><span>Alpha</span>
                     <input id="strokeColor" type="color" value="#FFFFFF" title="Stroke color">    
                     <input id="strokeColorTransparent" type="number" max="1.0" min="0" step="0.05" value="1.0" title="Stroke alpha value">
                 </div>
             </div>
-            <div class="painter_stroke_box fieldset_box" f_name="Brush/Erase width">
+            <div class="alekpet_painter_stroke_box fieldset_box" f_name="Brush/Erase width">
                 <label for="strokeWidth"><span>Brush:</span><input id="strokeWidth" type="number" min="0" max="150" value="5" step="1" title="Brush width"></label>
                 <label for="eraseWidth"><span>Erase:</span><input id="eraseWidth" type="number" min="0" max="150" value="5" step="1" title="Erase width"></label>
             </div>
-            <div class="painter_grid_style painter_bg_setting fieldset_box comfy-menu-btns" f_name="Background">
-                <input id="bgColor" type="color" value="#000000" data-label="BG" title="Background color">
+            <div class="alekpet_painter_grid_style alekpet_painter_bg_setting fieldset_box comfy-menu-btns" f_name="Background">
+                <div class="alekpet_painter_bg_setting_box">
+                  <input id="bgColor" type="color" value="#000000" data-label="BG" title="Background color">
+                  <button bgImage="img_transparent" title="Set background transparent color">
+                    <img bgImage="img_transparent" style="width: 100%;" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 128 128'%3E%3Cdefs%3E%3Cpattern id='checkerboard' x='0' y='0' width='32' height='32' patternUnits='userSpaceOnUse'%3E%3Crect x='0' y='0' width='16' height='16' fill='%23ccc'/%3E%3Crect x='16' y='16' width='16' height='16' fill='%23ccc'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='128' height='128' fill='url(%23checkerboard)'/%3E%3Cline x1='0' y1='0' x2='128' y2='128' stroke='red' stroke-width='12'/%3E%3C/svg%3E" alt="bg_image_trasnaprent"/>
+                  </button>
+                </div>
                 <button bgImage="img_load" title="Add background image">IMG</button>
                 <button bgImage="img_reset" title="Remove background image">IMG <span style="color: var(--error-text);">✖</span></button>
             </div>
-            <div class="painter_settings_box fieldset_box comfy-menu-btns" f_name="Settimgs">    
+            <div class="alekpet_painter_settings_box fieldset_box comfy-menu-btns" f_name="Settimgs">    
               <button id="painter_canvas_size" title="Set canvas size">Canvas size</button>
             </div>
-        </div>
-    </div>
-    <div class="painter_history_panel comfy-menu-btns">
-      <button id="history_undo" title="Undo" disabled>⟲</button>
-      <button id="history_redo" title="Redo" disabled>⟳</button>
-    </div> 
-    `;
+        </div>`,
+    });
 
-    // Main panelpaint box
-    panelPaintBox.className = "panelPaintBox";
-
-    this.canvas.wrapperEl.appendChild(panelPaintBox);
-    // Manipulation box
-    this.manipulation_box = panelPaintBox.querySelector(
-      ".painter_manipulation_box"
-    );
-    this.painter_drawning_box_property = panelPaintBox.querySelector(
-      ".painter_drawning_box_property"
+    this.panelPaintBoxLeft.append(
+      this.manipulation_box,
+      this.painter_drawning_box_property,
+      this.painter_drawning_box
     );
 
-    [this.undo_button, this.redo_button] = panelPaintBox.querySelectorAll(
-      ".painter_history_panel button"
+    panelPaintBoxRight_options.append(
+      this.manipulation_box,
+      this.painter_drawning_box_property
     );
 
     // Modify in change mode
-    this.painter_shapes_box_modify = panelPaintBox.querySelector(
-      ".painter_shapes_box_modify"
+    this.painter_shapes_box_modify = this.painter_drawning_box.querySelector(
+      ".alekpet_painter_shapes_box_modify"
     );
-    this.painter_drawning_elements = panelPaintBox.querySelector(
+    this.painter_drawning_elements = this.painter_drawning_box.querySelector(
       ".painter_drawning_elements"
     );
+
     [
       this.painter_shapes_box,
       this.painter_colors_box,
@@ -355,39 +367,39 @@ class Painter {
       textContent: "Settings 🛠️",
       title: "Show main settings model window",
       onclick: (e) => animateClick(this.painter_wrapper_settings),
-      customSize: { w: 70, h: 25, fs: 10 },
     });
     this.painter_settings_box.append(mainSettingsNode);
 
-    this.change_mode = panelPaintBox.querySelector("#painter_change_mode");
-    this.painter_shapes_box = panelPaintBox.querySelector(
-      ".painter_shapes_box"
+    this.change_mode = this.painter_drawning_box.querySelector(
+      ".painter_change_mode"
     );
-    this.strokeWidth = panelPaintBox.querySelector("#strokeWidth");
-    this.eraseWidth = panelPaintBox.querySelector("#eraseWidth");
-    this.strokeColor = panelPaintBox.querySelector("#strokeColor");
-    this.fillColor = panelPaintBox.querySelector("#fillColor");
+    this.painter_shapes_box = this.painter_drawning_box.querySelector(
+      ".alekpet_painter_shapes_box"
+    );
+    this.strokeWidth = this.painter_drawning_box.querySelector("#strokeWidth");
+    this.eraseWidth = this.painter_drawning_box.querySelector("#eraseWidth");
+    this.strokeColor = this.painter_drawning_box.querySelector("#strokeColor");
+    this.fillColor = this.painter_drawning_box.querySelector("#fillColor");
 
-    this.list_objects_panel__items = panelPaintBox.querySelector(
-      ".list_objects_panel__items"
+    this.list_objects_panel__items = this.painter_drawning_box.querySelector(
+      ".alekpet_list_objects_panel__items"
     );
 
-    this.strokeColorTransparent = panelPaintBox.querySelector(
+    this.strokeColorTransparent = this.painter_drawning_box.querySelector(
       "#strokeColorTransparent"
     );
-    this.fillColorTransparent = panelPaintBox.querySelector(
+    this.fillColorTransparent = this.painter_drawning_box.querySelector(
       "#fillColorTransparent"
     );
 
-    this.bgColor = panelPaintBox.querySelector("#bgColor");
-    this.clear = panelPaintBox.querySelector("#clear");
-
-    this.painter_bg_setting = panelPaintBox.querySelector(
-      ".painter_bg_setting"
+    this.buttonSetCanvasSize = this.painter_drawning_box.querySelector(
+      "#painter_canvas_size"
     );
 
-    this.buttonSetCanvasSize = panelPaintBox.querySelector(
-      "#painter_canvas_size"
+    this.bgColor = this.painter_drawning_box.querySelector("#bgColor");
+
+    this.painter_bg_setting = this.painter_drawning_box.querySelector(
+      ".alekpet_painter_bg_setting"
     );
 
     this.bgImageFile = document.createElement("input");
@@ -428,16 +440,16 @@ class Painter {
       type: "checkbox",
       class: ["pipingChangeSize_checkbox"],
       checked:
-        this.node.LS_Cls.LS_Painters.settings?.pipingSettings
+        this.storageCls.settings_painter_node.settings?.pipingSettings
           ?.pipingChangeSize ?? true,
       onchange: (e) => {
-        this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingChangeSize =
-          pipingChangeSize.checked;
-        this.node.LS_Cls.LS_Save();
+        this.storageCls.settings_painter_node.settings.pipingSettings.pipingChangeSize =
+          !!e.target.checked;
+
+        this.saveSettingsPainterNode();
       },
     });
 
-    pipingChangeSize.customSize = { w: 10, h: 10, fs: 10 };
     labelPipingChangeSize.append(pipingChangeSize);
     // end - LS change size piping
 
@@ -453,84 +465,29 @@ class Painter {
       type: "checkbox",
       class: ["pipingUpdateImage_checkbox"],
       checked:
-        this.node.LS_Cls.LS_Painters.settings?.pipingSettings
+        this.storageCls.settings_painter_node.settings?.pipingSettings
           ?.pipingUpdateImage ?? true,
       onchange: (e) => {
-        this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingUpdateImage =
-          pipingUpdateImageCheckbox.checked;
+        const checked = !!e.target.checked;
+        this.storageCls.settings_painter_node.settings.pipingSettings.pipingUpdateImage =
+          checked;
 
         // Get hidden widget update_node
         const update_node_widget = this.node.widgets.find(
           (w) => w.name === "update_node"
         );
-        update_node_widget.value = pipingUpdateImageCheckbox.checked;
-        this.node.LS_Cls.LS_Save();
+        update_node_widget.value = checked;
+        this.saveSettingsPainterNode();
       },
     });
 
-    pipingUpdateImageCheckbox.customSize = { w: 10, h: 10, fs: 10 };
     labelPipingUpdateImage.append(pipingUpdateImageCheckbox);
     // end - Piping update image
 
-    // === Settings box ===
-
     // Function click on the radio and show/hide custom settings
     function checkRadioOptionsSelect(currentTarget) {
-      if (currentTarget.value !== "image") {
-        other_options_radio.innerHTML = "";
-      } else {
-        if (!other_options_radio.querySelector(".custom_options_piping_box")) {
-          const custom_options_piping_box = makeElement("div", {
-            class: ["custom_options_piping_box"],
-            style:
-              "border: 1px solid #0069ff; padding: 6px; display: flex; flex-direction: column; gap: 3px; justify-content: center; align-items: flex-end; text-align: right; border-radius: 6px;",
-          });
-
-          // Scale option image
-          const scale = makeElement("input", {
-            type: "number",
-            value:
-              this.node.LS_Cls.LS_Painters.settings.pipingSettings.action
-                .options.scale ?? 1.0,
-            min: 0,
-            step: 0.01,
-            style: "width: 30%;",
-            onchange: (e) => {
-              this.node.LS_Cls.LS_Painters.settings.pipingSettings.action.options.scale =
-                +e.currentTarget.value;
-              this.node.LS_Cls.LS_Save();
-            },
-          });
-
-          const scaleLabel = makeElement("label", {
-            textContent: "Scale: ",
-            title: "Change image size (default: 1)",
-          });
-          scaleLabel.append(scale);
-
-          // sendToBack image canvas
-          const backwardsImage = makeElement("input", {
-            type: "checkbox",
-            checked:
-              this.node.LS_Cls.LS_Painters.settings.pipingSettings.action
-                .options.sendToBack ?? true,
-            onchange: (e) => {
-              this.node.LS_Cls.LS_Painters.settings.pipingSettings.action.options.sendToBack =
-                e.currentTarget.checked;
-              this.node.LS_Cls.LS_Save();
-            },
-          });
-          const sendToBackLabel = makeElement("label", {
-            textContent: "Send to back: ",
-            title: "Sending to back image on the canvas (default: true)",
-          });
-          sendToBackLabel.append(backwardsImage);
-
-          custom_options_piping_box.append(scaleLabel, sendToBackLabel);
-
-          other_options_radio.append(custom_options_piping_box);
-        }
-      }
+      custom_options_piping_box.style.display =
+        currentTarget.value !== "image" ? "none" : "flex";
     }
 
     // Radios click
@@ -538,9 +495,9 @@ class Painter {
       const { currentTarget } = e;
       checkRadioOptionsSelect.call(this, currentTarget);
 
-      this.node.LS_Cls.LS_Painters.settings.pipingSettings.action.name =
+      this.storageCls.settings_painter_node.settings.pipingSettings.action.name =
         currentTarget.value;
-      this.node.LS_Cls.LS_Save();
+      this.saveSettingsPainterNode();
     }
 
     const radio_name = `painter_radio_piping_${this.node.name.replace(
@@ -561,9 +518,59 @@ class Painter {
       },
     ];
 
-    const other_options_radio = makeElement("div", {
-      class: ["painter_other_options_radio"],
+    // Panel custom_options_piping_box
+    const custom_options_piping_box = makeElement("div", {
+      class: ["custom_options_piping_box"],
+      style:
+        "border: 1px solid #0069ff; padding: 6px; display: none; flex-direction: column; gap: 3px; justify-content: center; align-items: flex-end; text-align: right; border-radius: 6px;",
     });
+
+    // Scale option image
+    const scale = makeElement("input", {
+      type: "number",
+      value:
+        this.storageCls.settings_painter_node.settings.pipingSettings.action
+          .options.scale ?? 1.0,
+      min: 0,
+      step: 0.01,
+      style: "width: 30%;",
+      onchange: (e) => {
+        e.stopPropagation();
+        this.storageCls.settings_painter_node.settings.pipingSettings.action.options.scale =
+          +e.currentTarget.value;
+        this.saveSettingsPainterNode();
+      },
+    });
+
+    const scaleLabel = makeElement("label", {
+      textContent: "Scale: ",
+      title: "Change image size (default: 1)",
+      id: "painter_input_scale",
+    });
+    scaleLabel.append(scale);
+
+    // sendToBack image canvas
+    const backwardsImage = makeElement("input", {
+      type: "checkbox",
+      class: ["pipingBackSendImage_checkbox"],
+      checked:
+        this.storageCls.settings_painter_node.settings.pipingSettings.action
+          .options.sendToBack ?? true,
+      onchange: (e) => {
+        this.storageCls.settings_painter_node.settings.pipingSettings.action.options.sendToBack =
+          !!e.target.checked;
+        this.saveSettingsPainterNode();
+      },
+    });
+    const sendToBackLabel = makeElement("label", {
+      textContent: "Send to back: ",
+      title: "Sending to back image on the canvas (default: true)",
+    });
+    sendToBackLabel.append(backwardsImage);
+
+    custom_options_piping_box.append(scaleLabel, sendToBackLabel);
+
+    // end - Panel custom_options_piping_box
 
     const radiosElements = [];
     radios.forEach((radio, idx) => {
@@ -590,8 +597,8 @@ class Painter {
       radiosElements.push(radioBox);
 
       if (
-        this.node.LS_Cls.LS_Painters.settings.pipingSettings.action.name ===
-        value
+        this.storageCls.settings_painter_node.settings.pipingSettings.action
+          .name === value
       ) {
         radEl.checked = true;
         checkRadioOptionsSelect.call(this, radEl);
@@ -604,49 +611,80 @@ class Painter {
         style: "color: rgb(15, 132, 205);",
       }),
       ...radiosElements,
-      other_options_radio,
+      custom_options_piping_box,
       labelPipingChangeSize,
       labelPipingUpdateImage
     );
 
-    // LocalStorage fieldset
-    const lSettingsBoxSettingsBox = makeElement("fieldset", {
+    // end -- Piping fieldset
+
+    // Settings fieldset
+    const settingsBox = makeElement("fieldset", {
       style:
-        "display: flex; flex-direction: column; gap: 5px; text-align: left; border-color: #ffb710; border-radius: 4px;",
-      class: ["lSettingsBoxSettingsBox"],
+        "display: flex; flex-direction: column; gap: 5px; text-align: left; border-color:rgb(205, 202, 15); border-radius: 4px;",
+      class: ["settingsBox"],
     });
 
-    const labelLSSave = makeElement("label", {
-      textContent: "Save canvas:",
+    // Save image
+    const labelSaveImage = makeElement("label", {
+      textContent: "Save change canvas: ",
       style: "font-size: 10px; display: block; text-align: right;",
-      title: "Save canvas to local storage",
+      title: "Saves changes made on the canvas to the workflow.",
     });
 
-    const checkBoxLSSave = makeElement("input", {
+    const saveImageCheckbox = makeElement("input", {
       type: "checkbox",
-      class: ["lsSave_checkbox"],
-      checked: this.node.LS_Cls.LS_Painters.settings?.lsSavePainter ?? true,
+      class: ["pipingSaveImage_checkbox"],
+      checked:
+        this.storageCls.settings_painter_node.settings?.saveImage ?? true,
       onchange: (e) => {
-        this.node.LS_Cls.LS_Painters.settings.lsSavePainter =
-          checkBoxLSSave.checked;
-        this.node.LS_Cls.LS_Save();
+        const checked = !!e.target.checked;
+        this.storageCls.settings_painter_node.settings.saveImage = checked;
+
+        this.saveSettingsPainterNode();
       },
-      customSize: { w: 10, h: 10, fs: 10 },
     });
 
-    labelLSSave.append(checkBoxLSSave);
-    lSettingsBoxSettingsBox.append(
+    labelSaveImage.append(saveImageCheckbox);
+    // end - Save image
+
+    // Hide Background in Output
+    const labelHideBackground = makeElement("label", {
+      textContent: "Hide Background in Output: ",
+      style: "font-size: 10px; display: block; text-align: right;",
+      title: "Hides the background layer in the final output image.",
+    });
+
+    const hideBackgroundCheckbox = makeElement("input", {
+      type: "checkbox",
+      class: ["hideBackground_checkbox"],
+      checked:
+        this.storageCls.settings_painter_node.settings?.hideBackground ?? false, // Default to false
+      onchange: (e) => {
+        const checked = !!e.target.checked;
+        this.storageCls.settings_painter_node.settings.hideBackground = checked;
+
+        this.saveSettingsPainterNode();
+      },
+    });
+
+    labelHideBackground.append(hideBackgroundCheckbox);
+    // end - Hide Background in Output
+
+    settingsBox.append(
       makeElement("legend", {
-        textContent: "Local Storage",
-        style: "color: #ffb710;",
+        textContent: "Settings",
+        style: "color: rgb(205, 202, 15);",
       }),
-      labelLSSave
+      labelSaveImage,
+      labelHideBackground
     );
-    // end - LocalStorage fieldset
+
+    // end - Settings fieldset
 
     this.painter_wrapper_settings = createWindowModal({
       textTitle: "Settings",
-      textBody: [pipingSettingsBox, lSettingsBoxSettingsBox],
+      textBody: [pipingSettingsBox, settingsBox],
       stylesBox: {
         borderColor: "#13e9c5ad",
         boxShadow: "2px 2px 4px #13e9c5ad",
@@ -655,17 +693,34 @@ class Painter {
       stylesBody: { width: "100%", alignItems: "auto" },
     });
 
-    this.canvas.wrapperEl.append(this.painter_wrapper_settings);
+    this.panelPaintBoxRight.append(this.painter_wrapper_settings);
     // === end - Settings box ===
   }
 
-  clearCanvas() {
+  async clearCanvas() {
+    let isBgTransparent = this.canvas.backgroundColor === "transparent";
+
+    if (await comfyuiDesktopConfirm("Reset canvas size by default 512x512?")) {
+      this.setCanvasSize(512, 512);
+    }
+    this.cropReset();
+
     this.canvas.clear();
-    this.canvas.backgroundColor = this.bgColor.value || "#000000";
+
+    const image = new fabric.Image("");
+    this.canvas.setBackgroundImage(
+      image,
+      this.canvas.renderAll.bind(this.canvas)
+    );
+
+    this.canvas.backgroundColor = isBgTransparent
+      ? "transparent"
+      : this.bgColor.value || "#000000";
     this.canvas.requestRenderAll();
 
     this.addToHistory();
-    this.canvasSaveSettingsPainter();
+    this.saveSettingsPainterNode();
+    this.uploadPaintFile(this.node.name);
   }
 
   viewListObjects(list_body) {
@@ -675,16 +730,19 @@ class Painter {
 
     this.canvas.getObjects().forEach((o) => {
       const type = o.type,
-        boxOb = makeElement("div", { class: ["viewlist__itembox"] }),
+        boxOb = makeElement("div", { class: ["alekpet_viewlist__itembox"] }),
         itemRemove = makeElement("img", {
           src: removeIcon,
           title: "Remove object",
         }),
         obEl = makeElement("button"),
         countType = objectNames.filter((t) => t == type).length + 1,
-        text_value = !o.hasOwnProperty("mypaintlib")
-          ? type + `_${countType}`
-          : `mypaint_${countType}`;
+        addTypeCheck = o.hasOwnProperty("mypaintlib")
+          ? "mypaint"
+          : o.hasOwnProperty("cropimage")
+          ? "cropimage"
+          : type,
+        text_value = addTypeCheck + `_${countType}`;
 
       obEl.setAttribute("painter_object", text_value);
       obEl.textContent = text_value;
@@ -721,6 +779,7 @@ class Painter {
         "input[class*=painter_position]"
       );
     }
+
     this.elemX.value = object.left;
     this.elemY.value = object.top;
 
@@ -755,6 +814,16 @@ class Painter {
       this.drawning = true;
     }
 
+    // [Crop] Crop
+    if (this.type === "CropMove" || this.type === "Crop") {
+      this.type = "Crop";
+      this.canvas.isDrawingMode = false;
+      this.drawning = true;
+      this.mouseDown = null;
+    }
+
+    this.cropReset();
+
     if (this.drawning) {
       this.canvas.isDrawingMode = false;
       this.drawning = false;
@@ -763,9 +832,15 @@ class Painter {
       this.canvas.isDrawingMode = this.drawning = true;
 
       if (
-        !["Brush", "Erase", "BrushSymmetry", "Image", "Textbox"].includes(
-          this.type
-        )
+        ![
+          "Brush",
+          "Erase",
+          "BrushSymmetry",
+          "Image",
+          "Textbox",
+          "Crop",
+          "CropMove",
+        ].includes(this.type)
       )
         this.canvas.isDrawingMode = false;
     }
@@ -873,6 +948,8 @@ class Painter {
       );
       // Position and scale remove
       this.position_sizes_box.remove();
+      this.elemX = null;
+      this.elemY = null;
     }
 
     this.canvas.discardActiveObject();
@@ -891,6 +968,7 @@ class Painter {
   changePropertyBrush(type = "Brush") {
     if (["Brush", "BrushSymmetry", "BrushMyPaint"].includes(type)) {
       if (type === "Brush" || type === "BrushSymmetry") {
+        // nope
       }
 
       if (type === "BrushMyPaint") {
@@ -915,6 +993,8 @@ class Painter {
       let a_obs = this.canvas.getActiveObjects();
       if (a_obs) {
         a_obs.forEach((a_o) => {
+          if (a_o.hasOwnProperty("cropimage") && !this.mode) return;
+
           this.setActiveStyle(
             "strokeWidth",
             parseInt(this.strokeWidth.value, 10),
@@ -952,15 +1032,15 @@ class Painter {
   }) {
     let shape = null;
 
-    if (type == "Rect") {
+    if (type === "Rect") {
       shape = new fabric.Rect();
-    } else if (type == "Circle") {
+    } else if (type === "Circle") {
       shape = new fabric.Circle();
-    } else if (type == "Triangle") {
+    } else if (type === "Triangle") {
       shape = new fabric.Triangle();
-    } else if (type == "Line") {
+    } else if (type === "Line") {
       shape = new fabric.Line(points);
-    } else if (type == "Path") {
+    } else if (type === "Path") {
       shape = new fabric.Path(path);
     }
 
@@ -982,10 +1062,130 @@ class Painter {
     return shape;
   }
 
+  // [Crop] Crop canvas
+  cropReset() {
+    if (this.crop_object) {
+      this.canvas.remove(this.crop_object);
+      this.crop_object = null;
+      this.crop_disabled = false;
+      this.mouseDown = null;
+    }
+  }
+
+  createCrop(left, top) {
+    const crop_object = new fabric.Rect();
+    Object.assign(crop_object, {
+      originX: "left",
+      originY: "top",
+      strokeWidth: 1,
+      stroke: "#ccc",
+      left: left,
+      top: top,
+      transparentCorners: false,
+      hasBorders: false,
+      hasControls: true,
+      fill: "transparent",
+      strokeDashArray: [5, 5],
+      absolutePositioned: true,
+      name: "crop",
+      visible: false,
+    });
+
+    this.canvas.add(crop_object);
+    return crop_object;
+  }
+
+  cropCanvas() {
+    this.crop_disabled = true;
+    this.crop_object.visible = false;
+    const croppedImg = new Image();
+
+    croppedImg.src = this.canvas.toDataURL({
+      left: this.crop_object.left,
+      top: this.crop_object.top,
+      width: this.crop_object.width,
+      height: this.crop_object.height,
+    });
+
+    croppedImg.onload = async () => {
+      this.canvas.clear();
+      this.canvas.backgroundColor = this.bgColor.value || "#000000";
+      this.canvas.requestRenderAll();
+
+      const image = new fabric.Image(croppedImg);
+      image.left = this.crop_object.left;
+      image.top = this.crop_object.top;
+      image.selectable = true;
+
+      if (
+        await comfyuiDesktopConfirm(
+          "Resize the canvas to fit the updated clip size?"
+        )
+      ) {
+        image.left = 0;
+        image.top = 0;
+        this.setCanvasSize(this.crop_object.width, this.crop_object.height);
+      }
+
+      this.canvas.isDrawingMode = false;
+      this.drawning = false;
+      this.type = "CropMove";
+      this.cropReset();
+
+      image.setCoords();
+      this.canvas.add(image);
+      this.canvas.sendToBack(image);
+      this.canvas.renderAll();
+      this.saveSettingsPainterNode();
+      this.uploadPaintFile(this.node.name);
+    };
+  }
+
+  cropCanvasPath() {
+    const croppedImg = new Image();
+
+    this.crop_object.visible = false;
+    croppedImg.src = this.canvas.toDataURL();
+
+    croppedImg.onload = async () => {
+      this.crop_object.visible = true;
+      this.canvas.clear();
+      this.canvas.backgroundColor = this.bgColor.value || "#000000";
+
+      this.canvas.requestRenderAll();
+
+      const image = new fabric.Image(croppedImg);
+      image.set({
+        selectable: true,
+        evented: true,
+        cropimage: true,
+        strokeWidth: 0,
+        stroke: null,
+      });
+
+      image.setCoords();
+      this.canvas.add(image);
+
+      this.crop_object.set({ fill: this.canvas.backgroundColor });
+      image.clipPath = this.crop_object;
+
+      this.canvas.isDrawingMode = false;
+      this.drawning = false;
+      this.type = "CropMove";
+      this.cropReset();
+
+      this.canvas.sendToBack(image);
+      this.canvas.renderAll();
+
+      this.saveSettingsPainterNode();
+      this.uploadPaintFile(this.node.name);
+    };
+  }
+
   // Toolbars
   createFontToolbar() {
     const property_textbox = makeElement("div", {
-      class: ["property_textBox", "comfy-menu-btns"],
+      class: ["alekpet_property_textBox", "comfy-menu-btns"],
     });
     const buttonItalic = makeElement("button", {
       dataset: { prop: "prop_fontStyle" },
@@ -1005,7 +1205,9 @@ class Painter {
       style: "text-decoration: underline;",
       textContent: "U",
     });
-    const separator = makeElement("div", { class: ["separator"] });
+    const separator = makeElement("div", {
+      class: ["alekpet_painter_separator"],
+    });
     const selectFontFamily = makeElement("select", {
       dataset: { prop: "prop_fontFamily" },
       class: ["font_family_select"],
@@ -1076,6 +1278,7 @@ class Painter {
     this.painter_drawning_box_property.append(property_textbox);
   }
 
+  // Brush Toolbar
   createBrushesToolbar() {
     // First panel
     const property_brushesBox = makeElement("div", {
@@ -1087,7 +1290,6 @@ class Painter {
       title: "MyPaint Brush",
       textContent: "MyPaint",
     });
-    BrushMyPaint.customSize = { w: 50, h: 25, fs: 10 };
 
     const buttonBrushSymmetry = makeElement("button", {
       dataset: [{ shape: "BrushSymmetry" }, { prop: "prop_BrushSymmetry" }],
@@ -1095,21 +1297,21 @@ class Painter {
       textContent: "S",
     });
 
-    const separator = makeElement("div", { class: ["separator"] });
+    const separator = makeElement("div", {
+      class: ["alekpet_painter_separator"],
+    });
 
     // Second panel setting brushes
     this.property_brushesSecondBox = makeElement("div", {
-      class: ["property_brushesSecondBox"],
+      class: ["property_brushesSecondBox", "comfy-menu-btns"],
     });
 
-    property_brushesBox.append(
-      BrushMyPaint,
-      buttonBrushSymmetry,
-      separator,
+    property_brushesBox.append(BrushMyPaint, buttonBrushSymmetry, separator);
+
+    this.painter_drawning_box_property.append(
+      property_brushesBox,
       this.property_brushesSecondBox
     );
-
-    this.painter_drawning_box_property.append(property_brushesBox);
   }
 
   async createToolbarOptions(type) {
@@ -1138,12 +1340,84 @@ class Painter {
 
     app.graph.setDirtyCanvas(true, false);
   }
+
+  // Crop Toolbar
+  createCropToolbar() {
+    const property_crop = makeElement("div", {
+      style: {
+        display: "flex",
+        gap: "5px",
+      },
+      class: ["property_cropBox", "comfy-menu-btns"],
+    });
+
+    const cropImg = makeElement("img");
+    cropImg.src =
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' version='1.0' width='21px' height='24px' viewBox='0 0 300 300'%3E%3Cg transform='translate(0.000000,300.000000) scale(0.100000,-0.100000)' fill='%23ffffff' stroke='none'%3E%3Cpath d='M664 2836 l-34 -34 0 -1052 0 -1052 34 -34 34 -34 1052 0 1052 0 34 34 c30 30 34 40 34 86 0 46 -4 56 -34 86 l-34 34 -966 0 -966 0 0 966 0 966 -34 34 c-30 30 -40 34 -86 34 -46 0 -56 -4 -86 -34z m137 -25 l24 -19 5 -957 5 -957 28 -24 28 -24 945 0 945 0 24 -25 c33 -32 33 -78 0 -110 l-24 -25 -1031 0 -1031 0 -24 25 -25 24 0 1031 0 1031 25 24 c29 30 74 32 106 6z'/%3E%3Cpath d='M164 2336 c-50 -50 -50 -122 0 -172 l34 -34 106 0 c123 0 155 11 180 64 20 43 20 69 0 112 -25 53 -57 64 -180 64 l-106 0 -34 -34z m258 -20 c27 -20 39 -62 27 -93 -17 -45 -37 -52 -137 -53 -86 0 -95 2 -117 25 -16 15 -25 36 -25 55 0 19 9 40 25 55 22 23 31 25 117 25 60 -1 99 -5 110 -14z'/%3E%3Cpath d='M1059 2355 c-29 -15 -59 -70 -59 -105 0 -36 31 -90 61 -105 23 -13 112 -15 549 -15 l520 0 0 -520 c0 -576 -1 -563 64 -594 43 -20 69 -20 112 0 66 31 64 9 64 680 l0 606 -34 34 -34 34 -609 0 c-506 -1 -612 -3 -634 -15z m1246 -50 l25 -24 0 -591 c0 -359 -4 -598 -10 -609 -5 -10 -23 -24 -40 -31 -37 -15 -81 0 -99 33 -8 15 -12 175 -14 529 l-2 507 -23 23 -23 23 -507 2 c-354 2 -514 6 -529 14 -33 18 -48 62 -33 99 7 17 20 35 29 40 9 6 255 10 609 10 l593 0 24 -25z'/%3E%3Cpath d='M2192 483 c-51 -25 -62 -57 -62 -179 l0 -106 34 -34 c30 -30 40 -34 86 -34 46 0 56 4 86 34 l34 34 0 106 c0 123 -11 155 -64 180 -43 20 -72 20 -114 -1z m116 -56 c20 -18 22 -30 22 -114 0 -86 -2 -96 -25 -118 -32 -33 -78 -33 -110 0 -23 22 -25 31 -25 117 1 99 8 120 51 137 30 12 57 5 87 -22z'/%3E%3C/g%3E%3C/svg%3E";
+
+    const cropAction1 = makeElement("button", {
+      dataset: { prop: "prop_cropAction1" },
+      title: "Crop",
+      children: [
+        makeElement("span", {
+          styke: { padding: "5px" },
+          textContent: "Crop",
+        }),
+        cropImg,
+      ],
+      onclick: (e) => {
+        if (
+          this.crop_object &&
+          this.canvas.getActiveObject() === this.crop_object
+        ) {
+          this.cropCanvas();
+        } else {
+          app.extensionManager.toast.add({
+            severity: "warn",
+            summary: "Warning",
+            detail: "No area selected for canvas cropping!",
+            life: 5000,
+          });
+        }
+      },
+    });
+
+    const cropAction2 = makeElement("button", {
+      dataset: { prop: "prop_cropAction2" },
+      title: "Crop 2",
+      children: [
+        makeElement("span", {
+          styke: { padding: "5px" },
+          textContent: "Crop path",
+        }),
+        cropImg.cloneNode(true),
+      ],
+      onclick: (e) => {
+        if (
+          this.crop_object &&
+          this.canvas.getActiveObject() === this.crop_object
+        ) {
+          this.cropCanvasPath();
+        } else {
+          app.extensionManager.toast.add({
+            severity: "warn",
+            summary: "Warning",
+            detail: "No area selected for canvas cropping!",
+            life: 5000,
+          });
+        }
+      },
+    });
+
+    property_crop.append(cropAction1, cropAction2);
+    this.painter_drawning_box_property.append(property_crop);
+  }
   // end - Toolbars
 
   selectPropertyToolbar(type) {
     this.painter_drawning_box_property.innerHTML = "";
-    if (["Textbox", "Brush"].includes(this.type)) {
-      this.painter_drawning_box_property.style.display = "block";
+    if (["Textbox", "Brush", "Crop"].includes(this.type)) {
+      this.painter_drawning_box_property.style.display = "flex";
 
       switch (this.type) {
         case "Textbox":
@@ -1152,6 +1426,9 @@ class Painter {
         case "Brush":
           this.createBrushesToolbar();
           break;
+        case "Crop":
+          this.createCropToolbar();
+          break;
       }
     } else {
       this.painter_drawning_box_property.style.display = "";
@@ -1159,20 +1436,25 @@ class Painter {
     app.graph.setDirtyCanvas(true, false);
   }
 
-  setCanvasSize(new_width, new_height, confirmChange = false) {
+  async setCanvasSize(new_width, new_height, confirmChange = false) {
     if (
       confirmChange &&
       this.node.isInputConnected(0) &&
-      this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingChangeSize &&
-      (new_width !== this.currentCanvasSize.width ||
-        new_height !== this.currentCanvasSize.height)
+      this.storageCls.settings_painter_node.settings.pipingSettings
+        .pipingChangeSize &&
+      (new_width !==
+        this.storageCls.settings_painter_node.settings.currentCanvasSize
+          .width ||
+        new_height !==
+          this.storageCls.settings_painter_node.settings.currentCanvasSize
+            .height)
     ) {
-      if (confirm("Disable change size piping?")) {
+      if (await comfyuiDesktopConfirm("Disable change size piping?")) {
         this.canvas.wrapperEl.querySelector(
           ".pipingChangeSize_checkbox"
         ).checked = false;
-        this.node.LS_Cls.LS_Painters.settings.pipingSettings.pipingChangeSize = false;
-        this.node.LS_Cls.LS_Save();
+        this.storageCls.settings_painter_node.settings.pipingSettings.pipingChangeSize = false;
+        this.saveSettingsPainterNode();
       }
     }
 
@@ -1181,14 +1463,17 @@ class Painter {
       height: new_height,
     });
 
-    this.currentCanvasSize = { width: new_width, height: new_height };
-    this.node.LS_Cls.LS_Painters.settings["currentCanvasSize"] =
-      this.currentCanvasSize;
-    this.node.title = `${this.node.type} - ${new_width}x${new_height}`;
+    Object.assign(
+      this.storageCls.settings_painter_node.settings.currentCanvasSize,
+      { width: new_width, height: new_height }
+    );
+
+    this.node.title = `${this.node.type} - ${Math.floor(
+      new_width
+    )}x${Math.floor(new_height)}`;
     this.canvas.renderAll();
     app.graph.setDirtyCanvas(true, false);
     this.node.onResize();
-    this.node.LS_Cls.LS_Save();
   }
 
   setDefaultValuesInputs() {
@@ -1207,6 +1492,22 @@ class Painter {
         currentTarget = target.dataset?.shape;
       if (currentTarget) {
         this.type = currentTarget;
+
+        // [Crop] Crop
+        if (this.type === "CropMove") {
+          this.type = "Crop";
+          this.canvas.isDrawingMode = false;
+          this.drawning = true;
+          this.mouseDown = null;
+        }
+
+        if (currentTarget !== "Crop") {
+          this.cropReset();
+        } else {
+          // [Crop] Create crop object
+          this.crop_disabled = false;
+          this.crop_object = this.createCrop(0, 0);
+        }
 
         // Set default brush width if width < 1 (for fabricjs)
         this.setDefaultValuesInputs();
@@ -1478,11 +1779,23 @@ class Painter {
         }
       }
     };
+
+    this.set_transparent_bg = () => {
+      this.canvas.backgroundColor = "transparent";
+      this.canvas.renderAll();
+      this.uploadPaintFile(this.node.name);
+    };
+
     // Event input bgcolor
     this.reset_set_bg = () => {
-      this.canvas.setBackgroundImage(null);
+      const image = new fabric.Image("");
+      this.canvas.setBackgroundImage(
+        image,
+        this.canvas.renderAll.bind(this.canvas)
+      );
       this.canvas.backgroundColor = this.bgColor.value;
       this.canvas.renderAll();
+      this.uploadPaintFile(this.node.name);
     };
 
     const fileReaderFunc = (e, func) => {
@@ -1496,7 +1809,9 @@ class Painter {
       reader.readAsDataURL(file);
     };
 
-    this.bgColor.oninput = this.reset_set_bg;
+    this.bgColor.oninput = () => {
+      this.reset_set_bg();
+    };
 
     // Event input bg image
     this.bgImageFile.onchange = (e) => {
@@ -1509,8 +1824,10 @@ class Painter {
         let typeEvent = target.getAttribute("bgImage");
         switch (typeEvent) {
           case "img_load":
-            this.bgImageFile.func = (img) => {
-              if (confirm("Change canvas size equal image?")) {
+            this.bgImageFile.func = async (img) => {
+              if (
+                await comfyuiDesktopConfirm("Change canvas size equal image?")
+              ) {
                 this.setCanvasSize(img.width, img.height, true);
               }
 
@@ -1530,6 +1847,9 @@ class Painter {
             };
             this.bgImageFile.click();
             break;
+          case "img_transparent":
+            this.set_transparent_bg();
+            break;
           case "img_reset":
             this.reset_set_bg();
             break;
@@ -1538,12 +1858,20 @@ class Painter {
     };
 
     // Settings
-    this.buttonSetCanvasSize.addEventListener("click", () => {
-      function checkSized(prop = "", defaultVal = 512) {
+    this.buttonSetCanvasSize.addEventListener("click", async () => {
+      async function checkSized(prop = "", defaultVal = 512) {
         let inputSize;
         let correct = false;
         while (!correct) {
-          inputSize = +prompt(`Enter canvas ${prop}:`, defaultVal);
+          inputSize = await comfyuiDesktopPrompt(
+            "Canvas size",
+            `Enter canvas ${prop}:`,
+            defaultVal
+          );
+
+          if (inputSize === null) return defaultVal;
+
+          inputSize = +inputSize;
           if (
             Number(inputSize) === inputSize &&
             inputSize % 1 === 0 &&
@@ -1551,14 +1879,22 @@ class Painter {
           ) {
             return inputSize;
           }
-          alert(`[${prop}] Invalid number "${inputSize}" or <=0!`);
+
+          comfyuiDesktopAlert(
+            `[${prop}] Invalid number "${inputSize}" or <=0!`
+          );
         }
       }
 
-      let width = checkSized("width", this.currentCanvasSize.width),
-        height = checkSized("height", this.currentCanvasSize.height);
+      const { width: curWidth, height: curHeight } =
+        this.storageCls.settings_painter_node.settings.currentCanvasSize;
 
-      this.setCanvasSize(width, height, true);
+      let new_width = await checkSized("width", curWidth),
+        new_height = await checkSized("height", curHeight);
+
+      if (new_width === curWidth && new_height === curHeight) return;
+
+      this.setCanvasSize(new_width, new_height, true);
       this.uploadPaintFile(this.node.name);
     });
 
@@ -1612,12 +1948,13 @@ class Painter {
       this.fillColor.onchange =
       this.fillColorTransparent.onchange =
         () => {
+          // [Crop]
+          if (this.type === "Crop") return;
+
           if (this.canvas.getActiveObject()) {
             this.uploadPaintFile(this.node.name);
           }
         };
-
-    this.bgColor.onchange = () => this.uploadPaintFile(this.node.name);
 
     // Event change stroke and erase width
     this.eraseWidth.onchange = () => {
@@ -1627,6 +1964,9 @@ class Painter {
     };
 
     this.strokeWidth.onchange = () => {
+      // [Crop]
+      if (this.type === "Crop") return;
+
       if (
         ["Brush", "BrushMyPaint", "BrushSymmetry", "Textbox", "Image"].includes(
           this.type
@@ -1644,6 +1984,11 @@ class Painter {
     this.setInputsStyleObject = () => {
       let targets = this.canvas.getActiveObjects();
       if (!targets || targets.length == 0) return;
+
+      // [Crop]
+      if (["Crop", "CropMove"].includes(this.type)) {
+        return;
+      }
 
       // Selected tools
       const setProps = (style, value) => {
@@ -1721,8 +2066,24 @@ class Painter {
       },
       // Mouse button down event
       "mouse:down": (o) => {
-        if (!this.canvas.isDrawingMode && this.bringFrontSelected)
-          this.canvas.bringToFront(this.canvas.getActiveObject());
+        const { x: left, y: top } = this.canvas.getPointer(o.e);
+        const activeObject = this.canvas.getActiveObject();
+
+        if (
+          !this.canvas.isDrawingMode &&
+          this.bringFrontSelected &&
+          !["Crop", "CropMove"].includes(this.type)
+        ) {
+          if (
+            activeObject &&
+            activeObject?.hasOwnProperty("cropimage") &&
+            !this.mode
+          ) {
+            this.canvas.bringToFront(activeObject);
+          } else {
+            this.canvas.bringToFront(activeObject);
+          }
+        }
 
         this.canvas.isDrawingMode = this.drawning;
         if (!this.canvas.isDrawingMode) {
@@ -1737,33 +2098,52 @@ class Painter {
           ["Brush", "Erase", "BrushMyPaint", "BrushSymmetry"].includes(
             this.type
           )
-        )
+        ) {
           return;
+        }
 
-        if (this.type != "Textbox") {
-          let { x: left, y: top } = this.canvas.getPointer(o.e),
-            colors = ["red", "blue", "green", "yellow", "purple", "orange"],
-            strokeWidth = +this.strokeWidth.value,
-            stroke =
-              strokeWidth == 0
-                ? "transparent"
-                : toRGBA(
-                    this.strokeColor.value,
-                    this.strokeColorTransparent.value
-                  ) || colors[Math.floor(Math.random() * colors.length)],
-            fill = toRGBA(
-              this.fillColor.value,
-              this.fillColorTransparent.value
-            ),
-            shape = this.shapeCreate({
-              type: this.type,
-              left,
-              top,
-              stroke,
-              fill,
-              strokeWidth,
-              points: [left, top, left, top],
-            });
+        // [Crop] Mouse down
+        if (this.type === "Crop") {
+          if (!this.crop_object) {
+            // [Crop] Create crop object
+            this.crop_object = this.createCrop(left, top);
+          }
+
+          if (!this.crop_disabled) {
+            this.crop_object.set({ left, top });
+            this.crop_object.visible = true;
+            this.crop_object.crop_startX = left;
+            this.crop_object.crop_startY = top;
+            this.mouseDown = o.e;
+            this.canvas.setActiveObject(this.crop_object);
+          }
+          return;
+        }
+
+        if (this.type !== "Textbox") {
+          const colors = ["red", "blue", "green", "yellow", "purple", "orange"];
+          const strokeWidth = +this.strokeWidth.value;
+          const stroke =
+            strokeWidth == 0
+              ? "transparent"
+              : toRGBA(
+                  this.strokeColor.value,
+                  this.strokeColorTransparent.value
+                ) || colors[Math.floor(Math.random() * colors.length)];
+          const fill = toRGBA(
+            this.fillColor.value,
+            this.fillColorTransparent.value
+          );
+
+          const shape = this.shapeCreate({
+            type: this.type,
+            left,
+            top,
+            stroke,
+            fill,
+            strokeWidth,
+            points: [left, top, left, top],
+          });
 
           this.originX = left;
           this.originY = top;
@@ -1813,7 +2193,7 @@ class Painter {
           activeObj.set({ top: pointer.y });
         }
 
-        if (this.type == "Circle") {
+        if (this.type === "Circle") {
           let radius =
             Math.max(
               Math.abs(this.originY - pointer.y),
@@ -1822,8 +2202,49 @@ class Painter {
           if (radius > activeObj.strokeWidth)
             radius -= activeObj.strokeWidth / 2;
           activeObj.set({ radius: radius });
-        } else if (this.type == "Line") {
+        } else if (this.type === "Line") {
           activeObj.set({ x2: pointer.x, y2: pointer.y });
+        } else if (
+          this.type === "Crop" &&
+          this.mouseDown &&
+          !this.crop_disabled
+        ) {
+          const newWidth = pointer.x - this.crop_object.crop_startX;
+          const newHeight = pointer.y - this.crop_object.crop_startY;
+
+          const minSize = 10;
+
+          const absWidth = Math.max(minSize, Math.abs(newWidth));
+          const absHeight = Math.max(minSize, Math.abs(newHeight));
+
+          const finalLeft =
+            newWidth > 0
+              ? this.crop_object.crop_startX
+              : this.crop_object.crop_startX + newWidth;
+          const finalTop =
+            newHeight > 0
+              ? this.crop_object.crop_startY
+              : this.crop_object.crop_startY + newHeight;
+
+          const boundedLeft = Math.max(0, finalLeft);
+          const boundedTop = Math.max(0, finalTop);
+          const boundedWidth = Math.min(
+            absWidth,
+            this.canvas.width - boundedLeft
+          );
+          const boundedHeight = Math.min(
+            absHeight,
+            this.canvas.height - boundedTop
+          );
+
+          this.crop_object.set({
+            left: boundedLeft,
+            top: boundedTop,
+            width: boundedWidth,
+            height: boundedHeight,
+            originX: "left",
+            originY: "top",
+          });
         } else {
           activeObj.set({ width: Math.abs(this.originX - pointer.x) });
           activeObj.set({ height: Math.abs(this.originY - pointer.y) });
@@ -1834,10 +2255,33 @@ class Painter {
 
       // Mouse button up event
       "mouse:up": (o) => {
-        this.canvas._objects.forEach((object) => {
-          if (!object.hasOwnProperty("controls")) {
-            object.controls = {
-              ...object.controls,
+        this.mouseDown = null;
+
+        const activeObject = this.canvas.getActiveObject();
+
+        if (activeObject) {
+          if (this.type === "Crop" && !this.mode) {
+            // activeObject.controls = {
+            //   ...activeObject.controls,
+            //   removeControl: new fabric.Control({
+            //     x: 0.5,
+            //     y: -0.5,
+            //     offsetY: -16,
+            //     offsetX: 16,
+            //     cursorStyle: "pointer",
+            //     mouseUpHandler: (e) => e.stopPropagation(),
+            //     mouseDownHandler: (eventData, transform) => {
+            //       eventData.stopPropagation();
+            //       this.cropCanvas();
+            //       return true;
+            //     },
+            //     render: renderIcon(cropImg),
+            //     cornerSize: 24,
+            //   }),
+            // };
+          } else {
+            activeObject.controls = {
+              ...activeObject.controls,
               removeControl: new fabric.Control({
                 x: 0.5,
                 y: -0.5,
@@ -1850,10 +2294,10 @@ class Painter {
               }),
             };
           }
-        });
 
-        this.canvas.getActiveObject()?.setCoords();
-        this.canvas.getActiveObjects()?.forEach((a) => a.setCoords());
+          activeObject.setCoords();
+          this.canvas.requestRenderAll();
+        }
 
         if (
           ![
@@ -1868,9 +2312,10 @@ class Painter {
           this.canvas.isDrawingMode = false;
 
         // Skip BrushMyPaint mouseup is empty objects array, loading canvas as image, upload when object add to canvas
-        if (!["BrushMyPaint"].includes(this.type)) {
-          this.addToHistory();
+        // [Crop] Skip
+        if (!["BrushMyPaint", "Crop"].includes(this.type)) {
           this.canvas.renderAll();
+          this.addToHistory();
           this.uploadPaintFile(this.node.name);
         }
       },
@@ -1880,6 +2325,14 @@ class Painter {
       // Object moving event
       "object:moving": (o) => {
         this.canvas.isDrawingMode = false;
+        this.canvas.renderAll();
+      },
+
+      "object:scaling": (o) => {
+        this.canvas.renderAll();
+      },
+      "object:rotating": (o) => {
+        this.canvas.renderAll();
       },
 
       // Object modify event
@@ -1916,42 +2369,17 @@ class Painter {
 
   // Save canvas data to localStorage or JSON
   canvasSaveSettingsPainter() {
-    if (!this.node.LS_Cls.LS_Painters.settings.lsSavePainter) return;
+    const save_data =
+      this.storageCls.settings_painter_node.settings.saveImage ?? true;
+
+    if (!save_data) return;
 
     try {
-      const data = this.canvas.toJSON(["mypaintlib"]);
-      if (
-        this.node.LS_Cls.LS_Painters &&
-        !isEmptyObject(this.node.LS_Cls.LS_Painters)
-      ) {
-        this.node.LS_Cls.LS_Painters.canvas_settings = painters_settings_json
-          ? data
-          : JSON.stringify(data);
-
-        this.node.LS_Cls.LS_Painters.settings["currentCanvasSize"] =
-          this.currentCanvasSize;
-
-        this.node.LS_Cls.LS_Save();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  setCanvasLoadData(data) {
-    const obj_data =
-      typeof data === "string" || data instanceof String
-        ? JSON.parse(data)
-        : data;
-
-    const canvas_settings = data.canvas_settings;
-    const settings = data.settings;
-
-    this.canvas.loadFromJSON(canvas_settings, () => {
-      this.canvas.renderAll();
-      this.uploadPaintFile(this.node.name);
-      this.bgColor.value = getColorHEX(data.background).color || "";
-    });
+      Object.assign(
+        this.storageCls.settings_painter_node.canvas_settings,
+        this.canvas.toJSON(["mypaintlib"])
+      );
+    } catch (e) {}
   }
 
   undoRedoLoadData(data) {
@@ -1962,23 +2390,32 @@ class Painter {
   }
 
   // Load canvas data from localStorage or JSON
-  canvasLoadSettingPainter() {
-    try {
-      if (
-        this.node.LS_Cls.LS_Painters &&
-        this.node.LS_Cls.LS_Painters.hasOwnProperty("canvas_settings")
-      ) {
+  canvasLoadSettingPainter(data_canvas) {
+    return new Promise((res) => {
+      try {
+        if (!data_canvas) {
+          res({ success: false, error: new Error("Invalid canvas data!") });
+          return;
+        }
+
         const data =
-          typeof this.node.LS_Cls.LS_Painters === "string" ||
-          this.node.LS_Cls.LS_Painters instanceof String
-            ? JSON.parse(this.node.LS_Cls.LS_Painters)
-            : this.node.LS_Cls.LS_Painters;
-        this.setCanvasLoadData(data);
-        this.addToHistory();
+          typeof data_canvas === "string" || data_canvas instanceof String
+            ? JSON.parse(data_canvas)
+            : data_canvas;
+
+        if (data && data.hasOwnProperty("canvas_settings")) {
+          this.canvas.loadFromJSON(data.canvas_settings, () => {
+            this.canvas.renderAll();
+            this.uploadPaintFile(this.node.name);
+            this.bgColor.value = getColorHEX(data.background).color || "";
+            this.addToHistory();
+            res({ success: true });
+          });
+        }
+      } catch (e) {
+        res({ success: false, error: e });
       }
-    } catch (e) {
-      console.error(e);
-    }
+    });
   }
 
   undo() {
@@ -2009,10 +2446,10 @@ class Painter {
     }
   }
 
-  pastAsBackground(image, options = {}) {
+  async pastAsBackground(image, options = {}) {
     if (!image) return;
 
-    if (confirm("Resize Painter node canvas?")) {
+    if (await comfyuiDesktopConfirm("Resize Painter node canvas?")) {
       this.setCanvasSize(image.naturalWidth, image.naturalHeight);
     }
 
@@ -2038,10 +2475,12 @@ class Painter {
     );
   }
 
-  pastAsImage(image, options = {}) {
+  async pastAsImage(image, options = {}) {
     if (!image) return;
 
-    const painterSize = confirm("Resize Painter node canvas?");
+    const painterSize = await comfyuiDesktopConfirm(
+      "Resize Painter node canvas?"
+    );
     if (painterSize) {
       this.setCanvasSize(image.naturalWidth, image.naturalHeight);
     }
@@ -2054,9 +2493,16 @@ class Painter {
       ...options,
     });
 
-    if (!painterSize && confirm("Stretch image to fit canvas Painter node?")) {
-      img_.scaleToHeight(this.currentCanvasSize.width);
-      img_.scaleToWidth(this.currentCanvasSize.height);
+    if (
+      !painterSize &&
+      (await comfyuiDesktopConfirm("Stretch image to fit canvas Painter node?"))
+    ) {
+      img_.scaleToHeight(
+        this.storageCls.settings_painter_node.settings.currentCanvasSize.width
+      );
+      img_.scaleToWidth(
+        this.storageCls.settings_painter_node.settings.currentCanvasSize.height
+      );
     }
 
     this.canvas.add(img_).renderAll();
@@ -2094,56 +2540,61 @@ class Painter {
   }
 
   async addImageToCanvas(image, options = {}) {
-    async function uploadFile(file) {
-      try {
-        const body = new FormData();
-        body.append("image", file);
+    const formData = new FormData();
+    formData.append("image", image);
 
-        const resp = await api.fetchApi("/upload/image", {
-          method: "POST",
-          body,
-        });
-
-        if (resp.status === 200) {
-          const data = await resp.json();
-          let path = data.name;
-          if (data.subfolder) path = data.subfolder + "/" + path;
-
-          return await getImageByName(path);
-        } else {
-          console.log(`${resp.status} - ${resp.statusText}`);
-          return resp.statusText;
+    this.uploadFileToServer(formData)
+      .then(async (jsonData) => {
+        if (!jsonData.success) {
+          throw new Error(jsonData.error);
         }
-      } catch (err) {
-        console.log(err);
-        return err;
-      }
-    }
+        const data = jsonData.data;
+        let path = data.name;
+        if (data.subfolder) path = data.subfolder + "/" + path;
 
-    image = await uploadFile(image);
+        this.getImageByName(path).then(async (image) => {
+          if (image?.tagName !== "IMG") {
+            createWindowModal({
+              textTitle: "ERROR",
+              textBody: [
+                makeElement("div", {
+                  innerHTML: image ?? "Error load image",
+                }),
+              ],
+              ...THEMES_MODAL_WINDOW.error,
+              options: {
+                auto: { autohide: true, autoshow: true, autoremove: true },
+                close: { showClose: false },
+                parent: this.canvas.wrapperEl,
+              },
+            });
+            return;
+          }
 
-    if (image?.tagName !== "IMG") {
-      createWindowModal({
-        textTitle: "ERROR",
-        textBody: [
-          makeElement("div", {
-            innerHTML: image ?? "Error load image",
-          }),
-        ],
-        ...THEMES_MODAL_WINDOW.error,
-        options: {
-          auto: { autohide: true, autoshow: true, autoremove: true },
-          close: { showClose: false },
-          parent: this.canvas.wrapperEl,
-        },
+          if (await comfyuiDesktopConfirm("Past as background?")) {
+            this.pastAsBackground(image, options);
+          } else if (await comfyuiDesktopConfirm("Past as image?")) {
+            this.pastAsImage(image, options);
+          }
+        });
+      })
+      .catch((err) => console.error(err));
+  }
+
+  async uploadFileToServer(formData) {
+    try {
+      const resp = await api.fetchApi("/upload/image", {
+        method: "POST",
+        body: formData,
       });
-      return;
-    }
 
-    if (confirm("Past as background?")) {
-      this.pastAsBackground(image, options);
-    } else if (confirm("Past as image?")) {
-      this.pastAsImage(image, options);
+      if (resp.status !== 200) {
+        return { success: false, error: `${resp.status} - ${resp.statusText}` };
+      }
+
+      return { success: true, data: await resp.json() };
+    } catch (error) {
+      return { success: false, error };
     }
   }
 
@@ -2164,7 +2615,6 @@ class Painter {
     img.src = api.apiURL(
       `/view?filename=${name}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}&${new Date().getTime()}`
     );
-    this.node.setSizeForImage?.();
   }
 
   async uploadPaintFile(fileName) {
@@ -2179,28 +2629,46 @@ class Painter {
         this.canvas.getActiveObjects().forEach((a_obs) => {
           a_obs.hasControls = false;
           a_obs.hasBorders = false;
+
+          if (a_obs?.name === "crop") {
+            a_obs.visible = false;
+          }
+        });
+      }
+    }
+
+    if (this.storageCls.settings_painter_node.settings.hideBackground) {
+      if (this.canvas.backgroundImage) {
+        this.canvas.backgroundImage.set({
+          opacity: 0,
         });
         this.canvas.renderAll();
       }
     }
 
+    this.canvasSaveSettingsPainter();
+
     await new Promise((res) => {
-      const uploadFile = async (blobFile) => {
-        try {
-          const resp = await api.fetchApi("/upload/image", {
-            method: "POST",
-            body: blobFile,
-          });
+      this.canvas.lowerCanvasEl.toBlob((blob) => {
+        const formData = new FormData();
+        formData.append("image", blob, fileName);
+        formData.append("overwrite", "true");
+        //formData.append("type", "temp");
 
-          if (resp.status === 200) {
-            const data = await resp.json();
-
-            if (!this.image.options.values.includes(data.name)) {
-              this.image.options.values.push(data.name);
+        this.uploadFileToServer(formData)
+          .then((jsonData) => {
+            if (!jsonData.success) {
+              throw new Error(jsonData.error);
             }
 
-            this.image.value = data.name;
-            this.showImage(data.name);
+            const { name } = jsonData.data;
+
+            if (!this.image.options.values.includes(name)) {
+              this.image.options.values.push(name);
+            }
+
+            // this.image.value = name;
+            this.showImage(name);
 
             if (activeObj && !this.drawning) {
               activeObj.hasControls = true;
@@ -2209,194 +2677,90 @@ class Painter {
               this.canvas.getActiveObjects().forEach((a_obs) => {
                 a_obs.hasControls = true;
                 a_obs.hasBorders = true;
+                if (a_obs?.name === "crop") {
+                  activeObj.visible = true;
+                  activeObj.hasBorders = false;
+                }
               });
               this.canvas.renderAll();
+            } else {
+              if (activeObj?.name === "crop") {
+                activeObj.visible = true;
+                activeObj.hasControls = true;
+                activeObj.hasBorders = false;
+              }
             }
-            this.canvasSaveSettingsPainter();
-            res(true);
-          } else {
-            alert(resp.status + " - " + resp.statusText);
-          }
-        } catch (error) {
-          console.log(error);
-        }
-      };
+            if (this.storageCls.settings_painter_node.settings.hideBackground) {
+              if (this.canvas.backgroundImage) {
+                this.canvas.backgroundImage.set({
+                  opacity: 1,
+                });
+              }
+            }
+            this.canvas.renderAll();
 
-      this.canvas.lowerCanvasEl.toBlob(function (blob) {
-        let formData = new FormData();
-        formData.append("image", blob, fileName);
-        formData.append("overwrite", "true");
-        //formData.append("type", "temp");
-        uploadFile(formData);
+            this.saveSettingsPainterNode();
+            res(true);
+          })
+          .catch((error) => {
+            console.log(error);
+            res(false);
+          });
       }, "image/png");
     });
 
     // - end
-
-    const callb = this.node.callback,
-      self = this;
-    this.image.callback = function () {
-      self.image.value = self.node.name;
-      if (callb) {
-        return callb.apply(this, arguments);
-      }
-    };
   }
 }
 // ================= END CLASS PAINTER ================
 
 // ================= CREATE PAINTER WIDGET ============
 function PainterWidget(node, inputName, inputData, app) {
-  node.name = inputName;
-  const widget = {
-    type: "painter_widget",
-    name: `w${inputName}`,
-    callback: () => {},
-    draw: function (ctx, _, widgetWidth, y, widgetHeight) {
-      const margin = 10,
-        left_offset = 8,
-        top_offset = 50,
-        visible = app.canvas.ds.scale > 0.6 && this.type === "painter_widget",
-        w = widgetWidth - margin * 2 - 80,
-        clientRectBound = ctx.canvas.getBoundingClientRect(),
-        transform = new DOMMatrix()
-          .scaleSelf(
-            clientRectBound.width / ctx.canvas.width,
-            clientRectBound.height / ctx.canvas.height
-          )
-          .multiplySelf(ctx.getTransform())
-          .translateSelf(margin, margin + y),
-        scale = new DOMMatrix().scaleSelf(transform.a, transform.d);
+  node.addWidget("button", "Clear Canvas", "clear_painer", async () => {
+    if (
+      !(await comfyuiDesktopConfirm("Do you really want to clear the canvas?"))
+    ) {
+      return;
+    }
+    node.painter.list_objects_panel__items.innerHTML = "";
+    node.painter.clearCanvas();
+  });
 
-      let aspect_ratio = 1;
-      if (node?.imgs && typeof node.imgs !== undefined) {
-        aspect_ratio = node.imgs[0].naturalHeight / node.imgs[0].naturalWidth;
-      }
-
-      Object.assign(this.painter_wrap.style, {
-        left: `${
-          transform.a * margin * left_offset +
-          transform.e +
-          clientRectBound.left
-        }px`,
-        top: `${
-          transform.d + transform.f + top_offset + clientRectBound.top
-        }px`,
-        width: `${w * transform.a}px`,
-        height: `${w * transform.d}px`,
-        position: "absolute",
-        zIndex: 9,
-      });
-
-      Object.assign(this.painter_wrap.children[0].style, {
-        transformOrigin: "0 0",
-        transform: scale,
-        width: w + "px",
-        height: w * aspect_ratio + "px",
-      });
-
-      Object.assign(this.painter_wrap.children[1].style, {
-        transformOrigin: "0 0",
-        transform: scale,
-        width: w + "px",
-        height: w * aspect_ratio + "px",
-      });
-
-      Array.from(
-        this.painter_wrap.children[2].querySelectorAll(
-          "input, button, input:after, span, div.painter_drawning_box"
-        )
-      ).forEach((element) => {
-        if (element.type == "number") {
-          Object.assign(element.style, {
-            width: `${40 * transform.a}px`,
-            height: `${21 * transform.d}px`,
-            fontSize: `${transform.d * 10.0}px`,
-          });
-        } else if (element.tagName == "SPAN") {
-          // NOPE
-        } else if (element.tagName == "DIV") {
-          Object.assign(element.style, {
-            width: `${88 * transform.a}px`,
-            left: `${-90 * transform.a}px`,
-          });
-        } else {
-          let sizesEl = { w: 25, h: 25, fs: 10 };
-
-          if (element?.customSize) {
-            sizesEl = element.customSize;
-          }
-
-          if (element.id.includes("lock")) sizesEl = { w: 75, h: 15, fs: 10 };
-          if (element.id.includes("zpos")) sizesEl = { w: 80, h: 15, fs: 7 };
-          if (
-            ["painter_change_mode", "painter_canvas_size"].includes(element.id)
-          )
-            sizesEl.w = 75;
-          if (element.hasAttribute("painter_object"))
-            sizesEl = { w: 58, h: 16, fs: 10 };
-          if (element.hasAttribute("bgImage"))
-            sizesEl = { w: 60, h: 20, fs: 10 };
-
-          Object.assign(element.style, {
-            cursor: "pointer",
-            width: `${sizesEl.w * transform.a}px`,
-            height: `${sizesEl.h * transform.d}px`,
-            fontSize: `${transform.d * sizesEl.fs}px`,
-          });
-        }
-      });
-      this.painter_wrap.hidden = !visible;
-    },
-  };
+  const wrapperPainter = makeElement("div", {
+    class: ["wrapperPainter"],
+  });
 
   // Fabric canvas
-  let canvasPainter = makeElement("canvas", {
+  const canvasPainter = makeElement("canvas", {
     width: 512,
     height: 512,
   });
   node.painter = new Painter(node, canvasPainter);
 
-  node.painter.canvas.setWidth(node.painter.currentCanvasSize.width);
-  node.painter.canvas.setHeight(node.painter.currentCanvasSize.height);
+  const widget = node.addDOMWidget(
+    "painter_widget",
+    "painter",
+    wrapperPainter,
+    {
+      setValue(v) {
+        node.painter.storageCls.settings_painter_node = v;
+      },
+      getValue() {
+        return node.painter.storageCls.settings_painter_node;
+      },
+    }
+  );
 
-  resizeCanvas(node, node.painter.canvas);
+  widget.callback = function (v) {};
 
+  widget.wrapperPainter = wrapperPainter;
   widget.painter_wrap = node.painter.canvas.wrapperEl;
   widget.parent = node;
-  widget.painter_wrap.hidden = true;
 
-  node.painter.image.value = node.name;
-
-  node.painter.propertiesLS();
-  node.painter.makeElements();
-
-  document.body.appendChild(widget.painter_wrap);
-
-  node.addWidget("button", "Clear Canvas", "clear_painer", () => {
-    node.painter.list_objects_panel__items.innerHTML = "";
-    node.painter.clearCanvas();
-  });
-
-  // Add customWidget to node
-  node.addCustomWidget(widget);
-
-  node.onRemoved = () => {
-    //this.LS_Cls.removeData();
-
-    // When removing this node we need to remove the input from the DOM
-    for (let y in node.widgets) {
-      if (node.widgets[y].painter_wrap) {
-        node.widgets[y].painter_wrap.remove();
-      }
-    }
-  };
-
-  widget.onRemove = () => {
-    widget.painter_wrap?.remove();
-  };
+  node.painter.makeElements(wrapperPainter);
 
   node.onResize = function () {
+    const minSize = 600;
     let [w, h] = this.size;
     let aspect_ratio = 1;
 
@@ -2406,18 +2770,17 @@ function PainterWidget(node, inputName, inputData, app) {
     let buffer = 90;
 
     if (w > this.painter.maxNodeSize) w = w - (w - this.painter.maxNodeSize);
-    if (w < 600) w = 600;
+    if (w < minSize) w = minSize;
 
     h = w * aspect_ratio + buffer;
 
-    if (h < 600) h = 600 + h / 2;
+    if (h < minSize) h = minSize + h / 2;
 
     this.size = [w, h];
   };
 
   node.onDrawBackground = function (ctx) {
     if (!this.flags.collapsed) {
-      node.painter.canvas.wrapperEl.hidden = false;
       if (this.imgs && this.imgs.length) {
         if (app.canvas.ds.scale > 0.8) {
           let [dw, dh] = this.size;
@@ -2443,12 +2806,8 @@ function PainterWidget(node, inputName, inputData, app) {
           ctx.fillText("Mask", w / 2, dh - 10);
         }
       }
-    } else {
-      node.painter.canvas.wrapperEl.hidden = true;
     }
   };
-
-  node.onConnectInput = () => console.log(`Connected input ${node.name}`);
 
   // DragDrop past image
   node.onDragOver = function (e) {
@@ -2473,13 +2832,21 @@ function PainterWidget(node, inputName, inputData, app) {
   };
   // end - DragDrop past image
 
+  // Node serialize
+  node.onSerialize = (n) => {
+    if (painters_settings_json) {
+      n.widgets_values[3] = null;
+    }
+  };
+
   // Get piping image input, when node executing...
   api.addEventListener("alekpet_get_image", async ({ detail }) => {
     const { images, unique_id } = detail;
 
     if (
       !images.length ||
-      !node.LS_Cls.LS_Painters.settings.pipingSettings.pipingUpdateImage ||
+      !node.painter.storageCls.settings_painter_node.settings.pipingSettings
+        .pipingUpdateImage ||
       +unique_id !== node.id
     ) {
       return;
@@ -2487,17 +2854,28 @@ function PainterWidget(node, inputName, inputData, app) {
 
     await new Promise((res) => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         // Change size piping input image
         const { naturalWidth: w, naturalHeight: h } = img;
         if (
-          node.LS_Cls.LS_Painters.settings.pipingSettings.pipingChangeSize &&
-          (w !== node.painter.currentCanvasSize.width ||
-            h !== node.painter.currentCanvasSize.height)
+          node.painter.storageCls.settings_painter_node.settings.pipingSettings
+            .pipingChangeSize &&
+          (w !==
+            node.painter.storageCls.settings_painter_node.settings
+              .currentCanvasSize.width ||
+            h !==
+              node.painter.storageCls.settings_painter_node.settings
+                .currentCanvasSize.height)
         ) {
           node.painter.setCanvasSize(w, h);
         } else {
-          node.title = `${node.type} - ${node.painter.currentCanvasSize.width}x${node.painter.currentCanvasSize.height}`;
+          node.title = `${node.type} - ${Math.floor(
+            node.painter.storageCls.settings_painter_node.settings
+              .currentCanvasSize.width
+          )}x${Math.floor(
+            node.painter.storageCls.settings_painter_node.settings
+              .currentCanvasSize.height
+          )}`;
         }
 
         const img_ = new fabric.Image(img, {
@@ -2514,11 +2892,15 @@ function PainterWidget(node, inputName, inputData, app) {
       img.src = images[0];
     })
       .then(async (result) => {
-        switch (node.LS_Cls.LS_Painters.settings.pipingSettings.action.name) {
+        switch (
+          node.painter.storageCls.settings_painter_node.settings.pipingSettings
+            .action.name
+        ) {
           case "image":
             await new Promise(async (res) => {
               let { scale, sendToBack = true } =
-                node.LS_Cls.LS_Painters.settings.pipingSettings.action.options;
+                node.painter.storageCls.settings_painter_node.settings
+                  .pipingSettings.action.options;
 
               if (typeof scale === "number") result.scale(scale);
 
@@ -2577,32 +2959,16 @@ function PainterWidget(node, inputName, inputData, app) {
       });
   });
 
-  app.canvas.onDrawBackground = function () {
-    // Draw node isnt fired once the node is off the screen
-    // if it goes off screen quickly, the input may not be removed
-    // this shifts it off screen so it can be moved back if the node is visible.
-    for (let n in app.graph._nodes) {
-      const currnode = app.graph._nodes[n];
-      for (let w in currnode.widgets) {
-        let wid = currnode.widgets[w];
-        if (Object.hasOwn(wid, "painter_widget")) {
-          wid.painter_wrap.style.left = -8000 + "px";
-          wid.painter_wrap.style.position = "absolute";
-        }
-      }
-    }
-  };
-
   node.onResize();
   app.graph.setDirtyCanvas(true, false);
 
-  return { widget: widget };
+  return widget;
 }
 // ================= END CREATE PAINTER WIDGET ============
 
 // ================= CREATE EXTENSION ================
 
-const extensionName = "alekpet.PainterNode";
+let setEventsPromise = null;
 
 app.registerExtension({
   name: extensionName,
@@ -2611,68 +2977,21 @@ app.registerExtension({
     addStylesheet("css/painternode/painter_node_styles.css", import.meta.url);
     addStylesheet("css/painternode/painter_node_fonts.css", import.meta.url);
 
-    // Add settings params painter node
+    // -- Settings
+    // Managing data
     app.ui.settings.addSetting({
-      id: `${extensionName}.SaveSettingsJson`,
-      name: "🔸 Painter Node",
+      id: `${extensionName}.ManagingData`,
+      name: "🔸 Managing JSON data storage",
       defaultValue: false,
       type: (name, sett, val) => {
-        const newUI = document.querySelector(".p-dialog-header");
         return makeElement("tr", {
           children: [
-            !newUI
-              ? makeElement("td", {
-                  children: [
-                    makeElement("label", {
-                      textContent: name,
-                      for: convertIdClass(
-                        `${extensionName}.save_settings_json_checkbox`
-                      ),
-                    }),
-                  ],
-                })
-              : "",
             makeElement("td", {
               children: [
-                makeElement("label", {
-                  style: { display: "block" },
-                  textContent: "Save settings to json file: ",
-                  for: convertIdClass(
-                    `${extensionName}.save_settings_json_checkbox`
-                  ),
-                  children: [
-                    makeElement("input", {
-                      id: convertIdClass(
-                        `${extensionName}.save_settings_json_checkbox`
-                      ),
-                      type: "checkbox",
-                      checked: val,
-                      onchange: (e) => {
-                        const checked = !!e.target.checked;
-                        painters_settings_json = checked;
-
-                        // Settings all painter nodes save in the JSON or LocalStorage
-                        const PainerNodes = app.graph._nodes.filter(
-                          (wi) => wi.type == "PainterNode"
-                        );
-
-                        if (PainerNodes.length) {
-                          PainerNodes.map((n) => {
-                            n.LS_Cls.painters_settings_json =
-                              painters_settings_json;
-                          });
-                        }
-                        //
-
-                        sett(checked);
-                      },
-                    }),
-                  ],
-                }),
                 makeElement("button", {
                   textContent: "Managing Data",
                   onclick: () => {
-                    new PainterStorageDialog().show(painters_settings_json);
+                    new PainterStorageDialog().show();
                   },
                   style: {
                     display: "block",
@@ -2684,18 +3003,24 @@ app.registerExtension({
         });
       },
     });
-  },
-  async setup(app) {
-    let PainerNode = app.graph._nodes.filter((wi) => wi.type == "PainterNode");
 
-    if (PainerNode.length) {
-      PainerNode.map(async (n) => {
-        console.log(`Setup PainterNode: ${n.name}`);
-        // Resize window
-        window.addEventListener("resize", (e) => resizeCanvas(n), false);
-      });
-    }
+    // Add settings params painter node
+    app.ui.settings.addSetting({
+      id: `${extensionName}.SaveSettingsJson`,
+      name: "🔸 Save settings to JSON file (BETA)",
+      defaultValue: false,
+      type: "boolean",
+      onChange: (e) => {
+        painters_settings_json = !!e;
+        localStorage.setItem(
+          `${extensionName}.SaveSettingsJson`,
+          painters_settings_json
+        );
+      },
+    });
+    // end -- Settings
   },
+  async setup(app) {},
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === "PainterNode") {
       if (!STATES.fontsLoaded) {
@@ -2718,17 +3043,14 @@ app.registerExtension({
         const nodeName = `Paint_${node_id}`;
         const nodeNamePNG = `${nodeName}.png`;
 
-        console.log(`Create PainterNode: ${nodeName}`);
+        this.name = nodeNamePNG;
 
-        this.LS_Cls = new LS_Class(nodeNamePNG, painters_settings_json);
+        console.log(`🔨 Created PainterNode: ${this.name}`);
 
         // Find widget update_node and hide him
         for (const w of this.widgets) {
           if (w.name === "update_node") {
             w.type = "converted-widget";
-            w.value =
-              this.LS_Cls.LS_Painters.settings?.pipingSettings
-                ?.pipingUpdateImage ?? true;
             w.computeSize = () => [0, -4];
             if (!w.linkedWidgets) continue;
             for (const l of w.linkedWidgets) {
@@ -2738,40 +3060,116 @@ app.registerExtension({
           }
         }
 
-        await PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
-        await this.LS_Cls.LS_Init(this);
-        let painter_ls = this.LS_Cls.LS_Painters;
+        this.storageCls = new StorageClass(this, DEBUG);
 
-        const widgetImage = this.widgets.find((w) => w.name == "image");
+        const widget = PainterWidget.apply(this, [this, nodeNamePNG, {}, app]);
 
-        if (painter_ls && typeof lsData === "string") {
-          painter_ls = JSON.parse(painter_ls);
+        this.title = `${this.type} - ${this.painter.storageCls.settings_painter_node.settings.currentCanvasSize.width}x${this.painter.storageCls.settings_painter_node.settings.currentCanvasSize.height}`;
+
+        if (!painters_settings_json && !this?.widgets_values) {
+          this.painter.uploadPaintFile(nodeNamePNG);
         }
 
-        if (widgetImage && painter_ls && !isEmptyObject(painter_ls)) {
-          // Load settings elements
-          this.painter.setValueElementsLS();
-
-          painter_ls.hasOwnProperty("objects_canvas") &&
-            delete painter_ls.objects_canvas; // remove old property
-
-          if (painter_ls?.settings?.currentCanvasSize) {
-            this.painter.currentCanvasSize =
-              painter_ls.settings.currentCanvasSize;
-
-            this.painter.setCanvasSize(
-              this.painter.currentCanvasSize.width,
-              this.painter.currentCanvasSize.height
-            );
-          }
-          this.painter.canvasLoadSettingPainter();
-        }
-
-        this.painter.canvas.renderAll();
-        this.painter.uploadPaintFile(nodeNamePNG);
-        this.title = `${this.type} - ${this.painter.currentCanvasSize.width}x${this.painter.currentCanvasSize.height}`;
-
+        // Resize window
+        window.addEventListener("resize", (e) => resizeCanvas(this), false);
         return r;
+      };
+
+      const onConfigure = nodeType.prototype.onConfigure;
+      nodeType.prototype.onConfigure = async function (widget) {
+        onConfigure?.apply(this, arguments);
+
+        await this.getTitle();
+
+        if (painters_settings_json) {
+          if (this.storageCls.workflowStateManager.currentWorkflow) {
+            DEBUG &&
+              console.log(
+                `⚠️ [PainterNode] currentWorkflow is already set, skip: ${this.name} -> ${this.storageCls.workflowStateManager.currentWorkflow}`
+              );
+          }
+
+          // Если `setEvents` уже выполняется, ждем его завершения
+          if (setEventsPromise) {
+            DEBUG &&
+              console.log(
+                `⏳ [PainterNode] Waiting for setEvents to complete...`
+              );
+
+            await setEventsPromise;
+            DEBUG &&
+              console.log(`✅ [PainterNode] setEvents completed, continue`);
+          } else {
+            // Если это первый узел, запускаем `setEvents`
+            DEBUG &&
+              console.log(`🚀 [PainterNode] The first node calls setEvents...`);
+            setEventsPromise = this.storageCls.workflowStateManager.setEvents();
+            await setEventsPromise;
+            DEBUG && console.log(`✅ [PainterNode] setEvents completed`);
+          }
+        }
+
+        setTimeout(async () => {
+          console.log(`🔧 Configure PainterNode: ${this.name}`);
+
+          const painter_idx = this.widgets.findIndex(
+            (w) => w.type === "painter"
+          );
+
+          if (painter_idx < 0) return;
+          let data = widget.widgets_values[painter_idx];
+
+          if (painters_settings_json && data === null) {
+            data = await this.painter.storageCls.getData();
+
+            if (!data) {
+              data = JSON.parse(
+                JSON.stringify(
+                  this.painter.storageCls.settings_painter_node_default
+                )
+              );
+            }
+
+            this.painter.storageCls.settings_painter_node = data;
+          }
+
+          Object.assign(this.widgets[painter_idx].value, data);
+
+          if (data) {
+            if (data?.settings) {
+              const {
+                currentCanvasSize: { width, height },
+              } = data.settings;
+
+              // -- Settings piping
+              this.painter.setValueElementsLS();
+
+              // -- Settings size
+              if (width && height) {
+                this.painter.storageCls.settings_painter_node.settings.currentCanvasSize =
+                  {
+                    width,
+                    height,
+                  };
+
+                this.painter.setCanvasSize(width, height);
+              }
+            }
+
+            // Loading canvas data
+            if (data?.canvas_settings) {
+              this.painter.canvasLoadSettingPainter(data).then((result) => {
+                if (result) {
+                  this.painter.canvas.renderAll();
+                  this.painter.uploadPaintFile(this.name);
+                }
+              });
+            }
+
+            this.setSize(arguments[0].size);
+            app.graph.setDirtyCanvas(true, false);
+          }
+        });
       };
 
       // ExtraMenuOptions
@@ -2806,19 +3204,32 @@ app.registerExtension({
           });
         }
 
-        const removeIndex = options.findIndex((m) => m?.content === "Remove"),
-          removeButton = options[removeIndex];
-        if (!!removeButton) {
-          const remove_callback = removeButton.callback;
-          const self = this;
-          removeButton.callback = function () {
-            remove_callback.apply(this, arguments);
+        setTimeout(() => {
+          const removeIndex = options.findIndex((m) => m?.content === "Remove"),
+            removeButton = options[removeIndex];
 
-            if (confirm("Remove storage data?")) {
-              self.LS_Cls.removeData();
-            }
-          };
-        }
+          if (!!removeButton) {
+            const remove_callback = removeButton.callback;
+            const self = this;
+
+            removeButton.callback = async function () {
+              const nodeName = Array.from(arguments).find((f) => f?.name).name;
+              remove_callback.apply(this, arguments);
+
+              if (!painters_settings_json) return;
+
+              if (
+                await comfyuiDesktopConfirm(
+                  `Remove data ${nodeName} from JSON?`
+                )
+              ) {
+                self.storageCls.workflowStateManager.removeData(null, [
+                  nodeName,
+                ]);
+              }
+            };
+          }
+        }, 0);
       };
       // end - ExtraMenuOptions
     }

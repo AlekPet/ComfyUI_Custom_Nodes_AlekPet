@@ -1,57 +1,70 @@
-.canvas-container-painter {
-  position: absolute !important;
-  left: 0;
-  top: 0;
+.wrapperPainter {
+  display: flex;
 }
-.panelPaintBox {
-  position: absolute;
+
+.panelPaintBoxRight {
+  position: relative;
   width: 100%;
+}
+
+.canvas-container-painter {
+  width: auto !important;
+  height: auto !important;
+}
+
+.canvas-container-painter canvas {
+  width: 100% !important;
+  height: auto !important;
+  border: 1px solid #000000;
+}
+
+.panelPaintBoxLeft {
+  display: flex;
+  flex-direction: column;
 }
 .comfy-menu-btns button.active {
   color: var(--error-text) !important;
   font-weight: bold;
   border: 1px solid;
 }
-.painter_manipulation_box {
-  position: absolute;
-  left: 50%;
-  top: -40px;
-  transform: translateX(-50%);
-}
-.painter_manipulation_box > div {
+.alekpet_painter_manipulation_box > div {
   display: grid;
   gap: 2px;
   grid-template-columns: 0.1fr 0.1fr 0.1fr 0.1fr 0.1fr;
   justify-content: center;
   margin-bottom: 2px;
 }
-.painter_manipulation_box > div button {
+.alekpet_painter_manipulation_box > div button {
   font-size: 0.5rem;
+  width: 80px;
 }
-.painter_manipulation_box > div button[id^="zpos"]:active {
+.alekpet_painter_manipulation_box > div button[id^="zpos"]:active {
   background-color: #484848;
 }
-.painter_drawning_box {
-  position: absolute;
-  top: -64px;
-  width: 88px;
+.alekpet_painter_drawning_box {
+  min-width: 100px;
 }
-.painter_drawning_box button {
-  width: 24px;
+
+.panelPaintBoxRight_options {
+  min-height: 55px;
 }
-.painter_drawning_box_property {
-  position: absolute;
-  top: -60px;
-  width: 100%;
+
+.property_brushesBox > button,
+.property_cropBox > button {
+  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.painter_drawning_box_property select {
+
+.alekpet_painter_drawning_box_property select {
   color: var(--input-text);
   background-color: var(--comfy-input-bg);
   border-radius: 4px;
   border-color: var(--border-color);
   border-style: solid;
 }
-.separator {
+.alekpet_painter_separator {
   width: 1px;
   height: 25px;
   background-color: var(--border-color);
@@ -59,52 +72,63 @@
   vertical-align: middle;
   margin: 0 4px 0 4px;
 }
-.painter_drawning_box > div {
+.alekpet_painter_drawning_box > div {
   display: flex;
   flex-direction: column;
   gap: 2px;
   align-items: center;
 }
-.painter_drawning_box input[type="number"] {
-  width: 2.6rem;
+.alekpet_painter_drawning_box input[type="number"] {
+  width: 50px;
   color: var(--input-text);
   background-color: var(--comfy-input-bg);
   border-radius: 8px;
   border-color: var(--border-color);
   border-style: solid;
-  font-size: inherit;
 }
-.painter_colors_box input[type="color"],
-.painter_bg_setting input[type="color"] {
+.alekpet_painter_drawning_box input[type="color"] {
   width: 1.5rem;
   height: 1.5rem;
-  padding: 0;
+  padding: 2px;
   margin-bottom: 5px;
   color: var(--input-text);
   background-color: var(--comfy-input-bg);
   border-radius: 8px;
   border-color: var(--border-color);
   border-style: solid;
-  font-size: inherit;
 }
 
-.painter_bg_setting button {
-  width: 40px;
+.alekpet_painter_bg_setting button {
+  width: 50px;
   height: 20px;
 }
-.painter_bg_setting #bgColor:after {
+.alekpet_painter_bg_setting #bgColor:after {
   content: attr(data-label);
   position: absolute;
   color: var(--input-text);
-  left: 70%;
+  left: 5%;
   font-size: 0.5rem;
-  margin-top: -18%;
+  margin-top: -15%;
 }
-.painter_colors_box input[type="color"]::-webkit-color-swatch-wrapper,
-.painter_bg_setting input[type="color"]::-webkit-color-swatch-wrapper {
+
+.alekpet_painter_bg_setting_box {
+  display: flex;
+  gap: 5px;
+  align-items: flex-start;
+}
+
+.alekpet_painter_bg_setting_box > button {
+  width: 25px;
+  height: 25px;
+  margin: 0;
+  padding: 4px;
+}
+
+.alekpet_painter_colors_box input[type="color"]::-webkit-color-swatch-wrapper,
+.alekpet_painter_bg_setting input[type="color"]::-webkit-color-swatch-wrapper {
   padding: 1px !important;
 }
-.painter_grid_style {
+.alekpet_painter_grid_style {
   display: grid;
   gap: 3px;
   font-size: 0.55rem;
@@ -112,9 +136,28 @@
   align-items: start;
   justify-items: center;
 }
-.painter_shapes_box {
+.alekpet_painter_shapes_box {
   grid-template-columns: 1fr 1fr 1fr;
 }
+.alekpet_painter_shapes_box button,
+.alekpet_property_textBox button,
+.alekpet_painter_history_panel > button {
+  width: 25px;
+  height: 25px;
+}
+
+.alekpet_painter_settings_box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.alekpet_painter_settings_box button,
+.alekpet_painter_mode_box > button {
+  width: 80px;
+  height: 20px;
+}
+
 .painter_colors_alpha {
   grid-template-columns: 0.7fr 0.7fr;
 }
@@ -133,11 +176,10 @@
   left: 0;
   right: 0;
 }
-.list_objects_panel {
-  width: 90%;
+.alekpet_list_objects_panel {
   font-size: 0.7rem;
 }
-.list_objects_panel__items {
+.alekpet_list_objects_panel__items {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -146,46 +188,46 @@
   scrollbar-width: thin;
   max-height: 350px;
 }
-.list_objects_panel__items button {
+.alekpet_list_objects_panel__items button {
   width: 80% !important;
 }
-.list_objects_panel__items::-webkit-scrollbar,
+.alekpet_list_objects_panel__items::-webkit-scrollbar,
 .kistey__body::-webkit-scrollbar {
   width: 8px;
 }
-.list_objects_panel__items::-webkit-scrollbar-track,
+.alekpet_list_objects_panel__items::-webkit-scrollbar-track,
 .kistey__body::-webkit-scrollbar-track {
   background-color: var(--descrip-text);
 }
-.list_objects_panel__items::-webkit-scrollbar-thumb,
+.alekpet_list_objects_panel__items::-webkit-scrollbar-thumb,
 .kistey__body::-webkit-scrollbar-thumb {
   background-color: var(--fg-color);
 }
-.list_objects_align {
+.alekpet_list_objects_align {
   display: flex;
   flex-direction: column;
   text-align: center;
   justify-content: space-between;
   height: 430px;
 }
-.list_objects_align > div {
+.alekpet_list_objects_align > div {
   flex: 1;
 }
-.viewlist__itembox {
+.alekpet_viewlist__itembox {
   flex-direction: row;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 2px;
 }
-.viewlist__itembox > img {
+.alekpet_viewlist__itembox > img {
   width: 12px;
   cursor: pointer;
 }
-.viewlist__itembox > img:hover {
+.alekpet_viewlist__itembox > img:hover {
   opacity: 0.8;
 }
-.painter_history_panel {
+.alekpet_painter_history_panel {
   position: absolute;
   padding: 4px;
   display: flex;
@@ -195,24 +237,24 @@
   flex-direction: row;
   width: fit-content;
 }
-.painter_history_panel > button {
+.alekpet_painter_history_panel > button {
   background: black;
 }
-.painter_history_panel > button:hover:enabled {
+.alekpet_painter_history_panel > button:hover:enabled {
   opacity: 1;
   border-color: var(--error-text);
   color: var(--error-text) !important;
 }
-.painter_history_panel > button:disabled {
+.alekpet_painter_history_panel > button:disabled {
   opacity: 0.5;
 }
-.painter_stroke_box {
+.alekpet_painter_stroke_box {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
 }
-.painter_stroke_box > label span {
+.alekpet_painter_stroke_box > label span {
   margin-right: 9px;
   vertical-align: middle;
   font-size: 10px;
@@ -222,11 +264,11 @@
 .property_brushesSecondBox {
   display: flex;
   gap: 5px;
-  flex-wrap: wrap;
-  flex: 1 0;
+  width: auto;
 }
+
 .property_brushesSecondBox > button {
-  min-width: 30px;
+  width: 30px;
   font-size: 0.5rem;
 }
 .property_brushesSecondBox svg {
@@ -294,7 +336,7 @@
   transform: scale(1.05);
 }
 
-.selected {
+.kistey__selected {
   outline: 3px solid #4003fd;
 }
 
@@ -428,13 +470,13 @@
   color: var(--primary-fg);
 }
 
-.painter_storage_select {
+.painter_storage_header {
   display: flex;
-  justify-content: space-evenly;
-  align-items: center;
+  justify-content: space-around;
   background: var(--content-bg);
   padding: 3px;
   border-radius: 8px;
+  align-items: center;
 }
 
 .painter_storage_body {
@@ -449,13 +491,17 @@
   justify-content: center;
 }
 
-.painter_storage_item:hover {
+.painter_storage_workflows_item {
+  cursor: pointer;
+}
+
+.painter_storage_workflows_item:hover {
   background: var(--primary-hover-bg) !important;
 }
 
 .painter_storage_grid {
   display: grid;
-  grid-template-columns: 0.2fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: 0.2fr 0.2fr repeat(3, 1fr);
   justify-content: center;
   place-items: center;
 }
@@ -465,9 +511,30 @@
   text-transform: uppercase;
 }
 
-.painter_storage_item_preview_canvas {
+.painter_storage_painters_item_preview_canvas {
   width: 60% !important;
   height: auto !important;
 }
 
+/* Workflows */
+
+.painter_storage_painters_wrapper {
+  border: 1px solid var(--border-color);
+  background: var(--p-button-outlined-contrast-hover-background);
+}
+
+.painter_storage_painters_grid {
+  grid-template-columns: 0.2fr repeat(4, 1fr);
+}
+
+.painter_storage_painters_header {
+  background: var(--descrip-text);
+}
+
+.painter_storage_painters_item_name {
+  text-wrap: nowrap;
+  width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* -- end Settings store managing data */
