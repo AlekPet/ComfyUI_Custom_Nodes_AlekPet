@@ -240,11 +240,16 @@ def checkModules(nodeElement):
     if os.path.exists(file_requir):
         log("  -> File 'requirements.txt' found!")
         with open(file_requir) as f:
+            lines = f.readlines()
             required_modules = {
-                module_name_cut_version.split(line.strip())[0]
-                for line in f
-                if not line.startswith("#")
+                module_name_cut_version.split(line.strip())[0] for line in lines if not line.startswith("#")
             }
+
+            # [Hack] argostranslate module checking install
+            if nodeElement == "ArgosTranslateNode" and "argostranslate" in installed_modules and len(lines):
+                if not DEBUG:
+                    printColorInfo("* Argostranslate installed removed from required modules!")
+                required_modules.remove(lines[0])
 
         modules_to_install = required_modules - installed_modules
 

@@ -1,8 +1,12 @@
 from server import PromptServer
 from aiohttp import web
 
-import argostranslate.package
-import argostranslate.translate
+try:
+    import argostranslate.package
+    import argostranslate.translate
+except:
+    pass
+
 
 # Find packages https://www.argosopentech.com/argospm/index/
 
