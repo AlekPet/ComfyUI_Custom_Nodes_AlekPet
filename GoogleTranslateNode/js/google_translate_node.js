@@ -14,13 +14,15 @@ function manual_translate_prompt() {
     manual_translate = findWidget(node, "manual_translate"),
     widget_textmultiline = findWidget(node, "customtext", "type");
 
-  button_manual_translate.callback = async function () {
+  button_manual_translate.onClick = async function (e) {
     if (!!!manual_translate.value) {
-      makeModal({
-        title: "Info",
-        text: "<div>Manual translate disabled!</div><div style='margin: 3px 0;'>The translation works when you press button <b>generate <i>('Queue')</i></b>.</div>",
+      app.extensionManager.toast.add({
+        severity: "info",
+        summary: "Information",
+        detail:
+          "Manual translate disabled! The translation works when you press button 'Run' (Queue).",
+        life: 8000,
       });
-
       return;
     }
 
@@ -54,7 +56,6 @@ function manual_translate_prompt() {
       throw new Error(e);
     }
   };
-  button_manual_translate?.callback();
 }
 
 app.registerExtension({
@@ -93,6 +94,9 @@ app.registerExtension({
         onConfigure?.apply(this, arguments);
 
         if (this?.widgets_values.length) {
+          const button_manual_translate = findWidget(this, "Manual Trasnlate");
+          button_manual_translate && button_manual_translate?.callback();
+
           if (typeof this.widgets_values[2] === "string") {
             const customtext = findWidget(this, "text", "name", "findIndex");
             this.widgets[customtext].value = this.widgets_values[2];
