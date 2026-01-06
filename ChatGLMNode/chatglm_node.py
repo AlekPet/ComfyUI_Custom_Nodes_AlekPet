@@ -27,6 +27,10 @@ LIST_LANGUAGE_MODELS = [
     "glm-4.5-x",
     "glm-4.5-airx",
     "glm-4.5-flash",
+    # GLM-4.6
+    "glm-4.6",    
+    # GLM-4.7
+    "glm-4.7",    
     # GLM-Z1
     "glm-z1-air",
     "glm-z1-airx",
@@ -45,6 +49,34 @@ LIST_MULTIMODAL_MODELS = [
     "glm-4.1v-thinking-flash",
     # --- GLM-4.5v
     "glm-4.5v",
+    # --- GLM-4.6v
+    "glm-4.6v",    
+    "glm-4.6v-flash",    
+    "glm-4.6v-flashx",
+    # --- other  
+    "autoglm-phone",  
+]
+
+# Multimodal models: https://docs.bigmodel.cn/api-reference/%E6%A8%A1%E5%9E%8B-api/%E5%AF%B9%E8%AF%9D%E8%A1%A5%E5%85%A8#%E8%A7%86%E8%A7%89%E6%A8%A1%E5%9E%8B
+LIST_IMAGE_GENERATION_MODELS = [
+    "cogview-4-250304",
+    "cogview-4",
+    "cogview-3-flash"
+]
+
+# CogView: https://docs.bigmodel.cn/api-reference/%E6%A8%A1%E5%9E%8B-api/%E5%9B%BE%E5%83%8F%E7%94%9F%E6%88%90
+LIST_IMAGE_GENERATION_MODELS = [
+    "cogview-4-250304",
+    "cogview-4",
+    "cogview-3-flash"
+]
+
+# CogVideo: https://docs.bigmodel.cn/api-reference/%E6%A8%A1%E5%9E%8B-api/%E7%94%9F%E6%88%90%E8%A7%86%E9%A2%91%E5%BC%82%E6%AD%A5
+LIST_VIDEO_GENERATION_MODELS = [
+    "cogvideox-3",
+    "cogvideox3-flash",
+    "cogvideox-2",
+    "cogvideox-flash",
 ]
 
 def getConfigData():
@@ -56,7 +88,7 @@ def getConfigData():
                 "from_translate": "ru",
                 "to_translate": "en",
                 "default_language_model": "glm-4.5-flash",
-                "default_multimodal_model": "glm-4v-flash",
+                "default_multimodal_model": "glm-4.6v-flash",
                 "ZHIPUAI_API_KEY": "your_api_key"
             }
 
@@ -366,7 +398,7 @@ class ChatGLM4InstructMediaNode:
                 "model": (
                     LIST_MULTIMODAL_MODELS,
                     {
-                        "default": CONFIG.get("default_multimodal_model","glm-4v-flash"),
+                        "default": CONFIG.get("default_multimodal_model", "glm-4.6v-flash"),
                         "tooltip": "The model code to be called. Models with text 'flash' should be free!",
                     },
                 ),
@@ -416,7 +448,6 @@ class ChatGLM4InstructMediaNode:
 
     def chatglm_instruct_media(
         self, model, max_tokens, temperature, top_p, instruct, image=None, video=""
-        # self, model, max_tokens, temperature, top_p, instruct, image=None, video=""
     ):
 
         if instruct is None or instruct.strip() == "":
@@ -447,7 +478,7 @@ class ChatGLM4InstructMediaNode:
                         "role": "user",
                         "content": [
                             {"type": "image_url", "image_url": {"url": img}},
-                            {"type": "text", "text": "What is shown in the picture?"},
+                            {"type": "text", "text": instruct},
                         ],
                     }
                 ],
@@ -469,7 +500,7 @@ class ChatGLM4InstructMediaNode:
         #                 "role": "user",
         #                 "content": [
         #                     {"type": "video_url", "video_url": {"url": url_video}},
-        #                     {"type": "text", "text": "Describe this video"},
+        #                     {"type": "text", "text": instruct},
         #                 ],
         #             }
         #         ],

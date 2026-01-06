@@ -3,6 +3,6 @@
   "from_translate": "ru",
   "to_translate": "en",
   "default_language_model": "glm-4.5-flash",
-  "default_multimodal_model": "glm-4v-flash",  
+  "default_multimodal_model": "glm-4.6v-flash",  
   "ZHIPUAI_API_KEY": "your_api_key"
 }
