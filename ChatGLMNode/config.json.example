@@ -4,5 +4,7 @@
   "to_translate": "en",
   "default_language_model": "glm-4.5-flash",
   "default_multimodal_model": "glm-4.6v-flash",  
+  "default_image_generate_model": "cogview-3-flash",  
+  "default_video_generate_model": "cogvideox-flash",  
   "ZHIPUAI_API_KEY": "your_api_key"
 }

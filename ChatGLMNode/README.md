@@ -156,7 +156,9 @@ Optional: You can also set initial language values ​​when creating nodes in 
   "from_translate": "ru",
   "to_translate": "en",
   "default_language_model": "glm-4.5-flash",
-  "default_multimodal_model": "glm-4v-flash",
+  "default_multimodal_model": "glm-4.6v-flash",
+  "default_image_generate_model": "cogview-3-flash",
+  "default_video_generate_model": "cogvideox-flash",
   "ZHIPUAI_API_KEY": "your_api_key"
 }
 ```
@@ -170,6 +172,10 @@ Optional: You can also set initial language values ​​when creating nodes in 
 > **ChatGLM4InstructNode** - Generate prompt from instruct
 >
 > **ChatGLM4InstructMediaNode** - Generate prompt from instruct to describe what is shown in the media
+>
+> **CogViewImageGenerateNode** - Generate prompt from instruct to describe what is shown in the media
+>
+> **CogVideoXGenerateNode** - Generate prompt from instruct to describe what is shown in the media
 
 ## Image:
 
