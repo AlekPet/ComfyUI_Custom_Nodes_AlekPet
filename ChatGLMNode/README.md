@@ -173,9 +173,9 @@ Optional: You can also set initial language values ​​when creating nodes in 
 >
 > **ChatGLM4InstructMediaNode** - Generate prompt from instruct to describe what is shown in the media
 >
-> **CogViewImageGenerateNode** - Generate prompt from instruct to describe what is shown in the media
+> **CogViewImageGenerateNode** - Generates an image based on a text prompt.
 >
-> **CogVideoXGenerateNode** - Generate prompt from instruct to describe what is shown in the media
+> **CogVideoXGenerateNode** - Generates an video based on a text prompt or image.
 
 ## Image:
 
