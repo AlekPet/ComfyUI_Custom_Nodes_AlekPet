@@ -566,7 +566,7 @@ class ChatGLMImageGenerateNode:
                 "model": (
                     LIST_IMAGE_GENERATION_MODELS,
                     {
-                        "default": CONFIG.get("default_image_generate_model", "cogvideox-flash"),
+                        "default": CONFIG.get("default_image_generate_model", "cogview-3-flash"),
                         "tooltip": "The model code to be called. Models with text 'flash' should be free!",
                     },
                 ),
