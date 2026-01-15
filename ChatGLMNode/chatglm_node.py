@@ -66,14 +66,15 @@ LIST_MULTIMODAL_MODELS = [
     "autoglm-phone",  
 ]
 
-# CogView: https://docs.bigmodel.cn/api-reference/%E6%A8%A1%E5%9E%8B-api/%E5%9B%BE%E5%83%8F%E7%94%9F%E6%88%90
+# GLM-Image: https://docs.bigmodel.cn/api-reference/%E6%A8%A1%E5%9E%8B-api/%E5%9B%BE%E5%83%8F%E7%94%9F%E6%88%90
 LIST_IMAGE_GENERATION_MODELS = [
+    "glm-image",
     "cogview-4-250304",
     "cogview-4",
     "cogview-3-flash"
 ]
 
-# CogVideo: https://docs.bigmodel.cn/api-reference/%E6%A8%A1%E5%9E%8B-api/%E7%94%9F%E6%88%90%E8%A7%86%E9%A2%91%E5%BC%82%E6%AD%A5
+# GLM-Video: https://docs.bigmodel.cn/api-reference/%E6%A8%A1%E5%9E%8B-api/%E8%A7%86%E9%A2%91%E7%94%9F%E6%88%90%E5%BC%82%E6%AD%A5#cogvideox
 LIST_VIDEO_GENERATION_MODELS = [
     "cogvideox-3",
     "cogvideox-2",
@@ -532,7 +533,7 @@ class ChatGLM4InstructMediaNode:
         return (answer,)
 
 # Generate Image & Video nodes
-IMAGE_SUPPORTS_RESOLUTIONS = ["768x1344", "864x1152", "1024x1024", "1344x768", "1152x864", "1440x720", "720x1440"]
+IMAGE_SUPPORTS_RESOLUTIONS = ["720x1440", "768x1344", "864x1152", "960x1728", "1024x1024", "1056x1568", "1088x1472", "1152x864", "1280x1280", "1344x768", "1440x720", "1472x1088", "1568x1056", "1728x960"]
 VIDEO_SUPPORTS_RESOLUTIONS = ["720x1280", "1024x1024", "1080x1920", "1280x720", "1920x1080", "2048x1080", "3840x2160"]
 
 
@@ -555,7 +556,9 @@ def setCorrectSize(value, minMax, nodeName):
 
     return value
 
-class CogViewImageGenerateNode:
+
+# -------- Image generate -------- 
+class ChatGLMImageGenerateNode:
     @classmethod
     def INPUT_TYPES(self):
         return {
@@ -582,11 +585,12 @@ class CogViewImageGenerateNode:
                     ["standard", "hd"],
                     {
                         "default": "standard",
-                        "tooltip": "Image generation quality, default is 'standard'. This parameter is only supported by cogview-4-250304.",
+                        "tooltip": "Image generation quality, default is 'standard'. This parameter is only supported by cogview-4-250304 and 'glm-image' model supports only HD",
                     },
                 ),
                 "width": ("INT", {"default": 1024, "tooltip":f"Image width, default value 1024. Recommended width values: {getStrListSizes(IMAGE_SUPPORTS_RESOLUTIONS, 0)}."}),
                 "height": ("INT", {"default": 1024, "tooltip":f"Image height, default value 1024. Recommended height values: {getStrListSizes(IMAGE_SUPPORTS_RESOLUTIONS, 1)}."}),
+                "watermark_enabled": ("BOOLEAN", {"default": True, "tooltip": "Add watermark, default: True. Watermark off allow only customers who have signed a disclaimer to use the service. Signature path: Personal Center>Security Management>Remove Watermark Management"},),
             }
         }
 
@@ -597,14 +601,17 @@ class CogViewImageGenerateNode:
     )
     CATEGORY = "AlekPet Nodes/image"
 
-    def image_generate(self, model, prompt, quality="standard", width=1024, height=1024):
+    def image_generate(self, model, prompt, quality="standard", width=1024, height=1024, watermark_enabled=True):
         if prompt is None and not prompt.strip():
             raise ValueError("Prompt value is empty!")
 
-        width = setCorrectSize(width, [512, 2048], "CogViewImageGenerateNode")
-        height = setCorrectSize(height, [512, 2048], "CogViewImageGenerateNode")    
+        width = setCorrectSize(width, [512, 2048], "ChatGMLImageGenerateNode")
+        height = setCorrectSize(height, [512, 2048], "ChatGMLImageGenerateNode")    
 
         size = f"{width}x{height}"
+
+        if model == "glm-image" and quality != "hd":
+            quality = "hd"
 
         # Create body request
         payload = {
@@ -612,6 +619,7 @@ class CogViewImageGenerateNode:
             "prompt": prompt,
             "quality": quality,
             "size": size,
+            "watermark_enabled": watermark_enabled,
         }
 
         image_url = createRequest(payload, "image")
@@ -648,11 +656,12 @@ class CogViewImageGenerateNode:
 
         return (output_image,)
 
-# Video generate
+
+# -------- Video generate -------- 
 async def execute_gen_video(model, prompt, image, quality, with_audio, watermark, width, height, fps, duration):
 
-    width = setCorrectSize(width, [512, 2048], "CogVideoXGenerateNode")
-    height = setCorrectSize(height, [512, 2048], "CogVideoXGenerateNode")    
+    width = setCorrectSize(width, [480, 3840], "ChatGMLVideoGenerateNode")
+    height = setCorrectSize(height, [480, 3840], "ChatGMLVideoGenerateNode")    
 
     size = f"{width}x{height}"
 
@@ -704,7 +713,7 @@ async def execute_gen_video(model, prompt, image, quality, with_audio, watermark
 
     return await download_url_to_video_output(str(video_generated[0]["url"]))
 
-class CogVideoXGenerateNode:
+class ChatGLMVideoGenerateNode:
     @classmethod
     def INPUT_TYPES(self):
         return {

@@ -364,8 +364,8 @@ try:
         ChatGLM4TranslateTextNode,
         ChatGLM4InstructNode,
         ChatGLM4InstructMediaNode,
-        CogViewImageGenerateNode,
-        CogVideoXGenerateNode
+        ChatGLMImageGenerateNode,
+        ChatGLMVideoGenerateNode
     )
 
     NODE_CLASS_MAPPINGS.update(
@@ -375,8 +375,8 @@ try:
             "ChatGLM4InstructNode": ChatGLM4InstructNode,
             "ChatGLM4InstructMediaNode": ChatGLM4InstructMediaNode,
             # Generate
-            "CogViewImageGenerateNode": CogViewImageGenerateNode,
-            "CogVideoXGenerateNode": CogVideoXGenerateNode,
+            "ChatGLMImageGenerateNode": ChatGLMImageGenerateNode,
+            "ChatGLMVideoGenerateNode": ChatGLMVideoGenerateNode,
         }
     )
 
@@ -387,8 +387,8 @@ try:
             "ChatGLM4InstructNode": "ChatGLM-4 Instruct Node",
             "ChatGLM4InstructMediaNode": "ChatGLM-4 Instruct Media Node",
              # Generate
-            "CogViewImageGenerateNode": "CogView Image Generate Node",
-            "CogVideoXGenerateNode": "CogVideoX Video Generate Node",
+            "ChatGLMImageGenerateNode": "Chat GLM Image Generate Node",
+            "ChatGLMVideoGenerateNode": "Chat GLM Video Generate Node",
         }
     )
 
