@@ -12,7 +12,6 @@ import __main__
 import re
 import threading
 import ast
-from concurrent.futures import ThreadPoolExecutor
 
 python = sys.executable
 
@@ -40,6 +39,13 @@ module_name_cut_version = re.compile("[>=<]")
 
 installed_modules = {}
 # installed_modules = {m[1] for m in pkgutil.iter_modules()}
+
+try:
+    from filelock import FileLock
+except ImportError:
+    FileLock = None
+
+LOCK_FILE = os.path.join(extension_folder, ".install.lock")
 
 
 def get_version_extension():
@@ -229,30 +235,48 @@ def install_node(nodeElement):
     # addComfyUINodesToMapping(nodeElement) # dynamic class nodes append in mappings
 
 
+def safe_rmtree(path):
+    try:
+        if os.path.exists(path):
+            shutil.rmtree(path)
+    except Exception as e:
+        log(f"[AlekPet] rmtree failed for {path}: {e}")
+
+
 def installNodes():
+    if FileLock:
+        with FileLock(LOCK_FILE, timeout=600):
+            _installNodes_internal()
+    else:
+        _installNodes_internal()
+        
+
+def _installNodes_internal():
     global installed_modules
     global nodes_list_dict
     log(f"\n-------> AlekPet Node Installing [DEBUG] <-------")
+
     # printColorInfo(f"### [START] ComfyUI AlekPet Nodes{get_version_extension()} ###", "\033[1;35m")
     # Remove files in lib directory
     libfiles = ["fabric.js"]
     for file in libfiles:
         filePath = os.path.join(folder__web_lib, file)
-        if os.path.isfile(filePath):
-            os.remove(filePath)
+        try:
+            if os.path.exists(filePath):
+                os.remove(filePath)
+        except Exception as e:
+            log(f"[AlekPet] remove failed for {filePath}: {e}")
 
     # Remove old folder if exist
     oldDirNodes = os.path.join(folder_comfyui_web_extensions, "AlekPet_Nodes")
-    if os.path.exists(oldDirNodes):
-        shutil.rmtree(oldDirNodes)
+    safe_rmtree(oldDirNodes)
 
     # Clear folder web_alekpet_nodes
     web_extensions_dir = os.path.join(extension_folder, extension_dirs[0])
-    if os.path.exists(web_extensions_dir):
-        shutil.rmtree(web_extensions_dir)
+    safe_rmtree(web_extensions_dir)
+
 
     checkFolderIsset()
-
     installed_modules = get_installed_modules()
 
     nodes = []
@@ -268,10 +292,8 @@ def installNodes():
             }
             nodes.append(nodeElement)
 
-    with ThreadPoolExecutor() as executor:
-        executor.map(install_node, nodes)
-
-    # printColorInfo(f"### [END] ComfyUI AlekPet Nodes ###", "\033[1;35m")
+    for n in nodes:
+        install_node(n)
 
 
 # Mount web directory
