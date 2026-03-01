@@ -138,16 +138,6 @@ def getNamesNodesInsidePyFile(nodeElement):
     return cls_names
 
 
-def checkFolderIsset():
-    log(f"*  Check and make not isset dirs...")
-    for d in extension_dirs:
-        dir_ = os.path.join(extension_folder, d)
-        if not os.path.exists(dir_):
-            log(f"* Dir <{d}> is not found, create...")
-            os.mkdir(dir_)
-            log(f"* Dir <{d}> created!")
-
-
 def module_install(commands, cwd="."):
     result = subprocess.Popen(
         commands,
@@ -207,18 +197,6 @@ nodes_list_dict = {}
 def install_node(nodeElement):
     global nodes_list_dict
     log(f"* Node <{nodeElement}> is found, installing...")
-    web_extensions_dir = os.path.join(extension_folder, extension_dirs[0])
-
-    extensions_dirs_copy = ["js", "css", "assets", "lib", "fonts"]
-    for dir_name in extensions_dirs_copy:
-        folder_curr = os.path.join(extension_folder, nodeElement, dir_name)
-        if os.path.exists(folder_curr):
-            folder_curr_dist = os.path.join(
-                web_extensions_dir,
-                dir_name,
-                nodeElement.lower() if dir_name != "js" else web_extensions_dir,
-            )
-            shutil.copytree(folder_curr, folder_curr_dist, dirs_exist_ok=True)
 
     clsNodes = getNamesNodesInsidePyFile(nodeElement)
     clsNodesText = "\033[93m" + ", ".join(clsNodes) + "\033[0m" if clsNodes else ""
@@ -271,12 +249,6 @@ def _installNodes_internal():
     oldDirNodes = os.path.join(folder_comfyui_web_extensions, "AlekPet_Nodes")
     safe_rmtree(oldDirNodes)
 
-    # Clear folder web_alekpet_nodes
-    web_extensions_dir = os.path.join(extension_folder, extension_dirs[0])
-    safe_rmtree(web_extensions_dir)
-
-
-    checkFolderIsset()
     installed_modules = get_installed_modules()
 
     nodes = []

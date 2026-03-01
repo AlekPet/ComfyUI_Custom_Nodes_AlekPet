@@ -60,11 +60,11 @@ Rights to brushes belong to their owners, [licensing-policy](https://github.com/
 
 **NOTE**: Not all brushes work correctly (brushlib.js does not support the functions of the latest version of mypaint), use the settings to adjust!
 
-**NOTE**: All brushes needs converts, using [my converter](https://github.com/AlekPet/brushlib.js))
+**NOTE**: All brushes needs converts, using [my converter](https://github.com/AlekPet/brushlib.js)
 
 ## Convert information:
 
-All avaiables convertered brushes written indise in the file **brushes_data.json**
+All avaiables convertered brushes written indise in the file **web_alekpet_nodes\assets\painternode\json\brushes_data.json** and files brushes to **web_alekpet_nodes\assets\painternode\brushes**
 
 ### Use brushConverter.py:
 
@@ -118,11 +118,11 @@ npm run brushes
 
 # User custom fonts
 
-> To add custom fonts, they must be written in the css file: `PainterNode\css\painter_node_user_fonts.css`
+> To add custom fonts, they must be written in the css file: `web_alekpet_nodes\css\painternode\painter_node_user_fonts.css`
 
 ### Two variants:
 
-**Variant 1**: Path to fonts, fonts puts in the `PainterNode\fonts`, adn add to the code in the css.
+**Variant 1**: Path to fonts, fonts puts in the `web_alekpet_nodes\fonts\painternode`, adn add to the code in the css.
 
 ```css
 @font-face {
@@ -131,7 +131,7 @@ npm run brushes
 }
 ```
 
-**Variant 2**: Add url to font in the `painter_node_user_fonts.css`, example used link [google fonts.](https://fonts.google.com/)
+**Variant 2**: Add url to font in the `web_alekpet_nodes\css\painternode\painter_node_user_fonts.css`, example used link [google fonts.](https://fonts.google.com/)
 
 ```css
 @import url("https://fonts.googleapis.com/css2?family=Jacquard+12&display=swap");

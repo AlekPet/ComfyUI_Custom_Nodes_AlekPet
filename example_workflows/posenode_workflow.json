@@ -5,10 +5,7 @@
     {
       "id": 8,
       "type": "VAEDecode",
-      "pos": [
-        1057,
-        42
-      ],
+      "pos": [1057, 42],
       "size": {
         "0": 210,
         "1": 46
@@ -32,9 +29,7 @@
         {
           "name": "IMAGE",
           "type": "IMAGE",
-          "links": [
-            10
-          ],
+          "links": [10],
           "slot_index": 0
         }
       ],
@@ -45,10 +40,7 @@
     {
       "id": 3,
       "type": "KSampler",
-      "pos": [
-        1101,
-        242
-      ],
+      "pos": [1101, 242],
       "size": {
         "0": 315,
         "1": 262
@@ -82,9 +74,7 @@
         {
           "name": "LATENT",
           "type": "LATENT",
-          "links": [
-            7
-          ],
+          "links": [7],
           "slot_index": 0
         }
       ],
@@ -104,10 +94,7 @@
     {
       "id": 14,
       "type": "PreviewImage",
-      "pos": [
-        1443,
-        123
-      ],
+      "pos": [1443, 123],
       "size": {
         "0": 550,
         "1": 937
@@ -130,14 +117,8 @@
     {
       "id": 15,
       "type": "PoseNode",
-      "pos": [
-        719,
-        450
-      ],
-      "size": [
-        280.3202667236328,
-        447.5941696166992
-      ],
+      "pos": [719, 450],
+      "size": [280.3202667236328, 447.5941696166992],
       "flags": {},
       "order": 2,
       "mode": 0,
@@ -145,29 +126,19 @@
         {
           "name": "IMAGE",
           "type": "IMAGE",
-          "links": [
-            15
-          ],
+          "links": [15],
           "slot_index": 0
         }
       ],
       "properties": {
         "Node name for S&R": "PoseNode"
       },
-      "widgets_values": [
-        "Pose_0 (6).png",
-        "add_pose",
-        "reset_pose",
-        null
-      ]
+      "widgets_values": ["Pose_0 (6).png", "add_pose", "reset_pose", null]
     },
     {
       "id": 11,
       "type": "ControlNetApply",
-      "pos": [
-        703,
-        221
-      ],
+      "pos": [703, 221],
       "size": {
         "0": 317.4000244140625,
         "1": 98
@@ -197,26 +168,19 @@
         {
           "name": "CONDITIONING",
           "type": "CONDITIONING",
-          "links": [
-            13
-          ],
+          "links": [13],
           "slot_index": 0
         }
       ],
       "properties": {
         "Node name for S&R": "ControlNetApply"
       },
-      "widgets_values": [
-        1
-      ]
+      "widgets_values": [1]
     },
     {
       "id": 17,
-      "type": "TranslateCLIPTextEncodeNode",
-      "pos": [
-        222,
-        158
-      ],
+      "type": "GoogleTranslateCLIPTextEncodeNode",
+      "pos": [222, 158],
       "size": {
         "0": 400,
         "1": 200
@@ -236,14 +200,12 @@
         {
           "name": "CONDITIONING",
           "type": "CONDITIONING",
-          "links": [
-            16
-          ],
+          "links": [16],
           "slot_index": 0
         }
       ],
       "properties": {
-        "Node name for S&R": "TranslateCLIPTextEncodeNode"
+        "Node name for S&R": "GoogleTranslateCLIPTextEncodeNode"
       },
       "widgets_values": [
         "auto",
@@ -254,10 +216,7 @@
     {
       "id": 5,
       "type": "EmptyLatentImage",
-      "pos": [
-        689,
-        15
-      ],
+      "pos": [689, 15],
       "size": {
         "0": 315,
         "1": 106
@@ -269,28 +228,19 @@
         {
           "name": "LATENT",
           "type": "LATENT",
-          "links": [
-            2
-          ],
+          "links": [2],
           "slot_index": 0
         }
       ],
       "properties": {
         "Node name for S&R": "EmptyLatentImage"
       },
-      "widgets_values": [
-        512,
-        512,
-        1
-      ]
+      "widgets_values": [512, 512, 1]
     },
     {
       "id": 4,
       "type": "CheckpointLoaderSimple",
-      "pos": [
-        244,
-        -2
-      ],
+      "pos": [244, -2],
       "size": {
         "0": 315,
         "1": 98
@@ -302,43 +252,31 @@
         {
           "name": "MODEL",
           "type": "MODEL",
-          "links": [
-            1
-          ],
+          "links": [1],
           "slot_index": 0
         },
         {
           "name": "CLIP",
           "type": "CLIP",
-          "links": [
-            18,
-            19
-          ],
+          "links": [18, 19],
           "slot_index": 1
         },
         {
           "name": "VAE",
           "type": "VAE",
-          "links": [
-            8
-          ],
+          "links": [8],
           "slot_index": 2
         }
       ],
       "properties": {
         "Node name for S&R": "CheckpointLoaderSimple"
       },
-      "widgets_values": [
-        "anything-v4.0-pruned.ckpt"
-      ]
+      "widgets_values": ["anything-v4.0-pruned.ckpt"]
     },
     {
       "id": 13,
       "type": "ControlNetLoader",
-      "pos": [
-        233,
-        434
-      ],
+      "pos": [233, 434],
       "size": {
         "0": 315,
         "1": 58
@@ -350,26 +288,19 @@
         {
           "name": "CONTROL_NET",
           "type": "CONTROL_NET",
-          "links": [
-            14
-          ],
+          "links": [14],
           "slot_index": 0
         }
       ],
       "properties": {
         "Node name for S&R": "ControlNetLoader"
       },
-      "widgets_values": [
-        "control_sd15_openpose.pth"
-      ]
+      "widgets_values": ["control_sd15_openpose.pth"]
     },
     {
       "id": 16,
-      "type": "TranslateCLIPTextEncodeNode",
-      "pos": [
-        239,
-        581
-      ],
+      "type": "GoogleTranslateCLIPTextEncodeNode",
+      "pos": [239, 581],
       "size": {
         "0": 400,
         "1": 200
@@ -389,14 +320,12 @@
         {
           "name": "CONDITIONING",
           "type": "CONDITIONING",
-          "links": [
-            17
-          ],
+          "links": [17],
           "slot_index": 0
         }
       ],
       "properties": {
-        "Node name for S&R": "TranslateCLIPTextEncodeNode"
+        "Node name for S&R": "GoogleTranslateCLIPTextEncodeNode"
       },
       "widgets_values": [
         "auto",
@@ -406,102 +335,18 @@
     }
   ],
   "links": [
-    [
-      1,
-      4,
-      0,
-      3,
-      0,
-      "MODEL"
-    ],
-    [
-      2,
-      5,
-      0,
-      3,
-      3,
-      "LATENT"
-    ],
-    [
-      7,
-      3,
-      0,
-      8,
-      0,
-      "LATENT"
-    ],
-    [
-      8,
-      4,
-      2,
-      8,
-      1,
-      "VAE"
-    ],
-    [
-      10,
-      8,
-      0,
-      14,
-      0,
-      "IMAGE"
-    ],
-    [
-      13,
-      11,
-      0,
-      3,
-      1,
-      "CONDITIONING"
-    ],
-    [
-      14,
-      13,
-      0,
-      11,
-      1,
-      "CONTROL_NET"
-    ],
-    [
-      15,
-      15,
-      0,
-      11,
-      2,
-      "IMAGE"
-    ],
-    [
-      16,
-      17,
-      0,
-      11,
-      0,
-      "CONDITIONING"
-    ],
-    [
-      17,
-      16,
-      0,
-      3,
-      2,
-      "CONDITIONING"
-    ],
-    [
-      18,
-      4,
-      1,
-      17,
-      0,
-      "CLIP"
-    ],
-    [
-      19,
-      4,
-      1,
-      16,
-      0,
-      "CLIP"
-    ]
+    [1, 4, 0, 3, 0, "MODEL"],
+    [2, 5, 0, 3, 3, "LATENT"],
+    [7, 3, 0, 8, 0, "LATENT"],
+    [8, 4, 2, 8, 1, "VAE"],
+    [10, 8, 0, 14, 0, "IMAGE"],
+    [13, 11, 0, 3, 1, "CONDITIONING"],
+    [14, 13, 0, 11, 1, "CONTROL_NET"],
+    [15, 15, 0, 11, 2, "IMAGE"],
+    [16, 17, 0, 11, 0, "CONDITIONING"],
+    [17, 16, 0, 3, 2, "CONDITIONING"],
+    [18, 4, 1, 17, 0, "CLIP"],
+    [19, 4, 1, 16, 0, "CLIP"]
   ],
   "groups": [],
   "config": {},
