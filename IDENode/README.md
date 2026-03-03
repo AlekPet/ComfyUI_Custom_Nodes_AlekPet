@@ -35,4 +35,4 @@ To use, you need to select the required model for your language, here https://hu
 **Drag image to ComfyUI open workflow:**
 ![Screenshot Drag image to ComfyUI open workflow](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/IDENode/AI_Translate_OPUS-MT_IDENode_workflow.png)
 
-Workflow link: [Workflow ai_translate_opus-mt_idenode_workflow.json](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/IDENode/example_workflows/ai_translate_opus-mt_idenode_workflow.json)
+Workflow link: [Workflow ai_translate_opus-mt_idenode_workflow.json](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/example_workflows/ai_translate_opus-mt_idenode_workflow.json)

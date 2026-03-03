@@ -13,7 +13,6 @@ import json
 import re
 import threading
 import ast
-from concurrent.futures import ThreadPoolExecutor
 
 python = sys.executable
 
@@ -89,7 +88,7 @@ ALL_NODES_DIRS = {
     if dir.is_dir()
     and not dir.name.startswith(".")
     and not dir.name.startswith("_")
-    and dir.name != extension_dirs[0]
+    and dir.name != extension_dirs[0] and dir.name != "example_workflows"
 }
 
 def addChangesToJson(json_data):
@@ -181,6 +180,13 @@ if NODES_SETTINGS is None:
 
 
 # -- end - Config settings --
+
+try:
+    from filelock import FileLock
+except ImportError:
+    FileLock = None
+
+LOCK_FILE = os.path.join(extension_folder, ".install.lock")
 
 
 def get_version_extension():
@@ -293,16 +299,6 @@ def addComfyUINodesToMapping(nodeElement, nodesOptions):
                     
 
 
-def checkFolderIsset():
-    log(f"*  Check and make not isset dirs...")
-    for d in extension_dirs:
-        dir_ = os.path.join(extension_folder, d)
-        if not os.path.exists(dir_):
-            log(f"* Dir <{d}> is not found, create...")
-            os.mkdir(dir_)
-            log(f"* Dir <{d}> created!")
-
-
 def module_install(commands, cwd="."):
     result = subprocess.Popen(
         commands,
@@ -363,20 +359,7 @@ def install_node(nodeElement):
     folderNodes = ALL_NODES_DIRS.get(nodeElement)
     isNotNodes = len(folderNodes.get("nodes", [])) == 0
 
-    # -- Copy tree folders
-    web_extensions_dir = os.path.join(extension_folder, extension_dirs[0])
-
-    extensions_dirs_copy = ["js", "css", "assets", "lib", "fonts"]
-    for dir_name in extensions_dirs_copy:
-        folder_curr = os.path.join(extension_folder, nodeElement, dir_name)
-        if os.path.exists(folder_curr):
-            folder_curr_dist = os.path.join(
-                web_extensions_dir,
-                dir_name,
-                nodeElement.lower() if dir_name != "js" else web_extensions_dir,
-            )
-            shutil.copytree(folder_curr, folder_curr_dist, dirs_exist_ok=True)
-    # -- end - Copy tree folders
+    log(f"* Node <{nodeElement}> is found, installing...")
 
     # Install dependencies
     checkModules(nodeElement)
@@ -395,11 +378,12 @@ def install_node(nodeElement):
             isActiveNode = currentNodeSettings.get("active", True)
             nodesOptions = currentNodeSettings.get("nodes", {})
 
+
         if is_check_enabled_nodes and isActiveNode == False or isNotNodes:
-            stateValue = "Nodes missing" if isNotNodes else "off"
-            printColorInfo(
-                f"Node -> \033[93m{nodeElement}\033[0m: : [\033[91m{stateValue}\033[0m] "
-            )
+            # stateValue = "Nodes missing" if isNotNodes else "off"
+            # printColorInfo(
+            #     f"Node -> \033[93m{nodeElement}\033[0m: [\033[91m{stateValue}\033[0m] "
+            # )
 
             # Disable extensions and JavaScript files, rename extension *.js -> *.off:
             # if os.path.isfile(path_js):
@@ -420,7 +404,23 @@ def install_node(nodeElement):
         clsNames = addComfyUINodesToMapping(nodeElement, nodesOptions)
 
 
+def safe_rmtree(path):
+    try:
+        if os.path.exists(path):
+            shutil.rmtree(path)
+    except Exception as e:
+        log(f"[AlekPet] rmtree failed for {path}: {e}")
+
+
 def installNodes():
+    if FileLock:
+        with FileLock(LOCK_FILE, timeout=600):
+            _installNodes_internal()
+    else:
+        _installNodes_internal()
+        
+
+def _installNodes_internal():
     global installed_modules
     log("\n-------> AlekPet Node Installing [DEBUG] <-------")
 
@@ -428,25 +428,20 @@ def installNodes():
     libfiles = ["fabric.js"]
     for file in libfiles:
         filePath = os.path.join(folder__web_lib, file)
-        if os.path.isfile(filePath):
-            os.remove(filePath)
+        try:
+            if os.path.exists(filePath):
+                os.remove(filePath)
+        except Exception as e:
+            log(f"[AlekPet] remove failed for {filePath}: {e}")
 
     # Remove old folder if exist
     oldDirNodes = os.path.join(folder_comfyui_web_extensions, "AlekPet_Nodes")
-    if os.path.exists(oldDirNodes):
-        shutil.rmtree(oldDirNodes)
-
-    # Clear folder web_alekpet_nodes
-    web_extensions_dir = os.path.join(extension_folder, extension_dirs[0])
-    if os.path.exists(web_extensions_dir):
-        shutil.rmtree(web_extensions_dir)
-
-    checkFolderIsset()
+    safe_rmtree(oldDirNodes)
 
     installed_modules = get_installed_modules()
 
-    with ThreadPoolExecutor() as executor:
-        executor.map(install_node, ALL_NODES_DIRS)
+    for n in ALL_NODES_DIRS:
+        install_node(n)
 
 
 # Mount web directory
@@ -531,12 +526,42 @@ if not DYNAMIC_NODES_ADD:
         NODES_LOAD_FAILED["GoogleTranslateNode"] = e
 
     # ChatGLMNode
-    from .ChatGLMNode.chatglm_node import (
-        ChatGLM4TranslateCLIPTextEncodeNode,
-        ChatGLM4TranslateTextNode,
-        ChatGLM4InstructNode,
-        ChatGLM4InstructMediaNode,
-    )
+    try:    
+        from .ChatGLMNode.chatglm_node import (
+            ChatGLM4TranslateCLIPTextEncodeNode,
+            ChatGLM4TranslateTextNode,
+            ChatGLM4InstructNode,
+            ChatGLM4InstructMediaNode,
+            ChatGLMImageGenerateNode,
+            ChatGLMVideoGenerateNode
+        )
+
+        NODE_CLASS_MAPPINGS.update(
+            {
+                "ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
+                "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
+                "ChatGLM4InstructNode": ChatGLM4InstructNode,
+                "ChatGLM4InstructMediaNode": ChatGLM4InstructMediaNode,
+                # Generate
+                "ChatGLMImageGenerateNode": ChatGLMImageGenerateNode,
+                "ChatGLMVideoGenerateNode": ChatGLMVideoGenerateNode,
+            }
+        )
+
+        NODE_DISPLAY_NAME_MAPPINGS.update(
+            {
+                "ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
+                "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node",
+                "ChatGLM4InstructNode": "ChatGLM-4 Instruct Node",
+                "ChatGLM4InstructMediaNode": "ChatGLM-4 Instruct Media Node",
+                # Generate
+                "ChatGLMImageGenerateNode": "Chat GLM Image Generate Node",
+                "ChatGLMVideoGenerateNode": "Chat GLM Video Generate Node",
+            }
+        )
+    except Exception as e:
+        NODES_LOAD_FAILED["ChatGLMNode"] = e    
+
 
     # ExtrasNode
     from .ExtrasNode.extras_node import PreviewTextNode, HexToHueNode, ColorsCorrectNode
@@ -551,11 +576,6 @@ if not DYNAMIC_NODES_ADD:
     from .IDENode.ide_node import IDENode
 
     NODE_CLASS_MAPPINGS.update({
-        "ChatGLM4TranslateCLIPTextEncodeNode": ChatGLM4TranslateCLIPTextEncodeNode,
-        "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
-        "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
-        "ChatGLM4InstructNode": ChatGLM4InstructNode,
-        "ChatGLM4InstructMediaNode": ChatGLM4InstructMediaNode,
         "PreviewTextNode": PreviewTextNode,
         "HexToHueNode": HexToHueNode,
         "ColorsCorrectNode": ColorsCorrectNode,
@@ -565,10 +585,6 @@ if not DYNAMIC_NODES_ADD:
     })
 
     NODE_DISPLAY_NAME_MAPPINGS.update({
-        "ChatGLM4TranslateCLIPTextEncodeNode": "ChatGLM-4 Translate CLIP Text Encode Node",
-        "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node",
-        "ChatGLM4InstructNode": "ChatGLM-4 Instruct Node",
-        "ChatGLM4InstructMediaNode": "ChatGLM-4 Instruct Media Node",
         "PreviewTextNode": "Preview Text Node",
         "HexToHueNode": "HEX to HUE Node",
         "ColorsCorrectNode": "Colors Correct Node",
@@ -588,6 +604,8 @@ else:
         "ChatGLM4TranslateTextNode": ChatGLM4TranslateTextNode,
         "ChatGLM4InstructNode": ChatGLM4InstructNode,
         "ChatGLM4InstructMediaNode": ChatGLM4InstructMediaNode,
+        "ChatGLMImageGenerateNode": ChatGLMImageGenerateNode,
+        "ChatGLMVideoGenerateNode": ChatGLMVideoGenerateNode,        
         "DeepTranslatorCLIPTextEncodeNode": DeepTranslatorCLIPTextEncodeNode,
         "DeepTranslatorTextNode": DeepTranslatorTextNode,
         "PreviewTextNode": PreviewTextNode,
@@ -607,6 +625,8 @@ else:
         "ChatGLM4TranslateTextNode": "ChatGLM-4 Translate Text Node",
         "ChatGLM4InstructNode": "ChatGLM-4 Instruct Node",
         "ChatGLM4InstructMediaNode": "ChatGLM-4 Instruct Media Node",
+        "ChatGLMImageGenerateNode": "Chat GLM Image Generate Node",
+        "ChatGLMVideoGenerateNode": "Chat GLM Video Generate Node",        
         "DeepTranslatorCLIPTextEncodeNode": "Deep Translator CLIP Text Encode Node",
         "DeepTranslatorTextNode": "Deep Translator Text Node",
         "PreviewTextNode": "Preview Text Node",
@@ -645,10 +665,6 @@ for nodeElement in ALL_NODES_DIRS:
         # Show list nodes
         printColorInfo(f"Node -> {nodeElement}: {clsNodesText} \033[92m")   
     else:
-        # Method views nodes DYNAMIC_NODES_ADD = True
-        if nodeElement not in NODES_LOAD_SUCCESS:
-            printColorInfo(f"Node -> \033[93m{nodeElement}: \033[91m[Failed]")
-            continue
 
         isActiveNode = True
         nodesOptions = {}
@@ -657,6 +673,13 @@ for nodeElement in ALL_NODES_DIRS:
         if currentNodeSettings is not None:
             isActiveNode = currentNodeSettings.get("active", True)
             nodesOptions = currentNodeSettings.get("nodes", {})
+
+        # Method views nodes DYNAMIC_NODES_ADD = True
+        if nodeElement not in NODES_LOAD_SUCCESS:
+            state = "Off" if not isActiveNode else "Failed"
+            printColorInfo(f"Node -> \033[93m{nodeElement}: \033[91m[{state}]")
+            continue
+
 
         namesNodes = NODES_LOAD_SUCCESS[nodeElement]
         lenNodesNames = len(namesNodes) - 1

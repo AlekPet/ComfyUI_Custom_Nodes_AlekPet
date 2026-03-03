@@ -148,15 +148,17 @@ Translation is carried out with the help of artificial intelligence using GLM mo
 3. Inside folder **ChatGMLNode** find file `config.json.example` rename to config.json and add API key geting in point 2 in property `"ZHIPUAI_API_KEY": "your_api_key"` on your API Key.
 4. Run comfyui and add node `ChatGLM4TranslateCLIPTextEncodeNode` or `ChatGLM4TranslateTextNode`.
 
-Optional: You can also set initial language values ​​when creating nodes in the file `config.json` and default models.
+Optional: You can also set initial language values when creating nodes in the file `config.json` and default models.
 
 ```json
 {
-  "__comment": "Register on the site https://bigmodel.cn and get a key and add it to the field ZHIPUAI_API_KEY. Change default translate languages ​​'from' and 'to' you use",
+  "__comment": "Register on the site https://bigmodel.cn and get a key and add it to the field ZHIPUAI_API_KEY. Change default translate languages 'from' and 'to' you use",
   "from_translate": "ru",
   "to_translate": "en",
   "default_language_model": "glm-4.5-flash",
-  "default_multimodal_model": "glm-4v-flash",
+  "default_multimodal_model": "glm-4.6v-flash",
+  "default_image_generate_model": "cogview-3-flash",
+  "default_video_generate_model": "cogvideox-flash",
   "ZHIPUAI_API_KEY": "your_api_key"
 }
 ```
@@ -170,6 +172,10 @@ Optional: You can also set initial language values ​​when creating nodes in 
 > **ChatGLM4InstructNode** - Generate prompt from instruct
 >
 > **ChatGLM4InstructMediaNode** - Generate prompt from instruct to describe what is shown in the media
+>
+> **ChatGLMImageGenerateNode** - Generates an image based on a text prompt.
+>
+> **ChatGLMVideoGenerateNode** - Generates an video based on a text prompt or image.
 
 ## Image:
 
