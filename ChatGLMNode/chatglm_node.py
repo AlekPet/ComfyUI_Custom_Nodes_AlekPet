@@ -86,7 +86,7 @@ def getConfigData():
     dir_node = os.path.dirname(__file__)
     config_path = os.path.join(os.path.abspath(dir_node), "config.json")
     config = {
-                "__comment": "Register on the site https://bigmodel.cn and get a key and add it to the field ZHIPUAI_API_KEY. Change default translate languages ​​'from' and 'to' you use",
+                "__comment": "Register on the site https://bigmodel.cn and get a key and add it to the field ZHIPUAI_API_KEY. Change default translate languages 'from' and 'to' you use",
                 "from_translate": "ru",
                 "to_translate": "en",
                 "default_language_model": "glm-4.5-flash",
@@ -741,7 +741,7 @@ class ChatGLMVideoGenerateNode:
                     ["speed", "quality"],
                     {
                         "default": "speed",
-                        "tooltip": "Output mode, defaults to speed. quality: Quality priority, generates higher quality output. speed: Speed ​​priority, generates faster output, but with slightly lower quality.",
+                        "tooltip": "Output mode, defaults to speed. quality: Quality priority, generates higher quality output. speed: Speed  priority, generates faster output, but with slightly lower quality.",
                     },
                 ),
                 "with_audio": ("BOOLEAN", {"default": False, "tooltip": "Whether to generate AI sound effects. Default: False (do not generate sound effects)."},),

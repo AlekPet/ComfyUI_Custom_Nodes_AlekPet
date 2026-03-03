@@ -24,4 +24,4 @@
 
 ![Preview image, video and audio select list combo](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/ExtrasNode/extras_node_preview_img_vid_audio_combo.gif)
 
-**Note** (Speech & Recognition speech): If your browser Firefox: go to `about:config`, find `media.webspeech.recognition.enable`, `media.webspeech.recognition.force_enable` set values ​​to `true`
+**Note** (Speech & Recognition speech): If your browser Firefox: go to `about:config`, find `media.webspeech.recognition.enable`, `media.webspeech.recognition.force_enable` set values to `true`
