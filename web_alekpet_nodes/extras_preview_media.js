@@ -92,6 +92,17 @@ function drawVid(raw, canvas, ctx, type) {
     drawVid.bind(this, raw, canvas, ctx, type)
   );
 }
+
+function getSelectedNode() {
+  try {
+    const selectedNode =
+      app.canvas.selected_nodes[Object.keys(app.canvas.selected_nodes)[0]];
+    if (selectedNode) return selectedNode.comfyClass;
+  } catch (error) {
+    return null;
+  }
+}
+
 //
 
 // -- Extension: Preview image, audio, video --
@@ -285,13 +296,62 @@ app.registerExtension({
       });
     }
 
-    // AddItem
-    const addItem = ContextMenu.prototype.addItem;
-    ContextMenu.prototype.addItem = function () {
-      const element = addItem?.apply(this, arguments);
+    // AddItem (Old version)
+    // const addItem = ContextMenu.prototype.addItem;
+    // ContextMenu.prototype.addItem = function () {
+    //   const element = addItem?.apply(this, arguments);
 
-      addPreviewModule.call(this, arguments, element);
-    };
+    //   addPreviewModule.call(this, arguments, element);
+    // };
+
+    // AddItem (New)
+    document.addEventListener(
+      "pointerenter",
+      (e) => {
+        try {
+          const el = e.target.closest("[data-value]");
+          if (!el) return;
+
+          const valueItem = el.dataset.value;
+          const ext = valueItem
+            .slice(valueItem.lastIndexOf(".") + 1)
+            .toLowerCase();
+
+          if (
+            !SUPPORTS_FORMAT.image.includes(ext) &&
+            !SUPPORTS_FORMAT.video.includes(ext)
+          )
+            return;
+
+          // Make field preview
+          addPreviewModule.call(
+            { root: el.parentElement },
+            [null, valueItem, null],
+            el
+          );
+        } catch (error) {}
+      },
+      true
+    );
+
+    // Find node name on pointerdown
+    app.canvas.canvas.addEventListener(
+      "pointerdown",
+      (e) => {
+        try {
+          const pos = app.canvas.convertEventToCanvasOffset(e);
+          const node = app.canvas.graph.getNodeOnPos(
+            pos[0],
+            pos[1],
+            app.canvas.graph.nodes
+          );
+
+          if (node && Object.keys(NODES_TYPE_SRC).includes(node.comfyClass))
+            currentNodeType = node.comfyClass;
+        } catch (error) {}
+      },
+      true
+    );
 
     // CloseItem
     const closeItem = ContextMenu.prototype.close;
