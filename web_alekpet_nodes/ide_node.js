@@ -91,94 +91,6 @@ result = runCode()
 `,
 };
 
-function getPostition(node, ctx, w_width, y, n_height) {
-  const margin = 5;
-
-  const rect = ctx.canvas.getBoundingClientRect();
-  const transform = new DOMMatrix()
-    .scaleSelf(rect.width / ctx.canvas.width, rect.height / ctx.canvas.height)
-    .multiplySelf(ctx.getTransform())
-    .translateSelf(margin, margin + y);
-  const scale = new DOMMatrix().scaleSelf(transform.a, transform.d);
-
-  return {
-    transformOrigin: "0 0",
-    transform: scale,
-    left: `${transform.a + transform.e + rect.left}px`,
-    top: `${transform.d + transform.f + rect.top}px`,
-    maxWidth: `${w_width - margin * 2}px`,
-    maxHeight: `${n_height - margin * 2 - y - 15}px`,
-    width: `${w_width - margin * 2}px`,
-    height: "90%",
-    position: "absolute",
-    scrollbarColor: "var(--descrip-text) var(--bg-color)",
-    scrollbarWidth: "thin",
-    zIndex: app.graph._nodes.indexOf(node),
-  };
-}
-
-// Create editor code
-function codeEditor(node, inputName, inputData) {
-  const widget = {
-    type: "pycode",
-    name: inputName,
-    options: { hideOnZoom: true },
-    value:
-      inputData[1]?.default ||
-      `def my(a, b=1):
-  return a * b<br>
-    
-result = str(my(23, 9))`,
-    draw(ctx, node, widget_width, y, widget_height) {
-      const hidden =
-        node.flags?.collapsed ||
-        (!!widget.options.hideOnZoom && app.canvas.ds.scale < 0.5) ||
-        widget.type === "converted-widget" ||
-        widget.type === "hidden";
-
-      widget.codeElement.hidden = hidden;
-
-      if (hidden) {
-        widget.options.onHide?.(widget);
-        return;
-      }
-
-      Object.assign(
-        this.codeElement.style,
-        getPostition(node, ctx, widget_width, y, node.size[1])
-      );
-    },
-    computeSize(...args) {
-      return [500, 250];
-    },
-  };
-
-  widget.codeElement = makeElement("pre", {
-    innerHTML: widget.value,
-  });
-
-  widget.editor = ace.edit(widget.codeElement);
-  widget.editor.setTheme("ace/theme/monokai");
-  widget.editor.session.setMode("ace/mode/python");
-  widget.codeElement.hidden = true;
-
-  document.body.appendChild(widget.codeElement);
-
-  const collapse = node.collapse;
-  node.collapse = function () {
-    collapse.apply(this, arguments);
-    if (this.flags?.collapsed) {
-      widget.codeElement.hidden = true;
-    } else {
-      if (this.flags?.collapsed === false) {
-        widget.codeElement.hidden = false;
-      }
-    }
-  };
-
-  return widget;
-}
-
 // Save data to workflow forced!
 function saveValue() {
   app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
@@ -190,13 +102,29 @@ app.registerExtension({
   getCustomWidgets(app) {
     return {
       PYCODE: (node, inputName, inputData, app) => {
-        const widget = codeEditor(node, inputName, inputData);
-
-        widget.editor.getSession().on("change", function (e) {
-          widget.value = widget.editor.getValue();
-          saveValue();
+        // Wrapper and codeElement
+        const codeElementWrapper = makeElement("div", {
+          style: { height: "100%", marginTop: "-15px" },
         });
 
+        const codeElement = makeElement("pre", {
+          innerHTML:
+            inputData[1]?.default ||
+            `def my(a, b=1):
+  return a * b<br>
+    
+result = str(my(23, 9))`,
+          style: { height: "100%" },
+        });
+
+        codeElementWrapper.appendChild(codeElement);
+
+        // Editor
+        const editor = ace.edit(codeElement);
+        editor.setTheme("ace/theme/monokai");
+        editor.session.setMode("ace/mode/python");
+
+        // Theme list
         const themeList = node.addWidget(
           "combo",
           "theme_highlight",
@@ -210,6 +138,7 @@ app.registerExtension({
           }
         );
 
+        // Languages list
         const widgetLang_id = findWidget(node, "language", "name", "findIndex");
         if (widgetLang_id !== -1) {
           node.widgets[widgetLang_id].callback = async (v) => {
@@ -236,6 +165,7 @@ app.registerExtension({
           };
         }
 
+        // Vars
         function makeValidVariable(
           varName,
           textContent,
@@ -274,6 +204,7 @@ app.registerExtension({
           return true;
         }
 
+        // Add input vars
         node.addWidget(
           "button",
           "Add Input variable",
@@ -323,6 +254,7 @@ app.registerExtension({
           }
         );
 
+        // Add output vars
         node.addWidget(
           "button",
           "Add Output variable",
@@ -374,6 +306,7 @@ app.registerExtension({
           }
         );
 
+        // Clear code button
         node.addWidget("button", "Clear", "clear_code", () => {
           widget.editor.setValue("");
           saveValue();
@@ -385,7 +318,25 @@ app.registerExtension({
           }
         };
 
-        node.addCustomWidget(widget);
+        // Add DOMWidget
+        const widget = node.addDOMWidget(
+          "pycode",
+          "widget_pycode",
+          codeElementWrapper,
+          {
+            getValue() {
+              return widget.editor.getValue();
+            },
+          }
+        );
+
+        widget.editor = editor;
+        widget.codeElement = codeElement;
+
+        widget.editor.getSession().on("change", function (e) {
+          widget.value = widget.editor.getValue();
+          saveValue();
+        });
 
         return widget;
       },
@@ -409,22 +360,28 @@ app.registerExtension({
         this.name = nodeName;
 
         // Create default inputs, when first create node
-        if (!this?.inputs?.length) {
-          ["var1", "var2", "var3"].forEach((inputName) => {
-            const currentWidth = this.size[0];
-            this.addInput(inputName, "*");
-            this.setSize([currentWidth, this.size[1]]);
-          });
-        }
+        // if (this?.inputs?.length === 2) {
+        //   ["var1", "var2", "var3"].forEach((inputName) => {
+        //     const currentWidth = this.size[0];
+        //     this.addInput(inputName, "*");
+        //     this.setSize([currentWidth, this.size[1]]);
+        //   });
+        // }
 
-        const widgetEditor = findWidget(this, "pycode", "type");
+        const widgetEditor = findWidget(this, "widget_pycode", "type");
         // JS run
         api.addEventListener("alekpet_js_result", async ({ detail }) => {
           const { vars, unique_id } = detail;
 
-          if ((vars && !Object.keys(vars).length) || +unique_id !== this.id) {
+          if (
+            (vars && !Object.keys(vars).length) ||
+            +unique_id !== this.id ||
+            this._jsProcessing
+          ) {
             return;
           }
+
+          this._jsProcessing = true;
 
           await new Promise((res) => {
             const edit_vars = JSON.parse(vars);
@@ -482,19 +439,23 @@ app.registerExtension({
                 }),
               })
               .then((res) => res.json())
-              .then((res) =>
+              .then((res) => {
                 res?.status === "Ok"
                   ? console.log(
                       `%cJS complete ok: ${this.name}: ${res.status}`,
                       "color: green; font-weight: 600;"
                     )
-                  : console.error(`Error JS complete: ${res.status}`)
-              )
-              .catch((err) => console.error(`Error JS complete: ${err}`));
+                  : console.error(`Error JS complete: ${res.status}`);
+                this._jsProcessing = false;
+              })
+              .catch((err) => {
+                this._jsProcessing = false;
+                console.error(`Error JS complete: ${err}`);
+              });
           });
         });
 
-        this.setSize([530, this.size[1]]);
+        this.setSize([500, 500]);
 
         return ret;
       };
@@ -530,13 +491,12 @@ app.registerExtension({
           for (let i = 0; i < this.inputs.length; i++) {
             const { name, type } = this.inputs[i];
             if (not_showing.includes(name)) continue;
-            console.log();
             const colorType = LGraphCanvas.link_type_colors[type.toUpperCase()];
             const nameSize = ctx.measureText(name);
-
             ctx.fillStyle = !colorType || colorType === "" ? "#AAA" : colorType;
             ctx.font = "12px Arial, sans-serif";
             ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
             ctx.fillText(
               `[${type === "*" ? "any" : type.toLowerCase()}]`,
               nameSize.width + 25,
@@ -544,6 +504,7 @@ app.registerExtension({
             );
           }
         }
+
         return r;
       };
 
@@ -554,7 +515,7 @@ app.registerExtension({
         if (node?.widgets_values?.length) {
           const widget_code_id = findWidget(
             this,
-            "pycode",
+            "widget_pycode",
             "type",
             "findIndex"
           );

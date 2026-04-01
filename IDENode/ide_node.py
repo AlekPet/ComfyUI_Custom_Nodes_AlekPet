@@ -1,7 +1,7 @@
 import types
 from server import PromptServer
 from aiohttp import web
-from asyncio import sleep, run
+import time
 import json
 import re
 
@@ -36,18 +36,21 @@ async def check_js_complete(request):
     return web.json_response({"status": "Error"})
 
 
-async def wait_js_complete(unique_id, time_out=40):
-    for _ in range(time_out):
-        if (
-            hasattr(IDEs_DICT[unique_id], "js_complete")
-            and IDEs_DICT[unique_id].js_complete == True
-            and IDEs_DICT[unique_id].js_result is not None
-        ):
-            IDEs_DICT[unique_id].js_complete = False
+def wait_js_complete(unique_id, time_out=40, poll_interval=0.2):
+    start_time = time.time()
+    while time.time() - start_time < time_out:
+        node = IDEs_DICT.get(unique_id)
+        if node and getattr(node, "js_complete", False) and node.js_complete == True and node.js_result is not None:
+            node.js_complete = False
             return True
 
-        await sleep(0.1)
+        if node is None and unique_id in IDEs_DICT:
+            del IDEs_DICT[unique_id]  # Очистка "зомби"-записей
+            return False
 
+        time.sleep(poll_interval)
+
+    IDEs_DICT.pop(unique_id, None)
     return False
 
 
@@ -115,7 +118,7 @@ result = runCode()"""
         outputs = {}
         if extra_pnginfo and 'workflow' in extra_pnginfo and extra_pnginfo['workflow']:
             for node in extra_pnginfo['workflow']['nodes']:
-                if node['id'] == int(unique_id):
+                if str(node['id']) == str(unique_id):
                     outputs_valid = [ouput for ouput in node.get('outputs', []) if ouput.get('name','') != '' and ouput.get('type','') != '']
                     outputs = {ouput['name']: None for ouput in outputs_valid}
                     self.RETURN_TYPES = ByPassTypeTuple(out["type"] for out in outputs_valid)
@@ -140,15 +143,15 @@ result = runCode()"""
             IDEs_DICT[unique_id].js_complete = False
             IDEs_DICT[unique_id].js_result = None
 
-            new_dict = {key: my_namespace.__dict__[key] for key in my_namespace.__dict__ if key not in ['__builtins__', *kwargs.keys()] and not callable(my_namespace.__dict__[key])}
+            new_dict = {key: my_namespace.__dict__[key] for key in my_namespace.__dict__ if key not in ['__builtins__'] and not callable(my_namespace.__dict__[key])}
             
             PromptServer.instance.send_sync(
                 "alekpet_js_result",
                 {"unique_id": unique_id, "vars": json.dumps(new_dict)},
             )
-            if not run(wait_js_complete(unique_id)):
+            if not wait_js_complete(unique_id):
                 print(f"IDENode_{unique_id}: Failed to get data!")
             else:
                 print(f"IDENode_{unique_id}: Data received successful!")
 
-            return (*IDEs_DICT[unique_id].js_result,)
+            return tuple(IDEs_DICT[unique_id].js_result)
