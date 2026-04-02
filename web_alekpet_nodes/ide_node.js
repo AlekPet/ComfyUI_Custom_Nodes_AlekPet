@@ -168,6 +168,7 @@ result = str(my(23, 9))`,
         // Vars
         function makeValidVariable(
           varName,
+          iotype,
           textContent,
           regex = /^[a-z_][a-z0-9_]*$/i
         ) {
@@ -175,7 +176,8 @@ result = str(my(23, 9))`,
             !varName ||
             varName.trim() === "" ||
             varName.length > MAX_CHAR_VARNAME ||
-            !regex.test(varName)
+            !regex.test(varName) ||
+            iotype.some((i) => i.name === varName)
           ) {
             createWindowModal({
               textTitle: "WARNING",
@@ -211,8 +213,11 @@ result = str(my(23, 9))`,
           "add_input_variable",
           async () => {
             // Input name variable and check
-            const nameInput = node?.inputs?.length
-              ? `var${node.inputs.length + 1}`
+            const varsCount = node?.inputs.filter((i) =>
+              /^var[0-9]+$/.test(i?.name)
+            );
+            const nameInput = varsCount?.length
+              ? `var${varsCount.length + 1}`
               : "var1";
 
             let varName = await comfyuiDesktopPrompt(
@@ -225,7 +230,8 @@ result = str(my(23, 9))`,
             if (
               !makeValidVariable(
                 varName,
-                `<h3 style="margin: 0;">Variable for <span style="color: limegreen">Input</span> name is incorrect!</h3><ul style="text-align:left;padding: 2px;margin-left: 5%;"><li>starts with a number</li><li>has spaces or tabs</li><li>is empty</li><li>variable name is greater ${MAX_CHAR_VARNAME}</li></ul>`
+                node?.inputs,
+                `<h3 style="margin: 0;">Variable for <span style="color: limegreen">Input</span> name is incorrect!</h3><ul style="text-align:left;padding: 2px;margin-left: 5%;"><li>variable <span style="color:orange;font-weight: 600;">${varName}</span> already present in the inputs</li><li>starts with a number</li><li>has spaces or tabs</li><li>is empty</li><li>variable name is greater ${MAX_CHAR_VARNAME}</li></ul>`
               )
             )
               return;
@@ -241,6 +247,7 @@ result = str(my(23, 9))`,
             if (
               !makeValidVariable(
                 type,
+                node?.inputs,
                 `<h3 style="margin: 0;">Type value is incorrect!</h3><ul style="text-align:left;padding: 2px;"><li>has spaces or tabs</li><li>is empty</li><li>type value length is greater ${MAX_CHAR_VARNAME}</li></ul>`,
                 /^[*a-z_][a-z0-9_]*$/i
               )
@@ -263,8 +270,11 @@ result = str(my(23, 9))`,
             const currentWidth = node.size[0];
 
             // Output name variable
-            const nameOutput = node?.outputs?.length
-              ? `result${node.outputs.length + 1}`
+            const resultCount = node?.outputs.filter((i) =>
+              /^result[0-9]+$/.test(i?.name)
+            );
+            const nameOutput = resultCount?.length
+              ? `result${resultCount.length + 1}`
               : "result1";
 
             let varName = await comfyuiDesktopPrompt(
@@ -278,7 +288,8 @@ result = str(my(23, 9))`,
             if (
               !makeValidVariable(
                 varName,
-                `<h3 style="margin: 0;">Variable for <span style="color: pink">Output</span> name is incorrect!</h3><ul style="text-align:left;padding: 2px;margin-left: 5%;"><li>starts with a number</li><li>has spaces or tabs</li><li>is empty</li><li>variable name is greater ${MAX_CHAR_VARNAME}</li></ul>`
+                node?.outputs,
+                `<h3 style="margin: 0;">Variable for <span style="color: pink">Output</span> name is incorrect!</h3><ul style="text-align:left;padding: 2px;margin-left: 5%;"><li>variable <span style="color:orange;font-weight: 600;">${varName}</span> already present in the outputs</li><li>starts with a number</li><li>has spaces or tabs</li><li>is empty</li><li>variable name is greater ${MAX_CHAR_VARNAME}</li></ul>`
               )
             )
               return;
@@ -294,6 +305,7 @@ result = str(my(23, 9))`,
             if (
               !makeValidVariable(
                 type,
+                node?.outputs,
                 `<h3 style="margin: 0;">Type value is incorrect!</h3><ul style="text-align:left;padding: 2px;"><li>has spaces or tabs</li><li>is empty</li><li>type value length is greater ${MAX_CHAR_VARNAME}</li></ul>`,
                 /^[*a-z_][a-z0-9_]*$/i
               )
