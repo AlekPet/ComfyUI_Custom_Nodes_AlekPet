@@ -45,7 +45,7 @@ def wait_js_complete(unique_id, time_out=40, poll_interval=0.2):
             return True
 
         if node is None and unique_id in IDEs_DICT:
-            del IDEs_DICT[unique_id]  # Очистка "зомби"-записей
+            del IDEs_DICT[unique_id]
             return False
 
         time.sleep(poll_interval)

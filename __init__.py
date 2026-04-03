@@ -53,7 +53,7 @@ def get_version_extension():
     toml_file = os.path.join(extension_folder, "pyproject.toml")
     if os.path.isfile(toml_file):
         try:
-            with open(toml_file, "r") as v:
+            with open(toml_file, "r", encoding="utf-8", errors="replace") as v:
                 version = list(filter(lambda l: l.startswith("version"), v.readlines()))[0]
                 version = version.split("=")[1].replace('"', "").strip()
                 return f" \033[1;34mv{version}\033[0m\033[1;35m"
@@ -133,7 +133,7 @@ def getNamesNodesInsidePyFile(nodeElement):
             and ext[1] == ".py"
             and ext[0] != "__init__"
         ):
-            with open(os.path.join(node_folder, f), "r") as pyf:
+            with open(os.path.join(node_folder, f), "r", encoding="utf-8", errors="replace") as pyf:
                 cls_names.extend(get_classes(pyf.read()))
     return cls_names
 
@@ -173,7 +173,7 @@ def checkModules(nodeElement):
     file_requir = os.path.join(extension_folder, nodeElement, "requirements.txt")
     if os.path.exists(file_requir):
         log("  -> File 'requirements.txt' found!")
-        with open(file_requir) as f:
+        with open(file_requir, "r", encoding="utf-8", errors="replace") as f:
             lines = f.readlines()
             required_modules = {
                 module_name_cut_version.split(line.strip())[0] for line in lines if not line.startswith("#")
