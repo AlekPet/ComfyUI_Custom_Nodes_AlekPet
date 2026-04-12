@@ -91,9 +91,95 @@ result = runCode()
 `,
 };
 
+// Default value select load code
+const defaultComboValue = "-- Select code file --";
+
 // Save data to workflow forced!
 function saveValue() {
   app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
+}
+
+// Paint widget function
+function paintWidget(paramsPaint) {
+  const oldDraw = this.drawWidget;
+  const that = this;
+
+  this.draw = function () {
+    // Save old params and set new
+    const old_params = {};
+    for (const param in paramsPaint) {
+      if (!LiteGraph.hasOwnProperty(param)) continue;
+      old_params[param] = LiteGraph[param];
+      LiteGraph[param] = paramsPaint[param];
+    }
+
+    oldDraw?.apply(that, arguments);
+
+    // Restore old params
+    for (const param in old_params) {
+      LiteGraph[param] = old_params[param];
+    }
+  };
+}
+
+// Load list codes
+async function loadListCodes(language) {
+  try {
+    const response = await api.fetchApi(
+      `/alekpet/ide_node_load_codes/${language}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return await response.json();
+  } catch (e) {
+    console.error(e);
+    return { codes: [], language };
+  }
+}
+
+// Checks Vars
+function makeValidVariable(
+  varName,
+  iotype,
+  textContent,
+  regex = /^[a-z_][a-z0-9_]*$/i
+) {
+  if (
+    !varName ||
+    varName.trim() === "" ||
+    varName.length > MAX_CHAR_VARNAME ||
+    !regex.test(varName) ||
+    iotype.some((i) => i.name === varName)
+  ) {
+    createWindowModal({
+      textTitle: "WARNING",
+      textBody: [
+        makeElement("div", {
+          style: { fontSize: "0.7rem" },
+          innerHTML: textContent,
+        }),
+      ],
+      ...THEMES_MODAL_WINDOW.warning,
+      options: {
+        auto: {
+          autohide: true,
+          autoremove: true,
+          autoshow: true,
+          timewait: 1000,
+        },
+        close: { showClose: false },
+        overlay: { overlay_enabled: true },
+        parent: widget.codeElement,
+      },
+    });
+
+    return false;
+  }
+  return true;
 }
 
 // Register extensions
@@ -101,7 +187,7 @@ app.registerExtension({
   name: "alekpet.IDENode",
   getCustomWidgets(app) {
     return {
-      PYCODE: (node, inputName, inputData, app) => {
+      PYCODE: async (node, inputName, inputData, app) => {
         // Wrapper and codeElement
         const codeElementWrapper = makeElement("div", {
           style: { height: "100%", marginTop: "-15px" },
@@ -162,48 +248,12 @@ result = str(my(23, 9))`,
             }
 
             widget.editor.session.setMode(`ace/mode/${v}`);
+
+            // Load list codes by language
+            const { codes } = await loadListCodes(v);
+            codeLoad.options.values = [defaultComboValue].concat(...codes);
+            codeLoad.value = defaultComboValue;
           };
-        }
-
-        // Vars
-        function makeValidVariable(
-          varName,
-          iotype,
-          textContent,
-          regex = /^[a-z_][a-z0-9_]*$/i
-        ) {
-          if (
-            !varName ||
-            varName.trim() === "" ||
-            varName.length > MAX_CHAR_VARNAME ||
-            !regex.test(varName) ||
-            iotype.some((i) => i.name === varName)
-          ) {
-            createWindowModal({
-              textTitle: "WARNING",
-              textBody: [
-                makeElement("div", {
-                  style: { fontSize: "0.7rem" },
-                  innerHTML: textContent,
-                }),
-              ],
-              ...THEMES_MODAL_WINDOW.warning,
-              options: {
-                auto: {
-                  autohide: true,
-                  autoremove: true,
-                  autoshow: true,
-                  timewait: 1000,
-                },
-                close: { showClose: false },
-                overlay: { overlay_enabled: true },
-                parent: widget.codeElement,
-              },
-            });
-
-            return false;
-          }
-          return true;
         }
 
         // Add input vars
@@ -318,11 +368,214 @@ result = str(my(23, 9))`,
           }
         );
 
+        // Save code
+        const save_code = node.addWidget(
+          "button",
+          "Save code",
+          "save_code",
+          async () => {
+            comfyuiDesktopPrompt(
+              "Code filename",
+              "Enter filename your code",
+              codeLoad.value === defaultComboValue ? "" : codeLoad.value
+            ).then((filename) => {
+              if (!filename || !filename.trim()) return;
+
+              try {
+                api
+                  .fetchApi("/alekpet/ide_node_save_code", {
+                    method: "POST",
+                    body: JSON.stringify({
+                      filename: filename.trim(),
+                      inputs: node.inputs
+                        .filter((i) => !["language", "pycode"].includes(i.name))
+                        .map((i) => ({
+                          name: i.name,
+                          type: i.type,
+                        })),
+                      outputs: node.outputs.map((o) => ({
+                        name: o.name,
+                        type: o.type,
+                      })),
+                      language: node.widgets[widgetLang_id].value,
+                      code: widget.editor.getValue(),
+                    }),
+                  })
+                  .then((res) => res.json())
+                  .then((data) => {
+                    const { codes, message, error } = data;
+
+                    if (error) {
+                      throw new Error(error);
+                    }
+
+                    app.extensionManager.toast.add({
+                      severity: "success",
+                      summary: "Success",
+                      detail: message,
+                      life: 3000,
+                    });
+
+                    codeLoad.options.values = [defaultComboValue].concat(codes);
+                  });
+              } catch (e) {
+                app.extensionManager.toast.add({
+                  severity: "error",
+                  summary: "Error",
+                  detail: e,
+                  life: 3000,
+                });
+                console.error(e);
+              }
+            });
+          }
+        );
+
+        paintWidget.apply(save_code, [
+          { WIDGET_TEXT_COLOR: "#30ce00", WIDGET_OUTLINE_COLOR: "#30ce00" },
+        ]); // WIDGET_BGCOLOR:  "#27a700"
+
+        // Load code
+        const codeLoad = node.addWidget(
+          "COMBO",
+          "Load code",
+          defaultComboValue,
+          async (codefile) => {
+            if (codefile === defaultComboValue) return;
+
+            // Confirm load code?
+            await app.extensionManager.dialog
+              .confirm({
+                title: "Confirm load code",
+                message: "Are you sure you want load code?",
+                type: "default",
+              })
+              .then((result) => {
+                if (!result) codeLoad.value = defaultComboValue;
+              });
+
+            // Load code
+            fetch(
+              new URL(
+                `./lib/idenode/codes/${node.widgets[widgetLang_id].value}/${codefile}`,
+                import.meta.url
+              ).toString()
+            )
+              .then((res) => res.json())
+              .then((res) => {
+                const { inputs, outputs, code, language } = res;
+
+                let lang = language ?? "python";
+
+                // Set code language
+                node.widgets[widgetLang_id].value = lang;
+                widget.editor.session.setMode(`ace/mode/${lang}`);
+
+                const currentWidth = node.size[0];
+                // Remove all input
+                for (const input_idx in node.inputs) {
+                  const input = node.inputs[input_idx];
+
+                  if (
+                    [
+                      "language",
+                      "theme_highlight",
+                      ...inputs.map((i) => i.name),
+                    ].includes(input.name)
+                  )
+                    continue;
+
+                  if (input.link) {
+                    app.graph.removeLink(input.link);
+                  }
+                  node.removeInput(input_idx);
+                }
+
+                // Remove all output
+                for (const output_idx in node.outputs) {
+                  const output = node.outputs[output_idx];
+
+                  if (
+                    ["result", ...outputs.map((o) => o.name)].includes(
+                      output.name
+                    )
+                  )
+                    continue;
+
+                  if (output.link) {
+                    app.graph.removeLink(output.link);
+                  }
+                  node.removeOutput(output_idx);
+                }
+
+                inputs.forEach((input) => {
+                  const isNotInArray = !node.inputs.some(
+                    (i) => i.name === input.name.trim()
+                  );
+                  if (isNotInArray)
+                    node.addInput(input.name.trim(), input.type);
+                });
+
+                outputs.forEach((output) => {
+                  const isNotInArray = !node.outputs.some(
+                    (o) => o.name === output.name.trim()
+                  );
+                  if (isNotInArray)
+                    node.addOutput(output.name.trim(), output.type);
+                });
+
+                // Set code
+                widget.editor.setValue(code);
+                widget.editor.clearSelection();
+
+                node.setSize([currentWidth, node.size[1]]);
+                node.setDirtyCanvas(true, true);
+                saveValue();
+              })
+              .catch((e) => {
+                createWindowModal({
+                  textTitle: "ERROR",
+                  textBody: [
+                    makeElement("div", {
+                      style: { fontSize: "0.7rem" },
+                      innerHTML: e,
+                    }),
+                  ],
+                  ...THEMES_MODAL_WINDOW.error,
+                  options: {
+                    auto: {
+                      autohide: true,
+                      autoremove: true,
+                      autoshow: true,
+                      timewait: 1500,
+                    },
+                    close: { showClose: false },
+                    overlay: { overlay_enabled: true },
+                    parent: widget.codeElement,
+                  },
+                });
+                console.error(e);
+              });
+          },
+          {
+            values: [defaultComboValue],
+            default: defaultComboValue,
+          }
+        );
+
         // Clear code button
-        node.addWidget("button", "Clear", "clear_code", () => {
-          widget.editor.setValue("");
-          saveValue();
-        });
+        const clearButton = node.addWidget(
+          "button",
+          "Clear",
+          "clear_code",
+          () => {
+            widget.editor.setValue("");
+            saveValue();
+          }
+        );
+        paintWidget.apply(clearButton, [
+          { WIDGET_TEXT_COLOR: "#ee0101", WIDGET_OUTLINE_COLOR: "#ee0101" },
+        ]);
 
         node.onRemoved = function () {
           for (const w of node?.widgets) {
@@ -379,6 +632,12 @@ result = str(my(23, 9))`,
         //     this.setSize([currentWidth, this.size[1]]);
         //   });
         // }
+
+        // Load list codes by language
+        const widgetLanguage = findWidget(this, "language", "name");
+        const widgetLoadCode = findWidget(this, "Load code", "name");
+        const { codes } = await loadListCodes(widgetLanguage.value);
+        widgetLoadCode.options.values = [defaultComboValue].concat(codes);
 
         const widgetEditor = findWidget(this, "widget_pycode", "type");
         // JS run
@@ -443,7 +702,7 @@ result = str(my(23, 9))`,
             res(result_run_code);
           }).then((result_code) => {
             api
-              .fetchApi("/alekpet/check_js_complete", {
+              .fetchApi("/alekpet/ide_node_check_js_complete", {
                 method: "POST",
                 body: JSON.stringify({
                   unique_id: this.id.toString(),
@@ -508,7 +767,6 @@ result = str(my(23, 9))`,
             ctx.fillStyle = !colorType || colorType === "" ? "#AAA" : colorType;
             ctx.font = "12px Arial, sans-serif";
             ctx.textAlign = "left";
-            ctx.textBaseline = "middle";
             ctx.fillText(
               `[${type === "*" ? "any" : type.toLowerCase()}]`,
               nameSize.width + 25,
@@ -543,6 +801,16 @@ result = str(my(23, 9))`,
             "name",
             "findIndex"
           );
+
+          const widget_load_code_id = findWidget(
+            this,
+            "Load code",
+            "name",
+            "findIndex"
+          );
+
+          this.widgets[widget_load_code_id].value =
+            this.widgets[widget_load_code_id].options?.default;
 
           const editor = this.widgets[widget_code_id]?.editor;
 

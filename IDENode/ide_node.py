@@ -1,9 +1,16 @@
+from pathlib import Path
 import types
 from server import PromptServer
 from aiohttp import web
 import time
 import json
 import re
+
+# Directory node
+DIR_IDENODE = Path(__file__)
+
+# Directory with codes
+DIR_IDENODE_CODES = DIR_IDENODE.parents[1] / "web_alekpet_nodes" / "lib" / "idenode" / "codes"
 
 remove_type_name = re.compile(r"(\{.*\})", re.I | re.M)
 
@@ -17,7 +24,26 @@ PY_CODE = AnyType("*")
 IDEs_DICT = {}
 
 
-@PromptServer.instance.routes.post("/alekpet/check_js_complete")
+def isFileName(filename):
+    if (
+        not filename
+        and filename is not None
+        and (type(filename) == str and filename.strip() == "")
+    ):
+        print("Filename is incorrect")
+        return False
+    return True
+
+
+def getFilesInDir(folder, ext="*.json"):
+    if not folder.exists():
+        raise ValueError(f"[IDENode] Not found directory '{folder}'!")
+
+    list_files = [item.name for item in folder.rglob(ext) if not item.is_dir()]
+    return list_files     
+
+
+@PromptServer.instance.routes.post("/alekpet/ide_node_check_js_complete")
 async def check_js_complete(request):
     json_data = await request.json()
     unique_id = json_data.get("unique_id", None)
@@ -34,6 +60,66 @@ async def check_js_complete(request):
         return web.json_response({"status": "Ok"})
 
     return web.json_response({"status": "Error"})
+
+
+@PromptServer.instance.routes.get("/alekpet/ide_node_load_codes/{lang}")
+async def load_codes(request):
+    lang = request.match_info["lang"]
+    list_codes = getFilesInDir(DIR_IDENODE_CODES / lang)
+
+    return web.json_response(
+        {"codes": list_codes, "language": lang}
+    )
+
+@PromptServer.instance.routes.post("/alekpet/ide_node_save_code")
+async def save_code(request):
+    try:
+        json_data = await request.json()
+        inputs = json_data.get("inputs", [])
+        outputs = json_data.get("outputs", [])
+        language = json_data.get("language", "python")
+        code = json_data.get("code", "")
+        filename = json_data.get("filename")
+
+        if not isFileName(filename):
+            return web.json_response(
+                {"message": "Filename file code is incorrect!"}, status=400
+            )
+
+        if not language.strip():
+             return web.json_response(
+                {"message": "The programming language is incorrect!"}, status=400
+            )            
+
+        json_data = {
+             "language": language,
+             "inputs": inputs,
+             "outputs": outputs,
+             "code": code,
+        }
+
+        save_path = DIR_IDENODE_CODES / language / filename
+
+        if not save_path.suffix.strip():
+             save_path = save_path.with_suffix('.json')
+
+        with open(save_path, "w+", encoding="utf-8", errors="replace") as file:
+            json.dump(json_data, file, ensure_ascii=False, indent=2)
+
+            list_codes = getFilesInDir(DIR_IDENODE_CODES / language)
+            return web.json_response(
+                {
+                    "codes": list_codes,
+                    "language": language,
+                    "message": f"Code from '{language}' save to '{save_path.name}' successfully!",
+                },
+                status=200,
+            )
+
+    except OSError as e:
+        return web.json_response(
+            {"error": "Error: %s - %s." % (e.filename, e.strerror)}, status=500
+        )
 
 
 def wait_js_complete(unique_id, time_out=40, poll_interval=0.2):
