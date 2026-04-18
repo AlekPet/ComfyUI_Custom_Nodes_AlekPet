@@ -1,9 +1,20 @@
 {
   "language": "javascript",
   "inputs": [
-    { "name": "a", "type": "*" },
-    { "name": "b", "type": "*" }
+    {
+      "name": "a",
+      "type": "*"
+    },
+    {
+      "name": "b",
+      "type": "*"
+    }
   ],
-  "outputs": [{ "name": "result", "type": "*" }],
+  "outputs": [
+    {
+      "name": "result",
+      "type": "*"
+    }
+  ],
   "code": "result = a + b"
 }

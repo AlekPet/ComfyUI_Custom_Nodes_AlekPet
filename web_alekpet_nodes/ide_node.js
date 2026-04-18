@@ -1,6 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import "./lib/idenode/ace-builds/src-min-noconflict/ace.js";
+import { addStylesheet } from "../../scripts/utils.js";
 import {
   createWindowModal,
   makeElement,
@@ -94,6 +95,9 @@ result = runCode()
 // Default value select load code
 const defaultComboValue = "-- Select code file --";
 
+// RegExp
+const symbolsIncorrectFileName = /[/\\?%*:|"<>]/g;
+
 // Save data to workflow forced!
 function saveValue() {
   app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
@@ -185,6 +189,9 @@ function makeValidVariable(
 // Register extensions
 app.registerExtension({
   name: "alekpet.IDENode",
+  init(app) {
+    addStylesheet("css/idenode/ide_node_styles.css", import.meta.url);
+  },
   getCustomWidgets(app) {
     return {
       PYCODE: async (node, inputName, inputData, app) => {
@@ -253,15 +260,153 @@ result = str(my(23, 9))`,
             const { codes } = await loadListCodes(v);
             codeLoad.options.values = [defaultComboValue].concat(...codes);
             codeLoad.value = defaultComboValue;
+            node.setDirtyCanvas(true, true);
           };
         }
 
+        // Load code
+        const codeLoad = node.addWidget(
+          "COMBO",
+          "Load code",
+          defaultComboValue,
+          async (codefile) => {
+            if (codefile === defaultComboValue) return;
+
+            // Confirm load code?
+            app.extensionManager.dialog
+              .confirm({
+                title: "Confirm load code",
+                message: "Are you sure you want load code?",
+                type: "default",
+              })
+              .then(async (result) => {
+                if (!result) {
+                  // codeLoad.value = defaultComboValue;
+                  return;
+                }
+
+                // Load code
+                fetch(
+                  new URL(
+                    `./lib/idenode/codes/${node.widgets[widgetLang_id].value}/${codefile}`,
+                    import.meta.url
+                  ).toString()
+                )
+                  .then((res) => res.json())
+                  .then((res) => {
+                    const { inputs, outputs, code, language } = res;
+
+                    let lang = language ?? "python";
+
+                    // Set code language
+                    node.widgets[widgetLang_id].value = lang;
+                    widget.editor.session.setMode(`ace/mode/${lang}`);
+
+                    const currentWidth = node.size[0];
+
+                    // Remove input
+                    const inputsSet = new Set([
+                      "language",
+                      "theme_highlight",
+                      "pycode",
+                      ...inputs.map((i) => i.name),
+                    ]);
+
+                    for (let i = node.inputs.length - 1; i >= 0; i--) {
+                      const input = node.inputs[i];
+
+                      if (!inputsSet.has(input.name)) {
+                        node.removeInput(i);
+                      }
+                    }
+
+                    // Remove output
+                    const outputSet = new Set([
+                      "result",
+                      ...outputs.map((o) => o.name),
+                    ]);
+
+                    for (let i = node.outputs.length - 1; i >= 0; i--) {
+                      const output = node.outputs[i];
+
+                      if (!outputSet.has(output.name)) {
+                        node.removeOutput(i);
+                      }
+                    }
+
+                    inputs.forEach((input) => {
+                      const isNotInArray = !node.inputs.some(
+                        (i) => i.name === input.name.trim()
+                      );
+                      if (isNotInArray)
+                        node.addInput(input.name.trim(), input.type);
+                    });
+
+                    outputs.forEach((output) => {
+                      const isNotInArray = !node.outputs.some(
+                        (o) => o.name === output.name.trim()
+                      );
+                      if (isNotInArray)
+                        node.addOutput(output.name.trim(), output.type);
+                    });
+
+                    // Set code
+                    widget.editor.setValue(code);
+                    widget.editor.clearSelection();
+
+                    node.setSize([currentWidth, node.size[1]]);
+                    node.setDirtyCanvas(true, true);
+                    saveValue();
+                  })
+                  .catch((e) => {
+                    createWindowModal({
+                      textTitle: "ERROR",
+                      textBody: [
+                        makeElement("div", {
+                          style: { fontSize: "0.7rem" },
+                          innerHTML: e,
+                        }),
+                      ],
+                      ...THEMES_MODAL_WINDOW.error,
+                      options: {
+                        auto: {
+                          autohide: true,
+                          autoremove: true,
+                          autoshow: true,
+                          timewait: 1500,
+                        },
+                        close: { showClose: false },
+                        overlay: { overlay_enabled: true },
+                        parent: widget.codeElement,
+                      },
+                    });
+                    console.error(e);
+                  });
+              });
+          },
+          {
+            values: [defaultComboValue],
+            default: defaultComboValue,
+          }
+        );
+
+        // Remove node
+        node.onRemoved = function () {
+          for (const w of node?.widgets) {
+            if (w?.codeElement) w.codeElement.remove();
+          }
+        };
+
         // Add input vars
-        node.addWidget(
-          "button",
-          "Add Input variable",
-          "add_input_variable",
-          async () => {
+        const buttonAddInput = makeElement("button", {
+          class: [
+            "ide_node_controls_buttons",
+            "button_ide_node_addinput",
+            "ide_node_controls_first_row",
+          ],
+          textContent: "✚ INPUT VARIABLE",
+          title: "Add input variable",
+          onclick: async () => {
             // Input name variable and check
             const varsCount = node?.inputs.filter((i) =>
               /^var[0-9]+$/.test(i?.name)
@@ -308,15 +453,19 @@ result = str(my(23, 9))`,
             node.addInput(varName, type);
             node.setSize([currentWidth, node.size[1]]);
             saveValue();
-          }
-        );
+          },
+        });
 
         // Add output vars
-        node.addWidget(
-          "button",
-          "Add Output variable",
-          "add_output_variable",
-          async () => {
+        const buttonAddOutput = makeElement("button", {
+          class: [
+            "ide_node_controls_buttons",
+            "button_ide_node_addoutput",
+            "ide_node_controls_first_row",
+          ],
+          innerHTML: "OUTPUT VARIABLE ✚",
+          title: "Add output variable",
+          onclick: async () => {
             const currentWidth = node.size[0];
 
             // Output name variable
@@ -365,60 +514,249 @@ result = str(my(23, 9))`,
             node.addOutput(varName, type);
             node.setSize([currentWidth, node.size[1]]);
             saveValue();
-          }
-        );
+          },
+        });
 
-        // Save code
-        const save_code = node.addWidget(
-          "button",
-          "Save code",
-          "save_code",
-          async () => {
+        // Save file code
+        const buttonSave = makeElement("button", {
+          class: [
+            "ide_node_controls_buttons",
+            "button_ide_node_save",
+            "ide_node_controls_second_row",
+          ],
+          textContent: "💾 save",
+          title: "Save code",
+          onclick: async () => {
             comfyuiDesktopPrompt(
               "Code filename",
-              "Enter filename your code",
+              "Enter filename for code (if exists will be rewrited)",
               codeLoad.value === defaultComboValue ? "" : codeLoad.value
-            ).then((filename) => {
-              if (!filename || !filename.trim()) return;
+            ).then(async (save_filename) => {
+              if (
+                !save_filename ||
+                !save_filename.trim() ||
+                save_filename === defaultComboValue
+              ) {
+                await app.extensionManager.toast.add({
+                  severity: "warn",
+                  summary: "Warning",
+                  detail: `Filename is empty or equal '${defaultComboValue}'!`,
+                  life: 3000,
+                });
+                return;
+              }
 
-              try {
-                api
-                  .fetchApi("/alekpet/ide_node_save_code", {
-                    method: "POST",
-                    body: JSON.stringify({
-                      filename: filename.trim(),
-                      inputs: node.inputs
-                        .filter((i) => !["language", "pycode"].includes(i.name))
-                        .map((i) => ({
-                          name: i.name,
-                          type: i.type,
-                        })),
-                      outputs: node.outputs.map((o) => ({
-                        name: o.name,
-                        type: o.type,
+              const filename = save_filename
+                .trim()
+                .replace(symbolsIncorrectFileName, "_");
+
+              api
+                .fetchApi("/alekpet/ide_node_save_code", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    filename,
+                    inputs: node.inputs
+                      .filter(
+                        (i) =>
+                          !["language", "pycode", "theme_highlight"].includes(
+                            i.name
+                          )
+                      )
+                      .map((i) => ({
+                        name: i.name,
+                        type: i.type,
                       })),
-                      language: node.widgets[widgetLang_id].value,
-                      code: widget.editor.getValue(),
-                    }),
-                  })
-                  .then((res) => res.json())
-                  .then((data) => {
-                    const { codes, message, error } = data;
+                    outputs: node.outputs.map((o) => ({
+                      name: o.name,
+                      type: o.type,
+                    })),
+                    language: node.widgets[widgetLang_id].value,
+                    code: widget.editor.getValue(),
+                  }),
+                })
+                .then((res) => res.json())
+                .then((data) => {
+                  const { codes, message, status } = data;
 
-                    if (error) {
-                      throw new Error(error);
-                    }
+                  if (status !== "Ok") {
+                    throw new Error(message);
+                  }
 
-                    app.extensionManager.toast.add({
-                      severity: "success",
-                      summary: "Success",
-                      detail: message,
-                      life: 3000,
-                    });
+                  codeLoad.options.values = [defaultComboValue].concat(codes);
+                  if (codeLoad.options.values.indexOf(filename) !== -1) {
+                    codeLoad.value = filename;
+                    node.setDirtyCanvas(true, true);
+                  }
 
-                    codeLoad.options.values = [defaultComboValue].concat(codes);
+                  app.extensionManager.toast.add({
+                    severity: "success",
+                    summary: "Success",
+                    detail: message,
+                    life: 3000,
                   });
-              } catch (e) {
+                })
+                .catch((e) => {
+                  app.extensionManager.toast.add({
+                    severity: "error",
+                    summary: "Error",
+                    detail: e,
+                    life: 3000,
+                  });
+                  console.error(e);
+                });
+            });
+          },
+        });
+
+        // Rename file code
+        const ButtonRename = makeElement("button", {
+          class: [
+            "ide_node_controls_buttons",
+            "button_ide_node_rename",
+            "ide_node_controls_second_row",
+          ],
+          textContent: "✏️ rename",
+          title: "Rename file code",
+          onclick: (e) => {
+            const old_filename = codeLoad.value.trim();
+
+            if (!old_filename || old_filename === defaultComboValue) {
+              app.extensionManager.toast.add({
+                severity: "warn",
+                summary: "Warning",
+                detail: `Invalid element selected: '${old_filename}'!`,
+                life: 3000,
+              });
+              return;
+            }
+
+            comfyuiDesktopPrompt(
+              "Confirm file rename",
+              "Enter a filename to rename",
+              old_filename === defaultComboValue ? "" : old_filename
+            ).then(async (new_filename) => {
+              if (
+                !new_filename ||
+                !new_filename.trim() ||
+                new_filename === old_filename ||
+                new_filename.trim() === defaultComboValue
+              ) {
+                await app.extensionManager.toast.add({
+                  severity: "warn",
+                  summary: "Warning",
+                  detail: `Filename is empty or equal '${defaultComboValue}'!`,
+                  life: 3000,
+                });
+                return;
+              }
+
+              const filename = new_filename
+                .trim()
+                .replace(symbolsIncorrectFileName, "_");
+              const language = node.widgets[widgetLang_id].value;
+
+              api
+                .fetchApi("/alekpet/ide_node_rename_code", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    old_filename,
+                    filename,
+                    language,
+                  }),
+                })
+                .then((res) => res.json())
+                .then((data) => {
+                  const { status, message, codes } = data;
+
+                  if (status !== "Ok") throw new Error(message);
+
+                  codeLoad.options.values = [defaultComboValue].concat(codes);
+                  if (codeLoad.options.values.indexOf(filename) !== -1) {
+                    codeLoad.value = filename;
+                    node.setDirtyCanvas(true, true);
+                  }
+
+                  app.extensionManager.toast.add({
+                    severity: "success",
+                    summary: "Success",
+                    detail: message,
+                    life: 3000,
+                  });
+                })
+                .catch((e) => {
+                  app.extensionManager.toast.add({
+                    severity: "error",
+                    summary: "Error",
+                    detail: e,
+                    life: 3000,
+                  });
+                  console.error(e);
+                });
+            });
+          },
+        });
+
+        // Remove file code
+        const ButtonRemove = makeElement("button", {
+          class: [
+            "ide_node_controls_buttons",
+            "button_ide_node_remove",
+            "ide_node_controls_second_row",
+          ],
+          textContent: "🗑️ remove",
+          title: "Remove file code",
+          onclick: async (e) => {
+            const filename = codeLoad.value.trim();
+            if (!filename || filename === defaultComboValue) {
+              app.extensionManager.toast.add({
+                severity: "warn",
+                summary: "Warning",
+                detail: `Invalid element selected: '${filename}'!`,
+                life: 3000,
+              });
+              return;
+            }
+
+            const language = node.widgets[widgetLang_id].value;
+            const answerRemove = await app.extensionManager.dialog.confirm({
+              title: "Confirm remove",
+              message: `Are you sure you want remove filename ${filename} code?`,
+              type: "default",
+            });
+
+            if (!answerRemove) {
+              return;
+            }
+
+            api
+              .fetchApi("/alekpet/ide_node_remove_code", {
+                method: "POST",
+                body: JSON.stringify({
+                  filename,
+                  language,
+                }),
+              })
+              .then((res) => res.json())
+              .then((data) => {
+                const { status, message } = data;
+
+                if (status !== "Ok") throw new Error(message);
+
+                const itemSelected = codeLoad.options.values.indexOf(filename);
+                if (itemSelected !== -1) {
+                  codeLoad.options.values.splice(itemSelected, 1);
+                  codeLoad.value = defaultComboValue;
+                  node.setDirtyCanvas(true, true);
+                }
+
+                app.extensionManager.toast.add({
+                  severity: "success",
+                  summary: "Success",
+                  detail: message,
+                  life: 3000,
+                });
+              })
+              .catch((e) => {
                 app.extensionManager.toast.add({
                   severity: "error",
                   summary: "Error",
@@ -426,162 +764,56 @@ result = str(my(23, 9))`,
                   life: 3000,
                 });
                 console.error(e);
-              }
-            });
-          }
-        );
+              });
+          },
+        });
 
-        paintWidget.apply(save_code, [
-          { WIDGET_TEXT_COLOR: "#30ce00", WIDGET_OUTLINE_COLOR: "#30ce00" },
-        ]); // WIDGET_BGCOLOR:  "#27a700"
-
-        // Load code
-        const codeLoad = node.addWidget(
-          "COMBO",
-          "Load code",
-          defaultComboValue,
-          async (codefile) => {
-            if (codefile === defaultComboValue) return;
-
-            // Confirm load code?
+        // Clear code
+        const ButtonClear = makeElement("button", {
+          class: [
+            "ide_node_controls_buttons",
+            "button_ide_node_clear",
+            "ide_node_controls_second_row",
+          ],
+          textContent: "🧹 clear",
+          title: "Clear code",
+          onclick: async () => {
+            // Confirm clear code?
             await app.extensionManager.dialog
               .confirm({
-                title: "Confirm load code",
-                message: "Are you sure you want load code?",
+                title: "Confirm clear code",
+                message: "Are you sure you want clear code?",
                 type: "default",
               })
               .then((result) => {
-                if (!result) codeLoad.value = defaultComboValue;
-              });
-
-            // Load code
-            fetch(
-              new URL(
-                `./lib/idenode/codes/${node.widgets[widgetLang_id].value}/${codefile}`,
-                import.meta.url
-              ).toString()
-            )
-              .then((res) => res.json())
-              .then((res) => {
-                const { inputs, outputs, code, language } = res;
-
-                let lang = language ?? "python";
-
-                // Set code language
-                node.widgets[widgetLang_id].value = lang;
-                widget.editor.session.setMode(`ace/mode/${lang}`);
-
-                const currentWidth = node.size[0];
-                // Remove all input
-                for (const input_idx in node.inputs) {
-                  const input = node.inputs[input_idx];
-
-                  if (
-                    [
-                      "language",
-                      "theme_highlight",
-                      ...inputs.map((i) => i.name),
-                    ].includes(input.name)
-                  )
-                    continue;
-
-                  if (input.link) {
-                    app.graph.removeLink(input.link);
-                  }
-                  node.removeInput(input_idx);
+                if (result) {
+                  widget.editor.setValue("");
+                  saveValue();
                 }
-
-                // Remove all output
-                for (const output_idx in node.outputs) {
-                  const output = node.outputs[output_idx];
-
-                  if (
-                    ["result", ...outputs.map((o) => o.name)].includes(
-                      output.name
-                    )
-                  )
-                    continue;
-
-                  if (output.link) {
-                    app.graph.removeLink(output.link);
-                  }
-                  node.removeOutput(output_idx);
-                }
-
-                inputs.forEach((input) => {
-                  const isNotInArray = !node.inputs.some(
-                    (i) => i.name === input.name.trim()
-                  );
-                  if (isNotInArray)
-                    node.addInput(input.name.trim(), input.type);
-                });
-
-                outputs.forEach((output) => {
-                  const isNotInArray = !node.outputs.some(
-                    (o) => o.name === output.name.trim()
-                  );
-                  if (isNotInArray)
-                    node.addOutput(output.name.trim(), output.type);
-                });
-
-                // Set code
-                widget.editor.setValue(code);
-                widget.editor.clearSelection();
-
-                node.setSize([currentWidth, node.size[1]]);
-                node.setDirtyCanvas(true, true);
-                saveValue();
-              })
-              .catch((e) => {
-                createWindowModal({
-                  textTitle: "ERROR",
-                  textBody: [
-                    makeElement("div", {
-                      style: { fontSize: "0.7rem" },
-                      innerHTML: e,
-                    }),
-                  ],
-                  ...THEMES_MODAL_WINDOW.error,
-                  options: {
-                    auto: {
-                      autohide: true,
-                      autoremove: true,
-                      autoshow: true,
-                      timewait: 1500,
-                    },
-                    close: { showClose: false },
-                    overlay: { overlay_enabled: true },
-                    parent: widget.codeElement,
-                  },
-                });
-                console.error(e);
               });
           },
+        });
+        const IdeNodeControls = makeElement("div", {
+          class: ["ide_node_controls"],
+          children: [
+            buttonAddInput,
+            buttonAddOutput,
+            buttonSave,
+            ButtonRename,
+            ButtonRemove,
+            ButtonClear,
+          ],
+        });
+
+        const widgetIdeNodeControls = node.addDOMWidget(
+          "widget_ide_node_controls",
+          "ide_node_controls",
+          IdeNodeControls,
           {
-            values: [defaultComboValue],
-            default: defaultComboValue,
+            serialize: false,
           }
         );
-
-        // Clear code button
-        const clearButton = node.addWidget(
-          "button",
-          "Clear",
-          "clear_code",
-          () => {
-            widget.editor.setValue("");
-            saveValue();
-          }
-        );
-        paintWidget.apply(clearButton, [
-          { WIDGET_TEXT_COLOR: "#ee0101", WIDGET_OUTLINE_COLOR: "#ee0101" },
-        ]);
-
-        node.onRemoved = function () {
-          for (const w of node?.widgets) {
-            if (w?.codeElement) w.codeElement.remove();
-          }
-        };
+        widgetIdeNodeControls.computeSize = () => [node.size[0], 60];
 
         // Add DOMWidget
         const widget = node.addDOMWidget(
@@ -758,7 +990,7 @@ result = str(my(23, 9))`,
         }
 
         if (this?.inputs?.length) {
-          const not_showing = ["language", "pycode"];
+          const not_showing = ["language", "pycode", "theme_highlight"];
           for (let i = 0; i < this.inputs.length; i++) {
             const { name, type } = this.inputs[i];
             if (not_showing.includes(name)) continue;
@@ -770,7 +1002,7 @@ result = str(my(23, 9))`,
             ctx.fillText(
               `[${type === "*" ? "any" : type.toLowerCase()}]`,
               nameSize.width + 25,
-              i * 20 + 19 - not_showing.length * 20
+              i * 20 + 13 * not_showing.length - not_showing.length * 20
             );
           }
         }
@@ -840,7 +1072,8 @@ result = str(my(23, 9))`,
           for (const input_idx in this.inputs) {
             const input = this.inputs[input_idx];
 
-            if (["language", "theme_highlight"].includes(input.name)) continue;
+            if (["language", "theme_highlight", "pycode"].includes(input.name))
+              continue;
 
             options.splice(past_index + 1, 0, {
               content: `Remove Input ${input.name}`,

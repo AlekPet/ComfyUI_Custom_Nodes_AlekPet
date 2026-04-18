@@ -1,0 +1,72 @@
+.ide_node_controls {
+  padding: 0;
+  margin: -4px 0;
+  display: grid;
+  gap: 10px;
+  grid-template-areas:
+    "addinput addinput addinput addinput addoutput addoutput addoutput addoutput"
+    "save save rename rename remove remove clear clear";
+  grid-template-columns: repeat(8, 1fr);
+}
+
+.ide_node_controls_buttons {
+  padding: 2px 0;
+  font-weight: bold;
+  text-transform: capitalize;
+  font-size: 0.6rem;
+  color: var(--input-text);
+  background-color: var(--comfy-input-bg);
+  border-width: initial;
+  border-color: var(--border-color);
+  border-style: solid;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.ide_node_controls > button:hover {
+  filter: brightness(1.2);
+  will-change: transform;
+  cursor: pointer;
+}
+
+/* Controls input output buttons */
+.button_ide_node_addinput {
+  grid-area: addinput;
+  grid-column: span 4;
+  color: #577964 !important;
+  border-color: #577964 !important;
+}
+.button_ide_node_addoutput {
+  grid-area: addoutput;
+  grid-column: span 4;
+  color: #7c00ce !important;
+  border-color: #7c00ce !important;
+}
+
+/* Controls styles buttons */
+.button_ide_node_save,
+.button_ide_node_remove,
+.button_ide_node_rename,
+.button_ide_node_clear {
+  grid-column: span 2;
+}
+.button_ide_node_save {
+  grid-area: save;
+  color: #58af3e !important;
+  border-color: #58af3e !important;
+}
+.button_ide_node_rename {
+  grid-area: rename;
+  color: #3e65af !important;
+  border-color: #3e65af !important;
+}
+.button_ide_node_remove {
+  grid-area: remove;
+  color: #af453e !important;
+  border-color: #af453e !important;
+}
+.button_ide_node_clear {
+  grid-area: clear;
+  color: #af713e !important;
+  border-color: #af713e !important;
+}
