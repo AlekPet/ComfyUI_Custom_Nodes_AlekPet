@@ -1041,19 +1041,39 @@ result = str(my(23, 9))`,
             "findIndex"
           );
 
+          if (node?.widgets_values?.length === 6) {
+            console.log(
+              "🔨 [IDENode] Found old version IDENode (6 saved widget values), convert saves value for new version (5)."
+            );
+
+            node?.widgets_values.splice(2, 3);
+            node?.widgets_values.splice(
+              2,
+              0,
+              ...[this.widgets[widget_load_code_id].options?.default, ""]
+            );
+          }
+
           this.widgets[widget_load_code_id].value =
             this.widgets[widget_load_code_id].options?.default;
 
           const editor = this.widgets[widget_code_id]?.editor;
 
           if (editor) {
-            editor.setTheme(
-              `ace/theme/${this.widgets_values[widget_theme_id]}`
-            );
-            editor.session.setMode(
-              `ace/mode/${this.widgets_values[widget_language_id]}`
-            );
-            editor.setValue(this.widgets_values[widget_code_id]);
+            const lang = node?.widgets_values[widget_language_id].trim()
+              ? node?.widgets_values[widget_language_id]
+              : "python";
+            const theme = node?.widgets_values[widget_theme_id].trim()
+              ? node?.widgets_values[widget_theme_id]
+              : "monokai";
+
+            editor.setTheme(`ace/theme/${theme}`);
+            this.widgets[widget_theme_id].value = theme;
+
+            editor.session.setMode(`ace/mode/${lang}`);
+            this.widgets[widget_language_id].value = lang;
+
+            editor.setValue(node?.widgets_values[widget_code_id]);
             editor.clearSelection();
           }
         }
