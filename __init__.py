@@ -160,13 +160,34 @@ def module_install(commands, cwd="."):
 
 
 def get_installed_modules():
-    result = subprocess.run(
-        [sys.executable, "-m", "pip", "list", "--format=freeze"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return {line.split("==")[0].lower() for line in result.stdout.splitlines()}
+    # Use a sanitized python executable path (strip accidental surrounding quotes)
+    python_exec = str(sys.executable).strip('"\'')
+    # Fallback to which if the path does not exist
+    if not os.path.exists(python_exec):
+        python_exec = shutil.which("python") or shutil.which("python3") or python_exec
+
+    try:
+        result = subprocess.run(
+            [python_exec, "-m", "pip", "list", "--format=freeze"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return {line.split("==")[0].lower() for line in result.stdout.splitlines()}
+    except subprocess.CalledProcessError as e:
+        # pip may crash in some environments; log and return empty set to allow module import to continue
+        log(f"[AlekPet] get_installed_modules: pip returned non-zero exit status {e.returncode}")
+        try:
+            if e.stdout:
+                log("stdout:", e.stdout[:200])
+            if e.stderr:
+                log("stderr:", e.stderr[:200])
+        except Exception:
+            pass
+        return set()
+    except Exception as e:
+        log(f"[AlekPet] get_installed_modules exception: {e}")
+        return set()
 
 
 def checkModules(nodeElement):
