@@ -194,15 +194,12 @@ def get_version_extension():
     toml_file = os.path.join(extension_folder, "pyproject.toml")
     if os.path.isfile(toml_file):
         try:
-            with open(toml_file, "r") as v:
-                version = list(
-                    filter(lambda l: l.startswith("version"), v.readlines())
-                )[0]
+            with open(toml_file, "r", encoding="utf-8", errors="replace") as v:
+                version = list(filter(lambda l: l.startswith("version"), v.readlines()))[0]
                 version = version.split("=")[1].replace('"', "").strip()
                 return f" \033[1;34mv{version}\033[0m\033[1;35m"
         except Exception as e:
             print(e)
-
     return version
 
 
@@ -285,6 +282,7 @@ def addComfyUINodesToMapping(nodeElement, nodesOptions):
                     log(
                         f"    [*] Class node found '{class_module_name}' add to NODE_CLASS_MAPPINGS..."
                     )
+
                     NODE_CLASS_MAPPINGS.update(
                         {class_module_name: getattr(module, class_module_name)}
                     )
@@ -296,7 +294,6 @@ def addComfyUINodesToMapping(nodeElement, nodesOptions):
                         }
                     )
     return classesNames
-                    
 
 
 def module_install(commands, cwd="."):
@@ -321,20 +318,41 @@ def module_install(commands, cwd="."):
 
 
 def get_installed_modules():
-    result = subprocess.run(
-        [sys.executable, "-m", "pip", "list", "--format=freeze"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return {line.split("==")[0].lower() for line in result.stdout.splitlines()}
+    # Use a sanitized python executable path (strip accidental surrounding quotes)
+    python_exec = str(sys.executable).strip('"\'')
+    # Fallback to which if the path does not exist
+    if not os.path.exists(python_exec):
+        python_exec = shutil.which("python") or shutil.which("python3") or python_exec
+
+    try:
+        result = subprocess.run(
+            [python_exec, "-m", "pip", "list", "--format=freeze"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return {line.split("==")[0].lower() for line in result.stdout.splitlines()}
+    except subprocess.CalledProcessError as e:
+        # pip may crash in some environments; log and return empty set to allow module import to continue
+        log(f"[AlekPet] get_installed_modules: pip returned non-zero exit status {e.returncode}")
+        try:
+            if e.stdout:
+                log("stdout:", e.stdout[:200])
+            if e.stderr:
+                log("stderr:", e.stderr[:200])
+        except Exception:
+            pass
+        return set()
+    except Exception as e:
+        log(f"[AlekPet] get_installed_modules exception: {e}")
+        return set()
 
 
 def checkModules(nodeElement):
     file_requir = os.path.join(extension_folder, nodeElement, "requirements.txt")
     if os.path.exists(file_requir):
         log("  -> File 'requirements.txt' found!")
-        with open(file_requir) as f:
+        with open(file_requir, "r", encoding="utf-8", errors="replace") as f:
             lines = f.readlines()
             required_modules = {
                 module_name_cut_version.split(line.strip())[0] for line in lines if not line.startswith("#")

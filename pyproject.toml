@@ -1,7 +1,7 @@
 [project]
 name = "comfyui_custom_nodes_alekpet"
 description = "Nodes: PoseNode, PainterNode, TranslateTextNode, TranslateCLIPTextEncodeNode, DeepTranslatorTextNode, DeepTranslatorCLIPTextEncodeNode, ArgosTranslateTextNode, ArgosTranslateCLIPTextEncodeNode, ChatGLM4TranslateCLIPTextEncodeNode, ChatGLM4TranslateTextNode, ChatGLM4InstructNode, ChatGLM4InstructMediaNode, ChatGLMImageGenerateNode, ChatGLMVideoGenerateNode, PreviewTextNode, HexToHueNode, ColorsCorrectNode, IDENode."
-version = "1.1.1"
+version = "1.1.5"
 license = { file = "LICENSE" }
 
 [project.urls]
@@ -10,4 +10,4 @@ Repository = "https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet"
 [tool.comfy]
 PublisherId = "alekpet"
 DisplayName = "ComfyUI_Custom_Nodes_AlekPet"
-Icon = ""
+Icon = "https://avatars.githubusercontent.com/u/25489996"
