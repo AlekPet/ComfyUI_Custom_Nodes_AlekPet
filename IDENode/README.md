@@ -44,3 +44,25 @@ Workflow link: [Workflow ai_translate_opus-mt_idenode_workflow.json](https://git
 
 **Updated version IDENode load code**
 ![Screenshot IDE Node Load Code](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/raw/master/IDENode/IDENode_load_code.png)
+
+**Note:** There are two folders `python` and `javascipt` along the path `..\custom_nodes\ComfyUI_Custom_Nodes_AlekPet\web_alekpet_nodes\lib\idenode\codes` where the json files with the codes are saved. There are also test files `add.json.example` (remove `.example` for them to work).
+
+**Format JSON codes:**
+
+```json
+{
+  "language": "python",
+  "inputs": [
+    { "name": "a", "type": "*" },
+    { "name": "b", "type": "*" }
+  ],
+  "outputs": [{ "name": "result", "type": "*" }],
+  "code": "result = a + b"
+}
+```
+
+**Properties:**
+_language_ - python or javascript
+_inputs_ - inputs (name and type)
+_outputs_ - outputs (name and type)
+_code_ - the code itself

@@ -1,6 +1,6 @@
 .ide_node_controls {
   padding: 0;
-  margin: -4px 0;
+  margin: 0;
   display: grid;
   gap: 10px;
   grid-template-areas:

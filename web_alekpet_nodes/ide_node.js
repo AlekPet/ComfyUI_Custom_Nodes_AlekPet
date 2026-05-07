@@ -197,7 +197,7 @@ app.registerExtension({
       PYCODE: async (node, inputName, inputData, app) => {
         // Wrapper and codeElement
         const codeElementWrapper = makeElement("div", {
-          style: { height: "100%", marginTop: "-15px" },
+          style: { height: "100%", margin: "-10px 0 10px 0" },
         });
 
         const codeElement = makeElement("pre", {
