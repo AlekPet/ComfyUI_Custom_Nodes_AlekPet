@@ -241,6 +241,9 @@ fabric.MyBrushPaintSymmetry = fabric.util.createClass(fabric.SymmetryBrush, {
       }
     }
 
+    if (!pressure || pressure === 0)
+      pressure = parseFloat(this.range_brush_pressure.value);
+
     this.range_brush_pressure.nextElementSibling.textContent =
       pressure.toFixed(2);
     this.range_brush_pressure.style.background = rangeGradient(

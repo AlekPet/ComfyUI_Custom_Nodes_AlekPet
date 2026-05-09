@@ -34,6 +34,7 @@ import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 
 const DEBUG = false;
 const extensionName = "alekpet.PainterNode";
+const CLONE_CACHE = new Map();
 
 // Save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
 let painters_settings_json = JSON.parse(
@@ -183,6 +184,16 @@ class Painter {
   }
 
   initCanvas(canvasEl) {
+    // Check Node 2.0 enabled/disabled
+    const nodeValue2_0 = app.ui.settings.getSettingValue(
+      "Comfy.VueNodes.Enabled"
+    );
+    const isNode2_0 = nodeValue2_0 != null && nodeValue2_0 ? true : false;
+    isNode2_0 &&
+      console.log(
+        `🎨 [PainterNode] Node 2.0 is ${isNode2_0 ? "enabled! Brushes MyPaint may not support brush pressure correctly." : "disabled."}`
+      );
+
     this.canvas = new fabric.Canvas(canvasEl, {
       isDrawingMode: true,
       backgroundColor: "transparent",
@@ -190,7 +201,7 @@ class Painter {
         this.storageCls.settings_painter_node.settings.currentCanvasSize.width,
       height:
         this.storageCls.settings_painter_node.settings.currentCanvasSize.height,
-      enablePointerEvents: true,
+      enablePointerEvents: !isNode2_0,
       containerClass: "canvas-container-painter",
     });
 
@@ -201,6 +212,17 @@ class Painter {
       "contextmenu",
       function (e) {
         e.preventDefault();
+      }
+    );
+
+    // Check Node 2.0 enabled/disabled
+    app.ui.settings.addEventListener(
+      "Comfy.VueNodes.Enabled.change",
+      (event) => {
+        this.canvas.enablePointerEvents = !event.detail.value;
+        console.log(
+          `🎨 [PainterNode] Node 2.0 is ${event.detail.value ? "enabled! Brushes MyPaint may not support brush pressure correctly." : "disabled."}`
+        );
       }
     );
 
@@ -307,7 +329,7 @@ class Painter {
                 </div>
                 <div class="alekpet_painter_grid_style painter_colors_alpha">
                     <span>Stroke</span><span>Alpha</span>
-                    <input id="strokeColor" type="color" value="#FFFFFF" title="Stroke color">    
+                    <input id="strokeColor" type="color" value="#FFFFFF" title="Stroke color">
                     <input id="strokeColorTransparent" type="number" max="1.0" min="0" step="0.05" value="1.0" title="Stroke alpha value">
                 </div>
             </div>
@@ -325,7 +347,7 @@ class Painter {
                 <button bgImage="img_load" title="Add background image">IMG</button>
                 <button bgImage="img_reset" title="Remove background image">IMG <span style="color: var(--error-text);">✖</span></button>
             </div>
-            <div class="alekpet_painter_settings_box fieldset_box comfy-menu-btns" f_name="Settimgs">    
+            <div class="alekpet_painter_settings_box fieldset_box comfy-menu-btns" f_name="Settimgs">
               <button id="painter_canvas_size" title="Set canvas size">Canvas size</button>
             </div>
         </div>`,
@@ -740,8 +762,8 @@ class Painter {
         addTypeCheck = o.hasOwnProperty("mypaintlib")
           ? "mypaint"
           : o.hasOwnProperty("cropimage")
-          ? "cropimage"
-          : type,
+            ? "cropimage"
+            : type,
         text_value = addTypeCheck + `_${countType}`;
 
       obEl.setAttribute("painter_object", text_value);
@@ -2711,6 +2733,56 @@ class Painter {
 
     // - end
   }
+
+  async loadCanvasData(data, painter_idx) {
+    if (painters_settings_json && data === null) {
+      data = await this.storageCls.getData();
+
+      if (!data) {
+        data = JSON.parse(
+          JSON.stringify(this.storageCls.settings_painter_node_default)
+        );
+      }
+
+      this.storageCls.settings_painter_node = data;
+    }
+
+    if (data) {
+      Object.assign(this.node.widgets[painter_idx].value, data);
+
+      if (data?.settings) {
+        const {
+          currentCanvasSize: { width, height },
+        } = data.settings;
+
+        // -- Settings piping
+        this.setValueElementsLS();
+
+        // -- Settings size
+        if (width && height) {
+          this.storageCls.settings_painter_node.settings.currentCanvasSize = {
+            width,
+            height,
+          };
+
+          this.setCanvasSize(width, height);
+        }
+      }
+
+      // Loading canvas data
+      if (data?.canvas_settings) {
+        this.canvasLoadSettingPainter(data).then((result) => {
+          if (result) {
+            this.canvas.renderAll();
+            this.uploadPaintFile(this.name);
+          }
+        });
+      }
+
+      this.node.setSize(this.node.size);
+      app.graph.setDirtyCanvas(true, false);
+    }
+  }
 }
 // ================= END CLASS PAINTER ================
 
@@ -2739,7 +2811,7 @@ function PainterWidget(node, inputName, inputData, app) {
 
   const widget = node.addDOMWidget(
     "painter_widget",
-    "painter",
+    "painter_node_alekpet",
     wrapperPainter,
     {
       setValue(v) {
@@ -3075,6 +3147,18 @@ app.registerExtension({
         return r;
       };
 
+      const origClone = nodeType.prototype.clone;
+      nodeType.prototype.clone = function () {
+        const cloneNode = origClone?.apply(this, arguments);
+        if (!cloneNode) return origClone;
+
+        CLONE_CACHE.set(
+          this.id,
+          structuredClone(this.painter.storageCls.settings_painter_node)
+        );
+        return cloneNode;
+      };
+
       const onConfigure = nodeType.prototype.onConfigure;
       nodeType.prototype.onConfigure = async function (widget) {
         onConfigure?.apply(this, arguments);
@@ -3113,62 +3197,24 @@ app.registerExtension({
           console.log(`🔧 Configure PainterNode: ${this.name}`);
 
           const painter_idx = this.widgets.findIndex(
-            (w) => w.type === "painter"
+            (w) => w.type === "painter_node_alekpet"
           );
 
           if (painter_idx < 0) return;
           let data = widget.widgets_values[painter_idx];
 
-          if (painters_settings_json && data === null) {
-            data = await this.painter.storageCls.getData();
-
-            if (!data) {
-              data = JSON.parse(
-                JSON.stringify(
-                  this.painter.storageCls.settings_painter_node_default
-                )
+          if (!data) {
+            for (const [originalId, cachedSettings] of CLONE_CACHE.entries()) {
+              console.log(
+                `♻️ Recovering cloned data from node ${originalId} to node ${this.id}`
               );
+              data = cachedSettings;
+              CLONE_CACHE.delete(originalId);
+              break;
             }
-
-            this.painter.storageCls.settings_painter_node = data;
           }
 
-          Object.assign(this.widgets[painter_idx].value, data);
-
-          if (data) {
-            if (data?.settings) {
-              const {
-                currentCanvasSize: { width, height },
-              } = data.settings;
-
-              // -- Settings piping
-              this.painter.setValueElementsLS();
-
-              // -- Settings size
-              if (width && height) {
-                this.painter.storageCls.settings_painter_node.settings.currentCanvasSize =
-                  {
-                    width,
-                    height,
-                  };
-
-                this.painter.setCanvasSize(width, height);
-              }
-            }
-
-            // Loading canvas data
-            if (data?.canvas_settings) {
-              this.painter.canvasLoadSettingPainter(data).then((result) => {
-                if (result) {
-                  this.painter.canvas.renderAll();
-                  this.painter.uploadPaintFile(this.name);
-                }
-              });
-            }
-
-            this.setSize(arguments[0].size);
-            app.graph.setDirtyCanvas(true, false);
-          }
+          this.painter.loadCanvasData(data, painter_idx);
         });
       };
 
