@@ -8,6 +8,8 @@ If you enjoy my work, consider **[supporting me](https://alekpet.github.io/suppo
 
 # List Nodes:
 
+> 💡 The **ChatGLM** text/instruct nodes call a standard OpenAI-compatible `/chat/completions` API. Besides Zhipu AI, you can point them at any OpenAI-compatible backend (e.g. [Atlas Cloud](https://www.atlascloud.ai/?utm_source=github&utm_medium=link&utm_campaign=ComfyUI_Custom_Nodes_AlekPet) for DeepSeek / Qwen / GLM / Kimi / MiniMax) by setting `base_url` in `config.json` — see [ChatGLMNode/README.md](./ChatGLMNode/README.md).
+
 | Name                                                                                                                             |                                                     Description                                                      |     ComfyUI category      |
 | :------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------: | :-----------------------: |
 | [**PoseNode**](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/tree/master/PoseNode)                                     |                                             The node set pose ControlNet                                             |    AlekPet Node/image     |
