@@ -17,10 +17,25 @@ from comfy_api_nodes.util import (
 ALL_CODES_LANGS = ['af', 'sq', 'am', 'ar', 'hy', 'as', 'ay', 'az', 'bm', 'eu', 'be', 'bn', 'bho', 'bs', 'bg', 'ca', 'ceb', 'ny', 'zh-CN', 'zh-TW', 'co', 'hr', 'cs', 'da', 'dv', 'doi', 'nl', 'en', 'eo', 'et', 'ee', 'tl', 'fi', 'fr', 'fy', 'gl', 'ka', 'de', 'el', 'gn', 'gu', 'ht', 'ha', 'haw', 'iw', 'hi', 'hmn', 'hu', 'is', 'ig', 'ilo', 'id', 'ga', 'it', 'ja', 'jw', 'kn', 'kk', 'km', 'rw', 'gom', 'ko', 'kri', 'ku', 'ckb', 'ky', 'lo', 'la', 'lv', 'ln', 'lt', 'lg', 'lb', 'mk', 'mai', 'mg', 'ms', 'ml', 'mt', 'mi', 'mr', 'mni-Mtei', 'lus', 'mn', 'my', 'ne', 'no', 'or', 'om', 'ps', 'fa', 'pl', 'pt', 'pa', 'qu', 'ro', 'ru', 'sm', 'sa', 'gd', 'nso', 'sr', 'st', 'sn', 'sd', 'si', 'sk', 'sl', 'so', 'es', 'su', 'sw', 'sv', 'tg', 'ta', 'tt', 'te', 'th', 'ti', 'ts', 'tr', 'tk', 'ak', 'uk', 'ur', 'ug', 'uz', 'vi', 'cy', 'xh', 'yi', 'yo', 'zu']
 
 # Endpoints
-ENDPOINT_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+# Default base URL is Zhipu AI (bigmodel.cn). It can be overridden in config.json
+# via the optional "base_url" field, so the text/chat node can also be pointed at
+# any OpenAI-compatible Chat Completions backend (e.g. Atlas Cloud:
+# https://api.atlascloud.ai/v1). Leaving "base_url" empty keeps the original
+# Zhipu AI behaviour unchanged.
+DEFAULT_BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
+
 ENDPOINT_IMAGE_URL = "https://open.bigmodel.cn/api/paas/v4/images/generations"
 ENDPOINT_VIDEO_URL = "https://open.bigmodel.cn/api/paas/v4/videos/generations"
 ENDPOINT_VIDEO_CHECK_URL = "https://open.bigmodel.cn/api/paas/v4/async-result/"
+
+
+def getChatEndpoint():
+    # Resolve the chat/completions endpoint from config "base_url" (optional),
+    # falling back to the default Zhipu AI base URL when it is empty/missing.
+    base_url = (CONFIG.get("base_url") or "").strip() if isinstance(CONFIG, dict) else ""
+    if not base_url:
+        base_url = DEFAULT_BASE_URL
+    return base_url.rstrip("/") + "/chat/completions"
 
 # Language models: https://docs.bigmodel.cn/api-reference/%E6%A8%A1%E5%9E%8B-api/%E5%AF%B9%E8%AF%9D%E8%A1%A5%E5%85%A8#%E6%96%87%E6%9C%AC%E6%A8%A1%E5%9E%8B
 LIST_LANGUAGE_MODELS = [
@@ -91,8 +106,9 @@ def getConfigData():
                 "to_translate": "en",
                 "default_language_model": "glm-4.5-flash",
                 "default_multimodal_model": "glm-4.6v-flash",
-                "default_image_generate_model": "cogview-3-flash",  
-                "default_video_generate_model": "cogvideox-flash",  
+                "default_image_generate_model": "cogview-3-flash",
+                "default_video_generate_model": "cogvideox-flash",
+                "base_url": "",
                 "ZHIPUAI_API_KEY": "your_api_key"
             }
 
@@ -142,11 +158,13 @@ def createRequest(payload, generate = "text", method = "POST", params = {}):
     elif generate == "video":
         endpoint = ENDPOINT_VIDEO_URL
         headers.update({'Accept-Language': "en-US,en"})
-    elif generate == "video-check":      
+    elif generate == "video-check":
         endpoint = ENDPOINT_VIDEO_CHECK_URL + params["id"]
         headers.update({'Accept-Language': "en-US,en"})
     else:
-        endpoint = ENDPOINT_URL
+        # Text/chat completions: endpoint is resolved from config "base_url"
+        # (OpenAI-compatible), defaulting to Zhipu AI when not set.
+        endpoint = getChatEndpoint()
 
     try:
         response = requests.post(endpoint, headers=headers, json=payload) if method == "POST" else requests.get(endpoint, headers=headers)

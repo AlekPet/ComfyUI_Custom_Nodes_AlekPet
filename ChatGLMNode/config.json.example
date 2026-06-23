@@ -1,10 +1,11 @@
 {
-  "__comment": "Register on the site https://bigmodel.cn and get a key and add it to the field ZHIPUAI_API_KEY. Change default translate languages 'from' and 'to' you use",
+  "__comment": "Register on https://bigmodel.cn and put your key in ZHIPUAI_API_KEY. Optionally set 'base_url' to any OpenAI-compatible Chat Completions backend (e.g. Atlas Cloud: https://api.atlascloud.ai/v1) and use its key/model; leave 'base_url' empty to use Zhipu AI. Change default translate languages 'from' and 'to' you use",
   "from_translate": "ru",
   "to_translate": "en",
   "default_language_model": "glm-4.5-flash",
   "default_multimodal_model": "glm-4.6v-flash",
   "default_image_generate_model": "cogview-3-flash",
   "default_video_generate_model": "cogvideox-flash",
+  "base_url": "",
   "ZHIPUAI_API_KEY": "your_api_key"
 }
