@@ -44,7 +44,7 @@ def getFilesInDir(folder, ext="*.json"):
         raise ValueError(f"[IDENode] Not found directory '{folder}'!")
 
     list_files = [item.name for item in folder.rglob(ext) if not item.is_dir()]
-    return list_files     
+    return list_files
 
 
 # Check javascript complete
@@ -86,7 +86,7 @@ def validate_ide_params(func):
                 return web.json_response(
                     {"status": "error", "message": "Filename code is incorrect!"}, status=400
                 )
-            
+
             if not language or not language.strip():
                 return web.json_response(
                     {"status": "error", "message": "The programming language is incorrect!"}, status=400
@@ -117,7 +117,7 @@ async def check_exists(request):
     try:
         language = request.match_info.get("lang")
         filename = request.match_info.get("filename")
-        
+
         is_file_exists = filename.strip() in getFilesInDir(DIR_IDENODE_CODES / language.strip())
         return web.json_response(
             {
@@ -143,7 +143,7 @@ async def save_code(request):
         code = json_data.get("code", "")
         language = json_data.get("language", "python")
         filename = json_data.get("filename")
-           
+
         json_data = {
              "language": language,
              "inputs": inputs,
@@ -183,14 +183,14 @@ async def save_code(request):
     except OSError as e:
         return web.json_response(
         {
-            "status": "error",                
+            "status": "error",
             "message": "Error: %s - %s." % (e.filename, e.strerror)
         }, status=500
     )
     except Exception as e:
         return web.json_response({
             "status": "error",
-            "message": e
+            "message": str(e)
         }, status=500
     )
 
@@ -206,7 +206,7 @@ async def remove_code(request):
 
         pathFileName = DIR_IDENODE_CODES / language.strip() / filename
 
-        if Path.exists(pathFileName):
+        if pathFileName.exists():
             pathFileName.unlink(missing_ok=True)
 
             list_codes = getFilesInDir(DIR_IDENODE_CODES / language)
@@ -225,7 +225,7 @@ async def remove_code(request):
                     "message": f"Filename '{filename}' not exists!",
                 },
                 status=400,
-            )             
+            )
 
     except Exception as e:
         return web.json_response(
@@ -286,7 +286,7 @@ async def rename_code(request):
                     "message": f"Filename '{pathOldFileName}' not exists!",
                 },
                 status=400,
-            )             
+            )
 
     except Exception as e:
         return web.json_response(
@@ -302,19 +302,21 @@ async def rename_code(request):
 
 def wait_js_complete(unique_id, time_out=40, poll_interval=0.2):
     start_time = time.time()
+
     while time.time() - start_time < time_out:
         node = IDEs_DICT.get(unique_id)
-        if node and getattr(node, "js_complete", False) and node.js_complete == True and node.js_result is not None:
+
+        if node is None:
+            return False
+
+        if getattr(node, "js_complete", False) and node.js_result is not None:
             node.js_complete = False
             return True
-
-        if node is None and unique_id in IDEs_DICT:
-            del IDEs_DICT[unique_id]
-            return False
 
         time.sleep(poll_interval)
 
     IDEs_DICT.pop(unique_id, None)
+
     return False
 
 
@@ -365,7 +367,7 @@ result = runCode()"""
                     },
                 ),
             },
-            "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"},
+            "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO", "prompt": "PROMPT", "update_node": ("INT", {"default": 0, "hidden": True})},
         }
 
     RETURN_TYPES = ByPassTypeTuple((PY_CODE,))
@@ -374,48 +376,137 @@ result = runCode()"""
     DESCRIPTION = "IDE Node is an node that allows you to run code written in Python or Javascript directly in the node."
     CATEGORY = "AlekPet Nodes/experiments"
 
-    def exec_py(self, pycode, language, unique_id, extra_pnginfo, **kwargs):
-        if unique_id not in IDEs_DICT:
-            IDEs_DICT[unique_id] = self
+    def exec_py(self, **kwargs):
+        pycode = kwargs.get("pycode")
+        language = kwargs.get("language")
+        unique_id = kwargs.get("unique_id")
+        prompt = kwargs.get("prompt")
+        extra_pnginfo = kwargs.get("extra_pnginfo")
 
+        # Set global IDEs_DICT unique_id this instance
+        IDEs_DICT.setdefault(unique_id, self)
 
+        # Inputs and outputs vars
         outputs = {}
-        if extra_pnginfo and 'workflow' in extra_pnginfo and extra_pnginfo['workflow']:
-            for node in extra_pnginfo['workflow']['nodes']:
+        input_valid = {}
+
+        workflow = extra_pnginfo.get("workflow") if extra_pnginfo else None
+        if workflow:
+            reserved_inputs_keys = {
+                "Load code",
+                "pycode",
+                "language"
+            }
+
+            # Get inputs vars from prompt (widgets values)
+            prompt_node  = prompt.get(str(unique_id)) if prompt else None
+            if prompt_node:
+                prompt_dict = prompt_node["inputs"]
+
+                input_valid = {
+                    prop: prompt_dict[prop]
+                    for prop in prompt_dict
+                    if prop not in reserved_inputs_keys
+                }
+
+            # Get outputs vars
+            for node in workflow['nodes']:
                 if str(node['id']) == str(unique_id):
-                    outputs_valid = [ouput for ouput in node.get('outputs', []) if ouput.get('name','') != '' and ouput.get('type','') != '']
-                    outputs = {ouput['name']: None for ouput in outputs_valid}
-                    self.RETURN_TYPES = ByPassTypeTuple(out["type"] for out in outputs_valid)
+                    outputs_valid = [
+                        output
+                        for output in node.get('outputs', [])
+                        if output.get('name','') != ''
+                        and output.get('type','') != ''
+                    ]
+
+                    outputs = {
+                        output['name']: None
+                        for output in outputs_valid
+                    }
+
+                    self.RETURN_TYPES = ByPassTypeTuple(output["type"] for output in outputs_valid)
                     self.RETURN_NAMES = tuple(name for name in outputs.keys())
+                    break
 
         my_namespace = types.SimpleNamespace()
-        my_namespace.__dict__.update(outputs)            
-        my_namespace.__dict__.update({prop: kwargs[prop] for prop in kwargs})
+        my_namespace.__dict__.update(outputs)
+
+        if input_valid:
+            my_namespace.__dict__.update(input_valid)
+
+
+        reserved_keys = {
+            "extra_pnginfo",
+            "unique_id",
+            "pycode",
+            "language",
+            "prompt",
+        }
+
+        my_namespace.__dict__.update({prop: kwargs[prop] for prop in kwargs if prop not in reserved_keys})
         my_namespace.__dict__.setdefault("result", "The result variable is not assigned")
 
+        # Run Python code
         if language == "python":
             try:
                 exec(pycode, my_namespace.__dict__)
             except Exception as e:
                 my_namespace.result = f"Error in python code: {e}"
+                PromptServer.instance.send_sync(
+                "alekpet_py_result",
+                {
+                    "unique_id": unique_id,
+                    "error": my_namespace.result,
+                },
+            )
 
-            new_dict = {key: my_namespace.__dict__[key] for key in my_namespace.__dict__ if key not in ['__builtins__', *kwargs.keys()] and not callable(my_namespace.__dict__[key])}
+            exclude_keys = {
+                "__builtins__",
+                *kwargs.keys(),
+                *input_valid.keys(),
+            }
 
-            return (*new_dict.values(),)
+            new_dict = {key: value for key, value in my_namespace.__dict__.items() if key not in exclude_keys and not callable(value)}
+
+            return tuple(new_dict.values())
 
         else:
-            IDEs_DICT[unique_id].js_complete = False
-            IDEs_DICT[unique_id].js_result = None
+            # Run Javascript code
+            node = IDEs_DICT.get(unique_id)
 
-            new_dict = {key: my_namespace.__dict__[key] for key in my_namespace.__dict__ if key not in ['__builtins__'] and not callable(my_namespace.__dict__[key])}
-            
+            if node is None:
+                return (f"IDENode_{unique_id}: JS node not found",)
+
+            node.js_complete = False
+            node.js_result = None
+
+            new_dict = {key: value for key, value in my_namespace.__dict__.items() if key != '__builtins__' and not callable(value)}
+
+            # Dumps json
+            try:
+                vars_json = json.dumps(new_dict)
+            except TypeError as e:
+                return (f"IDENode_{unique_id}: JSON serialization error: {e}",)
+
             PromptServer.instance.send_sync(
                 "alekpet_js_result",
-                {"unique_id": unique_id, "vars": json.dumps(new_dict)},
+                {
+                    "unique_id": unique_id,
+                    "vars": vars_json
+                },
             )
-            if not wait_js_complete(unique_id):
-                print(f"IDENode_{unique_id}: Failed to get data!")
-            else:
-                print(f"IDENode_{unique_id}: Data received successful!")
 
-            return tuple(IDEs_DICT[unique_id].js_result)
+            if not wait_js_complete(unique_id):
+                error = f"IDENode_{unique_id}: JavaScript execution timed out"
+                print(error)
+                my_namespace.result = error
+                return tuple(my_namespace.result)
+
+
+            node = IDEs_DICT.get(unique_id)
+            if node is None or node.js_result is None:
+                return (f"IDENode_{unique_id}: JavaScript result missing",)
+
+            print(f"IDENode_{unique_id}: Data received successful!")
+
+            return tuple(node.js_result)
