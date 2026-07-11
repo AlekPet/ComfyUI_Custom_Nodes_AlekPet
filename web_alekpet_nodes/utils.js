@@ -117,49 +117,74 @@ function findWidget(node, value, attr = "name", func = "find") {
 function animateTransitionProps(
   el,
   props = { opacity: 1 },
-  preStyles = { display: "block" }
+  preStyles = { display: "block" },
+  callbacks = {}
 ) {
+  const { start = () => {}, end = () => {}, cancel = () => {} } = callbacks;
+
   Object.assign(el.style, preStyles);
 
-  el.style.transition =
-    !el.style.transition ||
-    !window.getComputedStyle(el).getPropertyValue("transition")
-      ? "all .8s"
-      : el.style.transition;
-
-  return new Promise((res) => {
+  return new Promise((res, rej) => {
     setTimeout(() => {
+      start(el);
+
       Object.assign(el.style, props);
 
-      const transstart = () => (el.isAnimating = true);
-      const transchancel = () => (el.isAnimating = false);
-      el.addEventListener("transitionstart", transstart);
-      el.addEventListener("transitioncancel", transchancel);
+      const transstart = () => {
+        el.isAnimating = true;
+      };
 
-      el.addEventListener("transitionend", function transend() {
+      const transcancel = () => {
         el.isAnimating = false;
+        cancel(el);
+        rej(el);
+      };
+
+      const transend = () => {
+        el.isAnimating = false;
+
+        el.removeEventListener("transitionstart", transstart);
+        el.removeEventListener("transitioncancel", transcancel);
         el.removeEventListener("transitionend", transend);
-        el.removeEventListener("transitionend", transchancel);
-        el.removeEventListener("transitionend", transstart);
+
+        end(el);
+
         res(el);
-      });
+      };
+
+      el.addEventListener("transitionstart", transstart);
+      el.addEventListener("transitioncancel", transcancel);
+      el.addEventListener("transitionend", transend);
     }, 100);
   });
 }
 
 function animateClick(target, params = {}) {
-  const { opacityVal = 0.9, callback = () => {} } = params;
+  const {
+    opacityVal = 0.9,
+    callbacks = {
+      start: () => {},
+      end: () => {},
+      cancel: () => {},
+    },
+  } = params;
   if (target?.isAnimating) return;
 
   const hide = +target.style.opacity === 0;
+  callbacks.start(target);
+
   return animateTransitionProps(target, {
     opacity: hide ? opacityVal : 0,
-  }).then((el) => {
-    const isHide = hide || el.style.display === "none";
-    showHide({ elements: [target], hide: !hide });
-    callback();
-    return isHide;
-  });
+  })
+    .then((el) => {
+      const isHide = hide || el.style.display === "none";
+      showHide({ elements: [target], hide: !hide });
+      callbacks.end(el);
+      return isHide;
+    })
+    .catch((err) => {
+      callbacks.cancel(err);
+    });
 }
 
 function showHide({ elements = [], hide = null, displayProp = "block" } = {}) {
@@ -287,17 +312,30 @@ async function getDataJSON(url) {
 }
 
 function deepMerge(target, source) {
-  if (source?.nodeType) return;
-  for (let key in source) {
-    if (source[key] instanceof Object && key in target) {
-      Object.assign(source[key], deepMerge(target[key], source[key]));
+  const output = { ...target };
+
+  if (!source || typeof source !== "object") {
+    return output;
+  }
+
+  for (const key in source) {
+    const sourceValue = source[key];
+    const targetValue = output[key];
+
+    if (
+      sourceValue &&
+      typeof sourceValue === "object" &&
+      !Array.isArray(sourceValue) &&
+      !(sourceValue instanceof HTMLElement)
+    ) {
+      output[key] = deepMerge(targetValue || {}, sourceValue);
+    } else {
+      output[key] = sourceValue;
     }
   }
 
-  Object.assign(target || {}, source);
-  return target;
+  return output;
 }
-
 const THEME_MODAL_WINDOW_BASE = {
   stylesTitle: {
     background: "auto",
@@ -418,6 +456,28 @@ const defaultOptions = {
     overlayClasses: [],
     overlayStyles: {},
   },
+  callbacks_anim: {
+    start_anim_event: () => {
+      // console.log("start_anim_event");
+    },
+    end_anim_event: () => {
+      // console.log("end_anim_event");
+    },
+    cancel_anim_event: () => {
+      // console.log("cancel_anim_event");
+    },
+  },
+  callbacks_click: {
+    start_click_event: () => {
+      // console.log("start_click_event");
+    },
+    end_click_event: () => {
+      // console.log("end_click_event");
+    },
+    cancel_click_event: () => {
+      // console.log("cancel_click_event");
+    },
+  },
   close: { closeRemove: false, showClose: true },
   parent: null,
 };
@@ -441,10 +501,7 @@ function createWindowModal({
   options = defaultOptions,
 } = {}) {
   // Check all options exist
-  const _options = deepMerge(
-    JSON.parse(JSON.stringify(defaultOptions)),
-    options
-  );
+  const _options = deepMerge(defaultOptions, options);
 
   const {
     parent,
@@ -458,6 +515,8 @@ function createWindowModal({
       propStyles,
       propPreStyles,
     },
+    callbacks_anim: { start_anim_event, end_anim_event, cancel_anim_event },
+    callbacks_click: { start_click_event, end_click_event, cancel_click_event },
   } = _options;
 
   // Function past text(html)
@@ -577,13 +636,22 @@ function createWindowModal({
   const closeEvent = new Event("closeModal");
   const closeModalWindow = function () {
     overlay_enabled
-      ? animateTransitionProps(overlayElement, {
-          opacity: 0,
-        })
+      ? animateTransitionProps(
+          overlayElement,
+          {
+            opacity: 0,
+          },
+          { start: start_anim_event }
+        )
           .then(() =>
-            animateTransitionProps(wrapper_settings, {
-              opacity: 0,
-            })
+            animateTransitionProps(
+              wrapper_settings,
+              {
+                opacity: 0,
+              },
+              { display: "block" },
+              { end: end_anim_event }
+            )
           )
           .then(() => {
             if (closeRemove) {
@@ -593,9 +661,14 @@ function createWindowModal({
               showHide({ elements: [wrapper_settings, overlayElement] });
             }
           })
-      : animateTransitionProps(wrapper_settings, {
-          opacity: 0,
-        }).then(() => {
+      : animateTransitionProps(
+          wrapper_settings,
+          {
+            opacity: 0,
+          },
+          { display: "block" },
+          { end: end_anim_event }
+        ).then(() => {
           showHide({ elements: [wrapper_settings] });
         });
   };
@@ -639,7 +712,13 @@ function createWindowModal({
 
     if (autoshow) {
       overlay_enabled
-        ? animateClick(overlayElement).then(() =>
+        ? animateClick(overlayElement, {
+            callbacks: {
+              start: start_click_event,
+              end: end_click_event,
+              cancel: cancel_click_event,
+            },
+          }).then(() =>
             animateClick(wrapper_settings).then(
               () =>
                 autohide &&
@@ -648,13 +727,15 @@ function createWindowModal({
                     animateTransitionProps(
                       wrapper_settings,
                       { ...propStyles },
-                      { ...propPreStyles }
+                      { ...propPreStyles },
+                      { start: start_anim_event }
                     )
                       .then(() =>
                         animateTransitionProps(
                           overlayElement,
                           { ...propStyles },
-                          { ...propPreStyles }
+                          { ...propPreStyles },
+                          { end: end_anim_event }
                         )
                       )
                       .then(() => {
@@ -667,7 +748,13 @@ function createWindowModal({
                 )
             )
           )
-        : animateClick(wrapper_settings).then(
+        : animateClick(wrapper_settings, {
+            callbacks: {
+              start: start_click_event,
+              end: end_click_event,
+              cancel: cancel_click_event,
+            },
+          }).then(
             () =>
               autohide &&
               setTimeout(
@@ -675,10 +762,11 @@ function createWindowModal({
                   animateTransitionProps(
                     wrapper_settings,
                     { ...propStyles },
-                    { ...propPreStyles }
-                  ).then(
-                    () => autoremove && parent.removeChild(wrapper_settings)
-                  ),
+                    { ...propPreStyles },
+                    { end: end_anim_event }
+                  ).then(() => {
+                    if (autoremove) parent.removeChild(wrapper_settings);
+                  }),
                 timewait
               )
           );
