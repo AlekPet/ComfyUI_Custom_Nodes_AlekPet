@@ -37,8 +37,11 @@ PREFIX = "_setting.json"
 def isFileName(filename):
     if (
         not filename
-        and filename is not None
-        and (type(filename) == str and filename.strip() == "")
+        or not isinstance(filename, str)
+        or filename.strip() == ""
+        or "/" in filename
+        or "\\" in filename
+        or ".." in filename
     ):
         print("Filename is incorrect")
         return False
