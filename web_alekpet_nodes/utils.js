@@ -221,6 +221,18 @@ function makeElement(tag, attrs = {}) {
       } else if (currValue instanceof String || typeof currValue === "string") {
         element[key] = currValue;
       }
+    } else if (key === "attr") {
+      if (Array.isArray(currValue)) {
+        currValue.forEach((attr) => {
+          const [prop, propval] = Object.entries(attr)[0];
+          element.setAttribute(prop, propval);
+        });
+      } else {
+        Object.entries(currValue).forEach((attr) => {
+          const [prop, propval] = attr;
+          element.setAttribute(prop, propval);
+        });
+      }
     } else if (["for"].includes(key)) {
       element.setAttribute(key, currValue);
     } else if (key === "children") {

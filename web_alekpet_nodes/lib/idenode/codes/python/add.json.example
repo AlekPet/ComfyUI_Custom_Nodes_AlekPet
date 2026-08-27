@@ -1,0 +1,9 @@
+{
+  "language": "python",
+  "inputs": [
+    { "name": "a", "type": "*" },
+    { "name": "b", "type": "*" }
+  ],
+  "outputs": [{ "name": "result", "type": "*" }],
+  "code": "result = a + b"
+}

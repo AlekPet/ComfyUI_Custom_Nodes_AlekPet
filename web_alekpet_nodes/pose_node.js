@@ -83,6 +83,8 @@ const default_keypoints = [
   [260, 72],
 ];
 
+const CLONE_CACHE = new Map();
+
 function resizeCanvas(node, sizes) {
   const { width, height } = sizes ?? node.openPose.settings.currentCanvasSize;
 
@@ -635,6 +637,60 @@ class OpenPose {
       console.error(e);
     }
   }
+
+  updateCanvasData(data) {
+    if (!data) return;
+
+    const {
+      currentCanvasSize,
+      background,
+      backgroundColor,
+      undo_history,
+      redo_history,
+    } = data;
+
+    if (currentCanvasSize) {
+      const { width, height } = currentCanvasSize;
+      this.setCanvasSize(width, height);
+    }
+
+    this.loadPreset(
+      undo_history.length
+        ? undo_history[undo_history.length - 1]
+        : { keypoints: default_keypoints }
+    );
+
+    if (backgroundColor) {
+      this.canvas.backgroundColor = backgroundColor;
+      this.node.openPoseWrapper.querySelector(".pose_SetBackgroundBg").value =
+        backgroundColor;
+    }
+
+    if (background) {
+      fabric.Image.fromURL(background, (img) => {
+        img.set({
+          originX: "left",
+          originY: "top",
+          opacity: 0.5,
+        });
+
+        this.canvas.setBackgroundImage(
+          img,
+          this.canvas.renderAll.bind(this.canvas),
+          {
+            scaleX: this.canvas.width / img.width,
+            scaleY: this.canvas.height / img.height,
+          }
+        );
+      });
+    }
+
+    this.canvas.renderAll();
+    this.uploadPoseFile(this.node.name);
+
+    this.node.setSize(this.node.size);
+    app.graph.setDirtyCanvas(true, false);
+  }
 }
 
 // Create OpenPose widget
@@ -906,63 +962,44 @@ app.registerExtension({
         return r;
       };
 
+      const origClone = nodeType.prototype.clone;
+      nodeType.prototype.clone = function () {
+        const cloneNode = origClone?.apply(this, arguments);
+        if (!cloneNode) return origClone;
+
+        this.openPose.settings.undo_history = [this.openPose.getJSON()];
+        CLONE_CACHE.set(this.id, structuredClone(this.openPose.settings));
+        return cloneNode;
+      };
+
       const onConfigure = nodeType.prototype.onConfigure;
       nodeType.prototype.onConfigure = async function (widget) {
         onConfigure?.apply(this, arguments);
 
         setTimeout(() => {
-          const data = widget.widgets_values[3];
+          const poseWidgetIdx = this.widgets.findIndex(
+            (w) => w.type === "openpose"
+          );
+          let data =
+            poseWidgetIdx !== -1 ? widget.widgets_values[poseWidgetIdx] : null;
+
+          if (!data && widget?.widgets_values) {
+            data = widget.widgets_values[3];
+          }
+
+          if (!data) {
+            for (const [originalId, cachedSettings] of CLONE_CACHE.entries()) {
+              console.log(
+                `♻️ Recovering cloned data from node ${originalId} to node ${this.id}`
+              );
+              data = cachedSettings;
+              CLONE_CACHE.delete(originalId);
+              break;
+            }
+          }
 
           if (data) {
-            const {
-              currentCanvasSize,
-              background,
-              backgroundColor,
-              undo_history,
-              redo_history,
-            } = data;
-            if (currentCanvasSize) {
-              const { width, height } = currentCanvasSize;
-              this.openPose.setCanvasSize(width, height);
-            }
-
-            this.openPose.loadPreset(
-              undo_history.length
-                ? undo_history[undo_history.length - 1]
-                : { keypoints: default_keypoints }
-            );
-
-            if (backgroundColor) {
-              this.openPose.canvas.backgroundColor = backgroundColor;
-              this.openPoseWrapper.querySelector(
-                ".pose_SetBackgroundBg"
-              ).value = backgroundColor;
-            }
-
-            if (background) {
-              fabric.Image.fromURL(background, (img) => {
-                img.set({
-                  originX: "left",
-                  originY: "top",
-                  opacity: 0.5,
-                });
-
-                this.openPose.canvas.setBackgroundImage(
-                  img,
-                  this.openPose.canvas.renderAll.bind(this.openPose.canvas),
-                  {
-                    scaleX: this.openPose.canvas.width / img.width,
-                    scaleY: this.openPose.canvas.height / img.height,
-                  }
-                );
-              });
-            }
-
-            this.openPose.canvas.renderAll();
-            this.openPose.uploadPoseFile(this.name);
-
-            this.setSize(arguments[0].size);
-            app.graph.setDirtyCanvas(true, false);
+            this.openPose.updateCanvasData(data);
           }
         }, 0);
       };

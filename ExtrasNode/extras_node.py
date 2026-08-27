@@ -20,7 +20,7 @@ class PreviewTextNode:
 
     RETURN_TYPES = ("STRING",)
     OUTPUT_NODE = True
-    DESCRIPTION = "The node displays the input text."    
+    DESCRIPTION = "The node displays the input text."
     FUNCTION = "preview_text"
 
     CATEGORY = "AlekPet Nodes/extras"
@@ -60,7 +60,7 @@ class HexToHueNode:
         "string_hue_norm",
     )
     FUNCTION = "to_hue"
-    DESCRIPTION = "The node convert HEX color to HUE."    
+    DESCRIPTION = "The node convert HEX color to HUE."
     CATEGORY = "AlekPet Nodes/extras"
 
     def to_hue(self, color_hex, unique_id):
@@ -114,7 +114,7 @@ class ColorsCorrectNode:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "correct"
-    DESCRIPTION = "Node for correcting image colors."      
+    DESCRIPTION = "Node for correcting image colors."
     CATEGORY = "AlekPet Nodes/extras"
 
     @staticmethod
@@ -204,23 +204,29 @@ class ColorsCorrectNode:
         gamma=1.0,
         hue_degrees=0.0,
     ):
-        i = 255.0 * image[0].cpu().numpy()
-        image = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
 
-        if use_color:
-            image = ColorsCorrectNode.tint_image(image, hex_color)
+        processed_images = []
+        for img in image:
+            i = 255.0 * img.cpu().numpy()
+            img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
 
-        image = ColorsCorrectNode.adjust_brightness(image, brightness)
-        image = ColorsCorrectNode.adjust_contrast(image, contrast)
-        image = ColorsCorrectNode.adjust_saturation(image, saturation)
-        image = ColorsCorrectNode.adjust_gamma(image, gamma)
+            if use_color:
+                img = ColorsCorrectNode.tint_image(img, hex_color)
 
-        hue_norm = ColorsCorrectNode.degrees_to_hue(hue_degrees)
-        image = ColorsCorrectNode.adjust_hue(image, hue_norm)
+            img = ColorsCorrectNode.adjust_brightness(img, brightness)
+            img = ColorsCorrectNode.adjust_contrast(img, contrast)
+            img = ColorsCorrectNode.adjust_saturation(img, saturation)
+            img = ColorsCorrectNode.adjust_gamma(img, gamma)
 
-        image = ImageOps.exif_transpose(image)
-        image = image.convert("RGB")
-        image = np.array(image).astype(np.float32) / 255.0
-        image = torch.from_numpy(image)[None,]
+            hue_norm = ColorsCorrectNode.degrees_to_hue(hue_degrees)
+            img = ColorsCorrectNode.adjust_hue(img, hue_norm)
 
-        return (image,)
+            img = ImageOps.exif_transpose(img)
+            img = img.convert("RGB")
+            img = np.array(img).astype(np.float32) / 255.0
+            img = torch.from_numpy(img)[None,]
+            processed_images.append(img)
+
+        output_batch = torch.cat(processed_images, dim=0)
+
+        return (output_batch,)
