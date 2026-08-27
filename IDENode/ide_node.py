@@ -31,8 +31,11 @@ IDEs_DICT = {}
 def isFileName(filename):
     if (
         not filename
-        or filename is None
-        or (type(filename) == str and filename.strip() == "")
+        or not isinstance(filename, str)
+        or filename.strip() == ""
+        or "/" in filename
+        or "\\" in filename
+        or ".." in filename
     ):
         print("Filename is incorrect")
         return False
@@ -44,7 +47,7 @@ def getFilesInDir(folder, ext="*.json"):
         raise ValueError(f"[IDENode] Not found directory '{folder}'!")
 
     list_files = [item.name for item in folder.rglob(ext) if not item.is_dir()]
-    return list_files     
+    return list_files
 
 
 # Check javascript complete
@@ -86,7 +89,7 @@ def validate_ide_params(func):
                 return web.json_response(
                     {"status": "error", "message": "Filename code is incorrect!"}, status=400
                 )
-            
+
             if not language or not language.strip():
                 return web.json_response(
                     {"status": "error", "message": "The programming language is incorrect!"}, status=400
@@ -117,7 +120,7 @@ async def check_exists(request):
     try:
         language = request.match_info.get("lang")
         filename = request.match_info.get("filename")
-        
+
         is_file_exists = filename.strip() in getFilesInDir(DIR_IDENODE_CODES / language.strip())
         return web.json_response(
             {
@@ -143,7 +146,7 @@ async def save_code(request):
         code = json_data.get("code", "")
         language = json_data.get("language", "python")
         filename = json_data.get("filename")
-           
+
         json_data = {
              "language": language,
              "inputs": inputs,
@@ -183,7 +186,7 @@ async def save_code(request):
     except OSError as e:
         return web.json_response(
         {
-            "status": "error",                
+            "status": "error",
             "message": "Error: %s - %s." % (e.filename, e.strerror)
         }, status=500
     )
@@ -225,7 +228,7 @@ async def remove_code(request):
                     "message": f"Filename '{filename}' not exists!",
                 },
                 status=400,
-            )             
+            )
 
     except Exception as e:
         return web.json_response(
@@ -286,7 +289,7 @@ async def rename_code(request):
                     "message": f"Filename '{pathOldFileName}' not exists!",
                 },
                 status=400,
-            )             
+            )
 
     except Exception as e:
         return web.json_response(
@@ -389,7 +392,7 @@ result = runCode()"""
                     self.RETURN_NAMES = tuple(name for name in outputs.keys())
 
         my_namespace = types.SimpleNamespace()
-        my_namespace.__dict__.update(outputs)            
+        my_namespace.__dict__.update(outputs)
         my_namespace.__dict__.update({prop: kwargs[prop] for prop in kwargs})
         my_namespace.__dict__.setdefault("result", "The result variable is not assigned")
 
@@ -408,7 +411,7 @@ result = runCode()"""
             IDEs_DICT[unique_id].js_result = None
 
             new_dict = {key: my_namespace.__dict__[key] for key in my_namespace.__dict__ if key not in ['__builtins__'] and not callable(my_namespace.__dict__[key])}
-            
+
             PromptServer.instance.send_sync(
                 "alekpet_js_result",
                 {"unique_id": unique_id, "vars": json.dumps(new_dict)},
