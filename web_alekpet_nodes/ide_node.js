@@ -88,7 +88,7 @@ from time import strftime
 def runCode():
     nowDataTime = strftime("%Y-%m-%d %H:%M:%S")
     return f"Hello ComfyUI with us today {nowDataTime}!"
-result = runCode()            
+result = runCode()
 `,
 };
 
@@ -100,7 +100,7 @@ const symbolsIncorrectFileName = /[/\\?%*:|"<>]/g;
 
 // Save data to workflow forced!
 function saveValue() {
-  app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
+  app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.captureCanvasState();
 }
 
 // Paint widget function
@@ -205,7 +205,7 @@ app.registerExtension({
             inputData[1]?.default ||
             `def my(a, b=1):
   return a * b<br>
-    
+
 result = str(my(23, 9))`,
           style: { height: "100%" },
         });

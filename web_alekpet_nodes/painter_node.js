@@ -178,7 +178,7 @@ class Painter {
   async saveSettingsPainterNode() {
     this.canvasSaveSettingsPainter();
     // Save data
-    app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
+    app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.captureCanvasState();
 
     if (painters_settings_json) await this.node.storageCls.saveData();
   }
@@ -224,6 +224,34 @@ class Painter {
           `🎨 [PainterNode] Node 2.0 is ${event.detail.value ? "enabled! Brushes MyPaint may not support brush pressure correctly." : "disabled."}`
         );
       }
+    );
+
+    window.addEventListener(
+      "paste",
+      async (e) => {
+        if (
+          !app.canvas.selected_nodes ||
+          !app.canvas.selected_nodes[this.node.id]
+        )
+          return;
+
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf("image") !== -1) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const file = items[i].getAsFile();
+            if (!file) continue;
+
+            this.addImageToCanvas(file);
+            break;
+          }
+        }
+      },
+      true
     );
 
     return this.canvas;
@@ -2919,7 +2947,7 @@ function PainterWidget(node, inputName, inputData, app) {
       !images.length ||
       !node.painter.storageCls.settings_painter_node.settings.pipingSettings
         .pipingUpdateImage ||
-      +unique_id !== node.id
+      +unique_id != +node.id
     ) {
       return;
     }
