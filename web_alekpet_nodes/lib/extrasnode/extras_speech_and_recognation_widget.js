@@ -205,485 +205,951 @@ const setStylesAllElements = (selector, exclude = null, styles = {}) => {
   elements = elements.map((r) => Object.assign(r.style, styles));
 };
 
-function SpeechWidget(node, inputName, inputData, widgetsText) {
-  const widget = {
-    type: "speak_and_recognation_type",
-    name: inputName,
-    value: inputData,
-    size: [22, 1],
-    options: { hideOnZoom: true },
-    text_element: widgetsText?.inputEl,
-    draw(ctx, node, widget_width, y, widget_height) {
-      const hidden = widgetsText?.element?.hidden || widgetsText.hidden;
+// function SpeechWidget(node, inputName, inputData, widgetsText) {
+//   const widget = {
+//     type: "speak_and_recognation_type",
+//     name: inputName,
+//     value: inputData,
+//     size: [22, 1],
+//     options: { hideOnZoom: true },
+//     text_element: widgetsText?.inputEl,
+//     draw(ctx, node, widget_width, y, widget_height) {
+//       const hidden = widgetsText?.element?.hidden || widgetsText.hidden;
 
-      widget.element.style.display =
-        hidden || app.canvas.ds.scale < 0.6 ? "none" : "flex";
-      if (hidden) {
-        widget.options.onHide?.(widget);
-      }
+//       widget.element.style.display =
+//         hidden || app.canvas.ds.scale < 0.6 ? "none" : "flex";
+//       if (hidden) {
+//         widget.options.onHide?.(widget);
+//       }
 
-      if (hidden) {
-        return;
-      }
+//       if (hidden) {
+//         return;
+//       }
 
-      Object.assign(
-        widget.element.style,
-        getPostition(ctx, widget_width, y, node.size[1], widgetsText)
-      );
-    },
-    computeSize(...args) {
-      return [22, 1];
-    },
-    async callback(v) {
-      if (widgetsText?.element?.hasAttribute("readonly")) return;
+//       Object.assign(
+//         widget.element.style,
+//         getPostition(ctx, widget_width, y, node.size[1], widgetsText)
+//       );
+//     },
+//     computeSize(...args) {
+//       return [22, 1];
+//     },
+//     async callback(v) {
+//       if (widgetsText?.element?.hasAttribute("readonly")) return;
 
-      widget.value = v ?? inputData ?? [false, true];
+//       widget.value = v ?? inputData ?? [false, true];
 
-      const checkboxSave = widget.element.querySelector(
-        ".alekpet_extras_node_recognition_save"
-      );
-      const checkboxClear = widget.element.querySelector(
-        ".alekpet_extras_node_recognition_clear"
-      );
+//       const checkboxSave = widget.element.querySelector(
+//         ".alekpet_extras_node_recognition_save"
+//       );
+//       const checkboxClear = widget.element.querySelector(
+//         ".alekpet_extras_node_recognition_clear"
+//       );
 
-      if (checkboxClear) checkboxClear.checked = widget.value[1] ?? false;
-      if (checkboxSave) checkboxSave.checked = widget.value[0] ?? false;
-    },
-    onRemove() {
-      widget.element?.remove();
-    },
-  };
+//       if (checkboxClear) checkboxClear.checked = widget.value[1] ?? false;
+//       if (checkboxSave) checkboxSave.checked = widget.value[0] ?? false;
+//     },
+//     onRemove() {
+//       widget.element?.remove();
+//     },
+//   };
 
-  const buttons = [];
+//   const buttons = [];
 
-  if (speechRect && !widgetsText?.element?.hasAttribute("readonly")) {
-    buttons.push(
-      $el("div.alekpet_extras_node_recognition_icon_box", [
-        $el("span.alekpet_extras_node_recognition_aborted", {
-          title: "Speech recognition abort",
-          textContent: "✖",
-          style: { display: "none" },
-          onclick: async function (e) {
-            const info = widget.element.querySelector(
-              ".alekpet_extras_node_info span"
-            );
+//   if (speechRect && !widgetsText?.element?.hasAttribute("readonly")) {
+//     buttons.push(
+//       $el("div.alekpet_extras_node_recognition_icon_box", [
+//         $el("span.alekpet_extras_node_recognition_aborted", {
+//           title: "Speech recognition abort",
+//           textContent: "✖",
+//           style: { display: "none" },
+//           onclick: async function (e) {
+//             const info = widget.element.querySelector(
+//               ".alekpet_extras_node_info span"
+//             );
 
-            if (speechRect.isRecognition) {
-              e.currentTarget.style.display = "none";
-              speechRect.isRecognitionAbort = true;
-              speechRect.abort();
-              info.textContent = "aborted";
-              this.classList.remove(
-                "alekpet_extras_node_recognition_icon_active"
+//             if (speechRect.isRecognition) {
+//               e.currentTarget.style.display = "none";
+//               speechRect.isRecognitionAbort = true;
+//               speechRect.abort();
+//               info.textContent = "aborted";
+//               this.classList.remove(
+//                 "alekpet_extras_node_recognition_icon_active"
+//               );
+//               setTimeout(() => (info.textContent = ""), 2000);
+//             }
+//           },
+//         }),
+//         $el("span.alekpet_extras_node_recognition_icon", {
+//           title: "Speech recognition",
+//           onclick: async function (e) {
+//             const info = widget.element.querySelector(
+//               ".alekpet_extras_node_info span"
+//             );
+//             const abort = widget.element.querySelector(
+//               ".alekpet_extras_node_recognition_aborted"
+//             );
+//             const checkboxSave = widget.element.querySelector(
+//               ".alekpet_extras_node_recognition_save"
+//             );
+
+//             // Hide other recognitions buttons
+//             setStylesAllElements(
+//               ".alekpet_extras_node_recognition_icon",
+//               e.currentTarget,
+//               {
+//                 display: "none",
+//               }
+//             );
+
+//             // Recognition
+//             if (speechRect.elements === null) {
+//               // Record audio
+//               if (checkboxSave.checked) {
+//                 try {
+//                   const stream = await navigator.mediaDevices.getUserMedia({
+//                     audio: true,
+//                   });
+
+//                   mediaRecorder = new MediaRecorder(stream);
+
+//                   mediaRecorder.ondataavailable = (event) => {
+//                     audioChunks.push(event.data);
+//                   };
+
+//                   mediaRecorder.onstop = async () => {
+//                     if (speechRect.isRecognitionAbort) {
+//                       speechRect.lastText = "";
+//                       speechRect.isRecognitionAbort = false;
+//                       return;
+//                     }
+
+//                     const saveAsWindow = JSON.parse(
+//                       localStorage.getItem(
+//                         `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+//                         false
+//                       )
+//                     );
+
+//                     // Filename
+//                     let nameFile = "recording.webm";
+//                     if (speechRect?.lastText?.length) {
+//                       nameFile = `${speechRect.lastText
+//                         .slice(0, maxLenAudioFileName)
+//                         .replaceAll(regExpFileName, "_")}.webm`;
+//                     }
+
+//                     // Get audio
+//                     const audioBlob = new Blob(audioChunks, {
+//                       type: "audio/webm",
+//                     });
+
+//                     if (!saveAsWindow) {
+//                       const body = new FormData();
+//                       body.append("image", audioBlob, nameFile);
+//                       body.append("overwrite", "true");
+//                       const resp = await api.fetchApi("/upload/image", {
+//                         method: "POST",
+//                         body,
+//                       });
+
+//                       if (resp.status !== 200) {
+//                         console.error(
+//                           "[ExtrasNode] Recording audio not saved!"
+//                         );
+//                         return;
+//                       }
+
+//                       console.log(
+//                         `[ExtrasNode] Recording audio "${nameFile}" saved successfully!`
+//                       );
+//                     } else {
+//                       const audioUrl = URL.createObjectURL(audioBlob);
+//                       const linkDown = document.createElement("a");
+//                       linkDown.href = audioUrl;
+//                       linkDown.download = nameFile;
+//                       linkDown.click();
+//                     }
+
+//                     speechRect.lastText = "";
+//                   };
+//                 } catch (err) {
+//                   comfyuiDesktopAlert(
+//                     `Device "Microphone" - ${err.message}!\n\nCheck device or allow access!`
+//                   );
+//                 }
+//               }
+//               // end - Record audio
+
+//               speechRect.elements = [widget.element, widgetsText.inputEl];
+//               info.textContent = "recognition";
+//               this.classList.add("alekpet_extras_node_recognition_icon_active");
+//               speechRect.start();
+//               mediaRecorder && mediaRecorder.start();
+//               abort.style.display = "inline-block";
+//             } else {
+//               speechRect.stop();
+//               abort.style.display = "none";
+//               info.textContent = "stoped";
+//               this.classList.remove(
+//                 "alekpet_extras_node_recognition_icon_active"
+//               );
+//               setTimeout(() => (info.textContent = ""), 2000);
+//             }
+//           },
+//         }),
+//         // Settings elements
+//         $el("div.alekpet_extras_node_speech_recognition_settings", [
+//           $el(
+//             "div.alekpet_extras_node_speech_recognition_settings_button.pi.pi-cog",
+//             {
+//               title: "Settings",
+//               onclick: (e) => {
+//                 checkboxLSCheckedByKey(
+//                   `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+//                   ".alekpet_extras_node_recognition_saveAs"
+//                 );
+//                 animateClick(e.currentTarget.nextElementSibling);
+//               },
+//             }
+//           ),
+//           createWindowModal({
+//             textTitle: null,
+//             stylesClose: {
+//               top: "-4px",
+//               right: "4px",
+//               width: "auto",
+//               height: "auto",
+//               padding: "2px",
+//               fontSize: "0.4rem",
+//               lineHeight: 1,
+//             },
+//             stylesBox: {
+//               background: "transparent",
+//               border: 0,
+//               padding: 0,
+//               boxShadow: "none",
+//             },
+//             stylesBody: {
+//               display: "flex",
+//               flexDirection: "column",
+//               alignItems: "stretch",
+//               gap: "3px",
+//               textWrap: "wrap",
+//               background: "rgb(131, 131, 131)",
+//               color: "white",
+//               padding: "2px",
+//               marginTop: "2px",
+//               borderRadius: "6px",
+//               fontSize: "0.4rem",
+//               minWidth: "85px",
+//             },
+//             stylesWrapper: {
+//               minWidth: "100px",
+//               transform: "translate(0%, 0%)",
+//             },
+//             textBody: [
+//               $el(
+//                 "label.alekpet_extras_node_speech_recognition_settings_props_label",
+//                 [
+//                   $el(
+//                     "span.alekpet_extras_node_speech_recognition_settings_props_name",
+//                     {
+//                       textContent: "Recoding audio",
+//                       title: "Save in audio file after recognition",
+//                     }
+//                   ),
+//                   $el(
+//                     "input.alekpet_extras_node_speech_recognition_settings_props_input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_save",
+//                     {
+//                       type: "checkbox",
+//                       checked: widget.value[0] ?? false,
+//                       onchange: (e) =>
+//                         widget?.callback([!!e.target.checked, widget.value[1]]),
+//                     }
+//                   ),
+//                 ]
+//               ),
+//               $el(
+//                 "label.alekpet_extras_node_speech_recognition_settings_props_label",
+//                 [
+//                   $el(
+//                     "span.alekpet_extras_node_speech_recognition_settings_props_name",
+//                     {
+//                       textContent: "Clear text",
+//                       title: "Clear text after recognition",
+//                     }
+//                   ),
+//                   $el(
+//                     "input.alekpet_extras_node_speech_recognition_settings_props_input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_clear",
+//                     {
+//                       type: "checkbox",
+//                       checked: widget.value[1] ?? true,
+//                       onchange: (e) =>
+//                         widget?.callback([widget.value[0], !!e.target.checked]),
+//                     }
+//                   ),
+//                 ]
+//               ),
+//               $el("hr", { style: { padding: 0, margin: 0 } }),
+//               $el(
+//                 "label.alekpet_extras_node_speech_recognition_settings_props_label",
+//                 [
+//                   $el(
+//                     "span.alekpet_extras_node_speech_recognition_settings_props_name",
+//                     {
+//                       textContent: "'Save as' window?",
+//                       title: "Show modal window when saving recorded audio.",
+//                     }
+//                   ),
+//                   $el(
+//                     "input.alekpet_extras_node_speech_recognition_settings_props_input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_saveAs",
+//                     {
+//                       type: "checkbox",
+//                       checked: JSON.parse(
+//                         localStorage.getItem(
+//                           `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+//                           false
+//                         )
+//                       ),
+//                       onchange: (e) => {
+//                         const check = !!e.target.checked;
+//                         const settCheck = document.body.querySelector(
+//                           "[id$='.SpeechAndRecognationSpeech'] div input"
+//                         );
+//                         settCheck && (settCheck.checked = check);
+
+//                         localStorage.setItem(
+//                           `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+//                           check
+//                         );
+
+//                         checkboxLSCheckedByKey(
+//                           `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+//                           ".alekpet_extras_node_recognition_saveAs"
+//                         );
+//                       },
+//                     }
+//                   ),
+//                 ]
+//               ),
+//             ],
+//           }),
+//         ]),
+//         // end -- Settings elements
+//       ])
+//     );
+//   }
+
+//   if (SpeechSynthesis && speechSynthesis) {
+//     function buttonsStyles(
+//       speechesButtons,
+//       action = "add",
+//       className = "alekpet_extras_node_speech_icon_playing"
+//     ) {
+//       speechesButtons?.forEach((speechButton) =>
+//         speechButton?.classList[action](className)
+//       );
+
+//       const settingTestSpeech = document.querySelector(
+//         ".panel_settings_recognation_speech_voice_test"
+//       );
+//       if (settingTestSpeech) {
+//         if (action === "add") {
+//           settingTestSpeech.style.opacity = 0.7;
+//           settingTestSpeech.style.color = "var(--error-text)";
+//           settingTestSpeech.title = "Cancel test speech";
+//           settingTestSpeech.textContent = "Cancel test";
+//         } else {
+//           settingTestSpeech.style.opacity = 1;
+//           settingTestSpeech.title = "Run test speech";
+//           settingTestSpeech.textContent = "Test speech";
+//           settingTestSpeech.style.color = "limegreen";
+//         }
+//       }
+//     }
+
+//     buttons.push(
+//       $el("span.alekpet_extras_node_speech_icon", {
+//         onclick: function () {
+//           try {
+//             const info = widget.element.querySelector(
+//               ".alekpet_extras_node_info span"
+//             );
+
+//             const speechesButtons = Array.from(
+//               document.querySelectorAll(".alekpet_extras_node_speech_icon")
+//             );
+
+//             // Already playing
+//             if (speechSynthesis.speaking) {
+//               SpeechSynthesis.cancel();
+
+//               info.textContent = "canceled";
+//               this.title = "Speak text";
+
+//               buttonsStyles(speechesButtons, "remove");
+//               setTimeout(() => (info.textContent = ""), 2000);
+//               return;
+//             }
+
+//             // Start playing text
+//             const text = widgetsText?.element?.value;
+//             if (text.trim() !== "") {
+//               const utterance = speakSynthesisUtterance(text, {
+//                 onend: (e) => {
+//                   this.title = "Speak text";
+//                   info.textContent = "";
+
+//                   buttonsStyles(speechesButtons, "remove");
+//                 },
+//               });
+
+//               if (utterance) {
+//                 this.title = "Cancel speech";
+//                 info.textContent = "saying now";
+
+//                 buttonsStyles(speechesButtons);
+//                 SpeechSynthesis.speak(utterance);
+//               }
+//             } else {
+//               const utterance = speakSynthesisUtterance(
+//                 `${widgetsText?.name || "This"}}, field is empty!`,
+//                 {
+//                   onend: (e) => {
+//                     this.title = "Speak text";
+//                     info.textContent = "";
+
+//                     buttonsStyles(speechesButtons, "remove");
+//                   },
+//                 }
+//               );
+
+//               if (utterance) {
+//                 this.title = "Cancel speech";
+//                 info.textContent = "empty text!";
+//                 buttonsStyles(speechesButtons);
+//                 SpeechSynthesis.speak(utterance);
+//               }
+//             }
+//           } catch (err) {
+//             console.log(err);
+//           }
+//         },
+//         textContent: "🔊",
+//         title: "Speak text",
+//       })
+//     );
+//   }
+
+//   widget.element = $el(
+//     "div.alekpet_extras_node_speechrecognition_box",
+//     { style: { display: "none" } },
+//     [
+//       $el("div.alekpet_extras_node_speechrecognition_row", [...buttons]),
+//       $el("div.alekpet_extras_node_info", [
+//         $el("span", {
+//           textContent: "",
+//           style: { fontSize: "0.4em" },
+//         }),
+//       ]),
+//     ]
+//   );
+
+//   const collapse = node.collapse;
+//   node.collapse = function () {
+//     collapse.apply(this, arguments);
+//     if (this.flags?.collapsed) {
+//       widget.element.hidden = true;
+//       widget.element.style.display = "none";
+//     }
+//     widget.element.dataset.collapsed = this.flags?.collapsed ? "true" : "false";
+//   };
+
+//   const onRemovedOrig = node.onRemoved;
+//   node.onRemoved = function () {
+//     node?.widgets?.forEach((w) => {
+//       if (w.type === "speak_and_recognation_type") {
+//         w?.onRemove();
+//       }
+//     });
+//     onRemovedOrig?.apply(node, arguments);
+//   };
+
+//   document.body.appendChild(widget.element);
+
+//   return widget;
+// }
+/* ~~~ end - Speech & Recognition speech Widget ~~~ */
+
+class SpeechAndRecognation {
+  constructor(node, widgetsText) {
+    this.node = node;
+    this.widgetsText = widgetsText;
+    this.element = null;
+  }
+
+  widgetHide() {
+    const hidden = this.widgetsText?.element?.hidden || this.widgetsText.hidden;
+
+    this.element.style.display =
+      hidden || app.canvas.ds.scale < 0.6 ? "none" : "flex";
+    return hidden;
+  }
+
+  createLayout() {
+    const buttons = [];
+
+    if (!this.node.properties?.alekpet_speech_and_recognation_settings) {
+      this.node.properties.alekpet_speech_and_recognation_settings = {
+        clear_text: true,
+        save_record: false,
+      };
+    }
+
+    const { clear_text, save_record } =
+      this.node.properties.alekpet_speech_and_recognation_settings;
+
+    if (speechRect && !this.widgetsText?.element?.hasAttribute("readonly")) {
+      buttons.push(
+        $el("div.alekpet_extras_node_recognition_icon_box", [
+          $el("span.alekpet_extras_node_recognition_aborted", {
+            title: "Speech recognition abort",
+            textContent: "✖",
+            style: { display: "none" },
+            onclick: async (e) => {
+              const info = this.element.querySelector(
+                ".alekpet_extras_node_info span"
               );
-              setTimeout(() => (info.textContent = ""), 2000);
-            }
-          },
-        }),
-        $el("span.alekpet_extras_node_recognition_icon", {
-          title: "Speech recognition",
-          onclick: async function (e) {
-            const info = widget.element.querySelector(
-              ".alekpet_extras_node_info span"
-            );
-            const abort = widget.element.querySelector(
-              ".alekpet_extras_node_recognition_aborted"
-            );
-            const checkboxSave = widget.element.querySelector(
-              ".alekpet_extras_node_recognition_save"
-            );
 
-            // Hide other recognitions buttons
-            setStylesAllElements(
-              ".alekpet_extras_node_recognition_icon",
-              e.currentTarget,
-              {
-                display: "none",
+              if (speechRect.isRecognition) {
+                e.target.style.display = "none";
+                speechRect.isRecognitionAbort = true;
+                speechRect.abort();
+                info.textContent = "aborted";
+                e.target.classList.remove(
+                  "alekpet_extras_node_recognition_icon_active"
+                );
+                setTimeout(() => (info.textContent = ""), 2000);
               }
-            );
+            },
+          }),
+          $el("span.alekpet_extras_node_recognition_icon", {
+            title: "Speech recognition",
+            onclick: async (e) => {
+              const info = this.element.querySelector(
+                ".alekpet_extras_node_info span"
+              );
+              const abort = this.element.querySelector(
+                ".alekpet_extras_node_recognition_aborted"
+              );
+              const checkboxSave = this.element.querySelector(
+                ".alekpet_extras_node_recognition_save"
+              );
 
-            // Recognition
-            if (speechRect.elements === null) {
-              // Record audio
-              if (checkboxSave.checked) {
-                try {
-                  const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: true,
-                  });
+              // Hide other recognitions buttons
+              setStylesAllElements(
+                ".alekpet_extras_node_recognition_icon",
+                e.target,
+                {
+                  display: "none",
+                }
+              );
 
-                  mediaRecorder = new MediaRecorder(stream);
-
-                  mediaRecorder.ondataavailable = (event) => {
-                    audioChunks.push(event.data);
-                  };
-
-                  mediaRecorder.onstop = async () => {
-                    if (speechRect.isRecognitionAbort) {
-                      speechRect.lastText = "";
-                      speechRect.isRecognitionAbort = false;
-                      return;
-                    }
-
-                    const saveAsWindow = JSON.parse(
-                      localStorage.getItem(
-                        `${idExt}.SpeechAndRecognationSpeechSaveAs`,
-                        false
-                      )
-                    );
-
-                    // Filename
-                    let nameFile = "recording.webm";
-                    if (speechRect?.lastText?.length) {
-                      nameFile = `${speechRect.lastText
-                        .slice(0, maxLenAudioFileName)
-                        .replaceAll(regExpFileName, "_")}.webm`;
-                    }
-
-                    // Get audio
-                    const audioBlob = new Blob(audioChunks, {
-                      type: "audio/webm",
+              // Recognition
+              if (speechRect.elements === null) {
+                // Record audio
+                if (checkboxSave.checked) {
+                  try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                      audio: true,
                     });
 
-                    if (!saveAsWindow) {
-                      const body = new FormData();
-                      body.append("image", audioBlob, nameFile);
-                      body.append("overwrite", "true");
-                      const resp = await api.fetchApi("/upload/image", {
-                        method: "POST",
-                        body,
-                      });
+                    mediaRecorder = new MediaRecorder(stream);
 
-                      if (resp.status !== 200) {
-                        console.error(
-                          "[ExtrasNode] Recording audio not saved!"
-                        );
+                    mediaRecorder.ondataavailable = (event) => {
+                      audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                      if (speechRect.isRecognitionAbort) {
+                        speechRect.lastText = "";
+                        speechRect.isRecognitionAbort = false;
                         return;
                       }
 
-                      console.log(
-                        `[ExtrasNode] Recording audio "${nameFile}" saved successfully!`
-                      );
-                    } else {
-                      const audioUrl = URL.createObjectURL(audioBlob);
-                      const linkDown = document.createElement("a");
-                      linkDown.href = audioUrl;
-                      linkDown.download = nameFile;
-                      linkDown.click();
-                    }
-
-                    speechRect.lastText = "";
-                  };
-                } catch (err) {
-                  comfyuiDesktopAlert(
-                    `Device "Microphone" - ${err.message}!\n\nCheck device or allow access!`
-                  );
-                }
-              }
-              // end - Record audio
-
-              speechRect.elements = [widget.element, widgetsText.inputEl];
-              info.textContent = "recognition";
-              this.classList.add("alekpet_extras_node_recognition_icon_active");
-              speechRect.start();
-              mediaRecorder && mediaRecorder.start();
-              abort.style.display = "inline-block";
-            } else {
-              speechRect.stop();
-              abort.style.display = "none";
-              info.textContent = "stoped";
-              this.classList.remove(
-                "alekpet_extras_node_recognition_icon_active"
-              );
-              setTimeout(() => (info.textContent = ""), 2000);
-            }
-          },
-        }),
-        // Settings elements
-        $el("div.alekpet_extras_node_speech_recognition_settings", [
-          $el(
-            "div.alekpet_extras_node_speech_recognition_settings_button.pi.pi-cog",
-            {
-              title: "Settings",
-              onclick: (e) => {
-                checkboxLSCheckedByKey(
-                  `${idExt}.SpeechAndRecognationSpeechSaveAs`,
-                  ".alekpet_extras_node_recognition_saveAs"
-                );
-                animateClick(e.currentTarget.nextElementSibling);
-              },
-            }
-          ),
-          createWindowModal({
-            textTitle: null,
-            stylesClose: {
-              top: "-4px",
-              right: "4px",
-              width: "auto",
-              height: "auto",
-              padding: "2px",
-              fontSize: "0.4rem",
-              lineHeight: 1,
-            },
-            stylesBox: {
-              background: "transparent",
-              border: 0,
-              padding: 0,
-              boxShadow: "none",
-            },
-            stylesBody: {
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "stretch",
-              gap: "3px",
-              textWrap: "wrap",
-              background: "rgb(131, 131, 131)",
-              color: "white",
-              padding: "2px",
-              marginTop: "2px",
-              borderRadius: "6px",
-              fontSize: "0.4rem",
-              minWidth: "85px",
-            },
-            stylesWrapper: {
-              minWidth: "100px",
-              transform: "translate(0%, 0%)",
-            },
-            textBody: [
-              $el(
-                "label.alekpet_extras_node_speech_recognition_settings_props_label",
-                [
-                  $el(
-                    "span.alekpet_extras_node_speech_recognition_settings_props_name",
-                    {
-                      textContent: "Recoding audio",
-                      title: "Save in audio file after recognition",
-                    }
-                  ),
-                  $el(
-                    "input.alekpet_extras_node_speech_recognition_settings_props_input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_save",
-                    {
-                      type: "checkbox",
-                      checked: widget.value[0] ?? false,
-                      onchange: (e) =>
-                        widget?.callback([!!e.target.checked, widget.value[1]]),
-                    }
-                  ),
-                ]
-              ),
-              $el(
-                "label.alekpet_extras_node_speech_recognition_settings_props_label",
-                [
-                  $el(
-                    "span.alekpet_extras_node_speech_recognition_settings_props_name",
-                    {
-                      textContent: "Clear text",
-                      title: "Clear text after recognition",
-                    }
-                  ),
-                  $el(
-                    "input.alekpet_extras_node_speech_recognition_settings_props_input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_clear",
-                    {
-                      type: "checkbox",
-                      checked: widget.value[1] ?? true,
-                      onchange: (e) =>
-                        widget?.callback([widget.value[0], !!e.target.checked]),
-                    }
-                  ),
-                ]
-              ),
-              $el("hr", { style: { padding: 0, margin: 0 } }),
-              $el(
-                "label.alekpet_extras_node_speech_recognition_settings_props_label",
-                [
-                  $el(
-                    "span.alekpet_extras_node_speech_recognition_settings_props_name",
-                    {
-                      textContent: "'Save as' window?",
-                      title: "Show modal window when saving recorded audio.",
-                    }
-                  ),
-                  $el(
-                    "input.alekpet_extras_node_speech_recognition_settings_props_input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_saveAs",
-                    {
-                      type: "checkbox",
-                      checked: JSON.parse(
+                      const saveAsWindow = JSON.parse(
                         localStorage.getItem(
                           `${idExt}.SpeechAndRecognationSpeechSaveAs`,
                           false
                         )
-                      ),
-                      onchange: (e) => {
-                        const check = !!e.target.checked;
-                        const settCheck = document.body.querySelector(
-                          "[id$='.SpeechAndRecognationSpeech'] div input"
-                        );
-                        settCheck && (settCheck.checked = check);
+                      );
 
-                        localStorage.setItem(
-                          `${idExt}.SpeechAndRecognationSpeechSaveAs`,
-                          check
-                        );
+                      // Filename
+                      let nameFile = "recording.webm";
+                      if (speechRect?.lastText?.length) {
+                        nameFile = `${speechRect.lastText
+                          .slice(0, maxLenAudioFileName)
+                          .replaceAll(regExpFileName, "_")}.webm`;
+                      }
 
-                        checkboxLSCheckedByKey(
-                          `${idExt}.SpeechAndRecognationSpeechSaveAs`,
-                          ".alekpet_extras_node_recognition_saveAs"
+                      // Get audio
+                      const audioBlob = new Blob(audioChunks, {
+                        type: "audio/webm",
+                      });
+
+                      if (!saveAsWindow) {
+                        const body = new FormData();
+                        body.append("image", audioBlob, nameFile);
+                        body.append("overwrite", "true");
+                        const resp = await api.fetchApi("/upload/image", {
+                          method: "POST",
+                          body,
+                        });
+
+                        if (resp.status !== 200) {
+                          console.error(
+                            "[ExtrasNode] Recording audio not saved!"
+                          );
+                          return;
+                        }
+
+                        console.log(
+                          `[ExtrasNode] Recording audio "${nameFile}" saved successfully!`
                         );
-                      },
-                    }
-                  ),
-                ]
-              ),
-            ],
+                      } else {
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        const linkDown = document.createElement("a");
+                        linkDown.href = audioUrl;
+                        linkDown.download = nameFile;
+                        linkDown.click();
+                      }
+
+                      speechRect.lastText = "";
+                    };
+                  } catch (err) {
+                    comfyuiDesktopAlert(
+                      `Device "Microphone" - ${err.message}!\n\nCheck device or allow access!`
+                    );
+                  }
+                }
+                // end - Record audio
+
+                speechRect.elements = [
+                  this.element,
+                  this.widgetsText.element ?? this.widgetsText.inputEl,
+                ];
+                info.textContent = "recognition";
+                console.log(e);
+                e.target.classList.add(
+                  "alekpet_extras_node_recognition_icon_active"
+                );
+                speechRect.start();
+                mediaRecorder && mediaRecorder.start();
+                abort.style.display = "inline-block";
+              } else {
+                speechRect.stop();
+                abort.style.display = "none";
+                info.textContent = "stoped";
+                e.target.classList.remove(
+                  "alekpet_extras_node_recognition_icon_active"
+                );
+                setTimeout(() => (info.textContent = ""), 2000);
+              }
+            },
           }),
-        ]),
-        // end -- Settings elements
-      ])
-    );
-  }
+          // Settings elements
+          $el("div.alekpet_extras_node_speech_recognition_settings", [
+            $el(
+              "div.alekpet_extras_node_speech_recognition_settings_button.pi.pi-cog",
+              {
+                title: "Settings",
+                onclick: (e) => {
+                  checkboxLSCheckedByKey(
+                    `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+                    ".alekpet_extras_node_recognition_saveAs"
+                  );
+                  animateClick(e.currentTarget.nextElementSibling);
+                },
+              }
+            ),
+            createWindowModal({
+              textTitle: null,
+              stylesClose: {
+                top: "-4px",
+                right: "4px",
+                width: "auto",
+                height: "auto",
+                padding: "2px",
+                fontSize: "0.4rem",
+                lineHeight: 1,
+              },
+              stylesBox: {
+                background: "transparent",
+                border: 0,
+                padding: 0,
+                boxShadow: "none",
+              },
+              stylesBody: {
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "stretch",
+                gap: "3px",
+                textWrap: "wrap",
+                background: "rgb(131, 131, 131)",
+                color: "white",
+                padding: "2px",
+                marginTop: "2px",
+                borderRadius: "6px",
+                fontSize: "0.4rem",
+                minWidth: "85px",
+              },
+              stylesWrapper: {
+                minWidth: "100px",
+                transform: "translate(0%, 0%)",
+              },
+              textBody: [
+                $el(
+                  "label.alekpet_extras_node_speech_recognition_settings_props_label",
+                  [
+                    $el(
+                      "span.alekpet_extras_node_speech_recognition_settings_props_name",
+                      {
+                        textContent: "Recoding audio",
+                        title: "Save in audio file after recognition",
+                      }
+                    ),
+                    $el(
+                      "input.alekpet_extras_node_speech_recognition_settings_props_input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_save",
+                      {
+                        type: "checkbox",
+                        checked: save_record ?? false,
+                        onchange: (e) => {
+                          if (
+                            this.widgetsText?.element?.hasAttribute("readonly")
+                          )
+                            return;
 
-  if (SpeechSynthesis && speechSynthesis) {
-    function buttonsStyles(
-      speechesButtons,
-      action = "add",
-      className = "alekpet_extras_node_speech_icon_playing"
-    ) {
-      speechesButtons?.forEach((speechButton) =>
-        speechButton?.classList[action](className)
-      );
+                          this.node.properties.alekpet_speech_and_recognation_settings.save_record =
+                            !!e.target.checked;
+                        },
+                      }
+                    ),
+                  ]
+                ),
+                $el(
+                  "label.alekpet_extras_node_speech_recognition_settings_props_label",
+                  [
+                    $el(
+                      "span.alekpet_extras_node_speech_recognition_settings_props_name",
+                      {
+                        textContent: "Clear text",
+                        title: "Clear text after recognition",
+                      }
+                    ),
+                    $el(
+                      "input.alekpet_extras_node_speech_recognition_settings_props_input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_clear",
+                      {
+                        type: "checkbox",
+                        checked: clear_text ?? true,
+                        onchange: (e) => {
+                          if (
+                            this.widgetsText?.element?.hasAttribute("readonly")
+                          )
+                            return;
 
-      const settingTestSpeech = document.querySelector(
-        ".panel_settings_recognation_speech_voice_test"
+                          this.node.properties.alekpet_speech_and_recognation_settings.clear_text =
+                            !!e.target.checked;
+                        },
+                      }
+                    ),
+                  ]
+                ),
+                $el("hr", { style: { padding: 0, margin: 0 } }),
+                $el(
+                  "label.alekpet_extras_node_speech_recognition_settings_props_label",
+                  [
+                    $el(
+                      "span.alekpet_extras_node_speech_recognition_settings_props_name",
+                      {
+                        textContent: "'Save as' window?",
+                        title: "Show modal window when saving recorded audio.",
+                      }
+                    ),
+                    $el(
+                      "input.alekpet_extras_node_speech_recognition_settings_props_input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_saveAs",
+                      {
+                        type: "checkbox",
+                        checked: JSON.parse(
+                          localStorage.getItem(
+                            `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+                            false
+                          )
+                        ),
+                        onchange: (e) => {
+                          const check = !!e.target.checked;
+                          const settCheck = document.body.querySelector(
+                            "[id$='.SpeechAndRecognationSpeech'] div input"
+                          );
+                          settCheck && (settCheck.checked = check);
+
+                          localStorage.setItem(
+                            `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+                            check
+                          );
+
+                          checkboxLSCheckedByKey(
+                            `${idExt}.SpeechAndRecognationSpeechSaveAs`,
+                            ".alekpet_extras_node_recognition_saveAs"
+                          );
+                        },
+                      }
+                    ),
+                  ]
+                ),
+              ],
+            }),
+          ]),
+          // end -- Settings elements
+        ])
       );
-      if (settingTestSpeech) {
-        if (action === "add") {
-          settingTestSpeech.style.opacity = 0.7;
-          settingTestSpeech.style.color = "var(--error-text)";
-          settingTestSpeech.title = "Cancel test speech";
-          settingTestSpeech.textContent = "Cancel test";
-        } else {
-          settingTestSpeech.style.opacity = 1;
-          settingTestSpeech.title = "Run test speech";
-          settingTestSpeech.textContent = "Test speech";
-          settingTestSpeech.style.color = "limegreen";
-        }
-      }
     }
 
-    buttons.push(
-      $el("span.alekpet_extras_node_speech_icon", {
-        onclick: function () {
-          try {
-            const info = widget.element.querySelector(
-              ".alekpet_extras_node_info span"
-            );
+    if (SpeechSynthesis && speechSynthesis) {
+      function buttonsStyles(
+        speechesButtons,
+        action = "add",
+        className = "alekpet_extras_node_speech_icon_playing"
+      ) {
+        speechesButtons?.forEach((speechButton) =>
+          speechButton?.classList[action](className)
+        );
 
-            const speechesButtons = Array.from(
-              document.querySelectorAll(".alekpet_extras_node_speech_icon")
-            );
+        const settingTestSpeech = document.querySelector(
+          ".panel_settings_recognation_speech_voice_test"
+        );
+        if (settingTestSpeech) {
+          if (action === "add") {
+            settingTestSpeech.style.opacity = 0.7;
+            settingTestSpeech.style.color = "var(--error-text)";
+            settingTestSpeech.title = "Cancel test speech";
+            settingTestSpeech.textContent = "Cancel test";
+          } else {
+            settingTestSpeech.style.opacity = 1;
+            settingTestSpeech.title = "Run test speech";
+            settingTestSpeech.textContent = "Test speech";
+            settingTestSpeech.style.color = "limegreen";
+          }
+        }
+      }
 
-            // Already playing
-            if (speechSynthesis.speaking) {
-              SpeechSynthesis.cancel();
+      buttons.push(
+        $el("span.alekpet_extras_node_speech_icon", {
+          onclick: (e) => {
+            try {
+              const info = this.element.querySelector(
+                ".alekpet_extras_node_info span"
+              );
 
-              info.textContent = "canceled";
-              this.title = "Speak text";
+              const speechesButtons = Array.from(
+                document.querySelectorAll(".alekpet_extras_node_speech_icon")
+              );
 
-              buttonsStyles(speechesButtons, "remove");
-              setTimeout(() => (info.textContent = ""), 2000);
-              return;
-            }
+              // Already playing
+              if (speechSynthesis.speaking) {
+                SpeechSynthesis.cancel();
 
-            // Start playing text
-            const text = widgetsText?.element?.value;
-            if (text.trim() !== "") {
-              const utterance = speakSynthesisUtterance(text, {
-                onend: (e) => {
-                  this.title = "Speak text";
-                  info.textContent = "";
+                info.textContent = "canceled";
+                e.currentTarget.title = "Speak text";
 
-                  buttonsStyles(speechesButtons, "remove");
-                },
-              });
-
-              if (utterance) {
-                this.title = "Cancel speech";
-                info.textContent = "saying now";
-
-                buttonsStyles(speechesButtons);
-                SpeechSynthesis.speak(utterance);
+                buttonsStyles(speechesButtons, "remove");
+                setTimeout(() => (info.textContent = ""), 2000);
+                return;
               }
-            } else {
-              const utterance = speakSynthesisUtterance(
-                `${widgetsText?.name || "This"}}, field is empty!`,
-                {
-                  onend: (e) => {
-                    this.title = "Speak text";
+
+              // Start playing text
+              const text = this.widgetsText?.element?.value;
+
+              if (text?.trim() !== "") {
+                const utterance = speakSynthesisUtterance(text, {
+                  onend: (ev) => {
+                    e.currentTarget.title = "Speak text";
                     info.textContent = "";
 
                     buttonsStyles(speechesButtons, "remove");
                   },
+                });
+
+                if (utterance) {
+                  e.currentTarget.title = "Cancel speech";
+                  info.textContent = "saying now";
+
+                  buttonsStyles(speechesButtons);
+                  SpeechSynthesis.speak(utterance);
                 }
-              );
+              } else {
+                const utterance = speakSynthesisUtterance(
+                  `${this.widgetsText?.name || "This"}}, field is empty!`,
+                  {
+                    onend: (ev) => {
+                      e.currentTarget.title = "Speak text";
+                      info.textContent = "";
 
-              if (utterance) {
-                this.title = "Cancel speech";
-                info.textContent = "empty text!";
-                buttonsStyles(speechesButtons);
-                SpeechSynthesis.speak(utterance);
+                      buttonsStyles(speechesButtons, "remove");
+                    },
+                  }
+                );
+
+                if (utterance) {
+                  e.currentTarget.title = "Cancel speech";
+                  info.textContent = "empty text!";
+                  buttonsStyles(speechesButtons);
+                  SpeechSynthesis.speak(utterance);
+                }
               }
+            } catch (err) {
+              console.log(err);
             }
-          } catch (err) {
-            console.log(err);
-          }
-        },
-        textContent: "🔊",
-        title: "Speak text",
-      })
-    );
-  }
-
-  widget.element = $el(
-    "div.alekpet_extras_node_speechrecognition_box",
-    { style: { display: "none" } },
-    [
-      $el("div.alekpet_extras_node_speechrecognition_row", [...buttons]),
-      $el("div.alekpet_extras_node_info", [
-        $el("span", {
-          textContent: "",
-          style: { fontSize: "0.4em" },
-        }),
-      ]),
-    ]
-  );
-
-  const collapse = node.collapse;
-  node.collapse = function () {
-    collapse.apply(this, arguments);
-    if (this.flags?.collapsed) {
-      widget.element.hidden = true;
-      widget.element.style.display = "none";
+          },
+          textContent: "🔊",
+          title: "Speak text",
+        })
+      );
     }
-    widget.element.dataset.collapsed = this.flags?.collapsed ? "true" : "false";
-  };
 
-  const onRemovedOrig = node.onRemoved;
-  node.onRemoved = function () {
-    node?.widgets?.forEach((w) => {
-      if (w.type === "speak_and_recognation_type") {
-        w?.onRemove();
-      }
-    });
-    onRemovedOrig?.apply(node, arguments);
-  };
+    this.element = $el(
+      "div.alekpet_extras_node_speechrecognition_box",
+      { style: { display: "none", right: "0", top: "-15px" } },
+      [
+        $el("div.alekpet_extras_node_speechrecognition_row", [...buttons]),
+        $el("div.alekpet_extras_node_info", [
+          $el("span", {
+            textContent: "",
+            style: { fontSize: "0.4em" },
+          }),
+        ]),
+      ]
+    );
 
-  document.body.appendChild(widget.element);
+    setTimeout(() => {
+      const { clear_text, save_record } =
+        this.node.properties.alekpet_speech_and_recognation_settings;
+      this.element.querySelector(
+        ".alekpet_extras_node_recognition_clear"
+      ).checked = !!clear_text;
+      this.element.querySelector(
+        ".alekpet_extras_node_recognition_save"
+      ).checked = !!save_record;
 
-  return widget;
+      this.widgetHide();
+      this.widgetsText?.element?.parentElement?.appendChild(this.element);
+    }, 0);
+  }
 }
-/* ~~~ end - Speech & Recognition speech Widget ~~~ */
 
 export {
-  SpeechWidget,
+  // SpeechWidget,
+  SpeechAndRecognation,
   speechRect,
   SpeechSynthesis,
   speakSynthesisUtterance,

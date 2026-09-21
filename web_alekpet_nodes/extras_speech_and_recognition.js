@@ -7,8 +7,9 @@ import { app } from "../../scripts/app.js";
 import { $el } from "../../scripts/ui.js";
 import { comfyuiDesktopConfirm } from "./utils.js";
 import { addStylesheet } from "../../scripts/utils.js";
+import { ComfyWidgets } from "../../../scripts/widgets.js";
 import {
-  SpeechWidget,
+  SpeechAndRecognation,
   speechRect,
   SpeechSynthesis,
   checkboxLSCheckedByKey,
@@ -144,88 +145,108 @@ app.registerExtension({
         ]);
       },
     });
+
+    // 1. Сохраняем оригинальный метод создания многострочного текста (STRING с multiline: true)
+    const originalSTRING = ComfyWidgets["STRING"];
+
+    // 2. Переопределяем его
+    ComfyWidgets["STRING"] = function (node, inputName, inputData, app) {
+      // Вызываем оригинальный метод, чтобы ComfyUI создал виджет и его HTML-элемент
+      const result = originalSTRING.apply(this, arguments);
+
+      // Проверяем, что это именно многострочное текстовое поле (как у Note)
+      const isMultiline = inputData[1]?.multiline;
+
+      if (
+        isMultiline &&
+        result.widget &&
+        (result.widget.element || result.widget.inputEl)
+      ) {
+        const speech_recognation = new SpeechAndRecognation(
+          node,
+          result.widget
+        );
+        speech_recognation.createLayout();
+      }
+
+      return result;
+    };
   },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     // -- Speech & Recognition speech widget
     // If ui settings is true and SpeechSynthesis or speechRecognition is not undefined
     if (SpeechAndRecognationSpeech && (speechRect || SpeechSynthesis)) {
       // Node Created
-      const onNodeCreated = nodeType.prototype.onNodeCreated;
-      nodeType.prototype.onNodeCreated = async function () {
-        const ret = onNodeCreated
-          ? onNodeCreated.apply(this, arguments)
-          : undefined;
+      // const onNodeCreated = nodeType.prototype.onNodeCreated;
+      // nodeType.prototype.onNodeCreated = async function () {
+      //   const ret = onNodeCreated
+      //     ? onNodeCreated.apply(this, arguments)
+      //     : undefined;
 
-        let nodeIsMultiString = false;
+      //   let nodeIsMultiString = false;
 
-        if (nodeData?.input && nodeData?.input?.required) {
-          for (const inp of Object.keys(nodeData.input.required)) {
-            if (
-              nodeData.input.required[inp][1]?.multiline &&
-              !nodeData.input.required[inp][1]?.forceInput
-            ) {
-              const type = nodeData.input.required[inp][0];
+      //   if (nodeData?.input && nodeData?.input?.required) {
+      //     for (const inp of Object.keys(nodeData.input.required)) {
+      //       if (
+      //         nodeData.input.required[inp][1]?.multiline &&
+      //         !nodeData.input.required[inp][1]?.forceInput
+      //       ) {
+      //         const type = nodeData.input.required[inp][0];
+      //         if (["STRING"].includes(type)) {
+      //           nodeIsMultiString = true;
+      //           break;
+      //         }
+      //       }
+      //     }
+      //   }
 
-              if (["STRING"].includes(type)) {
-                nodeIsMultiString = true;
-                break;
-              }
-            }
-          }
-        }
+      //   if (nodeData?.output) {
+      //     for (const out of nodeData.output) {
+      //       const isElementTextArea = this?.widgets?.some(
+      //         (w) =>
+      //           w?.element?.tagName === "TEXTAREA" ||
+      //           w?.inputEl?.tagName === "TEXTAREA"
+      //       );
 
-        if (nodeData?.output) {
-          for (const out of nodeData.output) {
-            const isElementTextArea = this?.widgets?.some(
-              (w) =>
-                w?.element?.tagName === "TEXTAREA" ||
-                w?.inputEl?.tagName === "TEXTAREA"
-            );
+      //       if (isElementTextArea && ["STRING"].includes(out)) {
+      //         nodeIsMultiString = true;
+      //         break;
+      //       }
+      //     }
+      //   }
 
-            if (isElementTextArea && ["STRING"].includes(out)) {
-              nodeIsMultiString = true;
-              break;
-            }
-          }
-        }
+      //   if (!nodeIsMultiString) return ret;
 
-        if (!nodeIsMultiString) return ret;
+      //   // Find all widget type customtext
+      //   const widgetsTextMulti = this?.widgets?.filter((w) =>
+      //     ["customtext", "converted-widget"].includes(w.type)
+      //   );
 
-        // Find all widget type customtext
-        const widgetsTextMulti = this?.widgets?.filter((w) =>
-          ["customtext", "converted-widget"].includes(w.type)
-        );
+      //   const isIncludesSpeech = this?.widgets?.some(
+      //     (w) => w.type === "speak_and_recognation_type"
+      //   );
 
-        const isIncludesSpeech = this?.widgets?.some(
-          (w) => w.type === "speak_and_recognation_type"
-        );
+      //   if (!isIncludesSpeech && widgetsTextMulti?.length) {
+      //     widgetsTextMulti.forEach(async (w) => {
+      //       const speech_recognation = new SpeechAndRecognation(this, w);
+      //       speech_recognation.createLayout();
+      //     });
+      //   }
 
-        if (!isIncludesSpeech && widgetsTextMulti?.length) {
-          widgetsTextMulti.forEach(async (w) => {
-            this.addCustomWidget(
-              SpeechWidget(this, "speak_and_recognation", [false, true], w)
-            );
-          });
-        }
-
-        return ret;
-      };
+      //   return ret;
+      // };
 
       // onConfigure
       const onConfigure = nodeType.prototype.onConfigure;
       nodeType.prototype.onConfigure = async function (w) {
         onConfigure?.apply(this, arguments);
 
-        if (w?.widgets_values?.length) {
-          const ids_speech_clear = this.widgets.reduce(function (arr, el, idx) {
-            if (el.type === "speak_and_recognation_type") arr.push(idx);
-            return arr;
-          }, []);
-
-          if (!ids_speech_clear.length) return;
-
-          for (const id of ids_speech_clear)
-            this?.widgets[id]?.callback(w.widgets_values[id]);
+        if (
+          this.properties &&
+          this.properties?.alekpet_speech_and_recognation_settings
+        ) {
+          this.properties.alekpet_speech_and_recognation_settings =
+            w.properties.alekpet_speech_and_recognation_settings;
         }
       };
     }
