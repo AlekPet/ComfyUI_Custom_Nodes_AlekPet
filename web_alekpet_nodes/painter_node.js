@@ -167,8 +167,36 @@ class Painter {
     const self = this;
     const callb = this.node.callback;
 
-    this.image.callback = function () {
+    this.image.callback = function (image_name) {
       self.image.value = self.node.name;
+
+      // Insert image
+      self.getImageByName(image_name).then(async (image) => {
+        if (image?.tagName !== "IMG") {
+          createWindowModal({
+            textTitle: "ERROR",
+            textBody: [
+              makeElement("div", {
+                innerHTML: image ?? "Error load image",
+              }),
+            ],
+            ...THEMES_MODAL_WINDOW.error,
+            options: {
+              auto: { autohide: true, autoshow: true, autoremove: true },
+              close: { showClose: false },
+              parent: self.canvas.wrapperEl,
+            },
+          });
+          return;
+        }
+
+        if (await comfyuiDesktopConfirm("Past as background?")) {
+          self.pastAsBackground(image);
+        } else if (await comfyuiDesktopConfirm("Past as image?")) {
+          self.pastAsImage(image);
+        }
+      });
+
       if (callb) {
         return callb.apply(this, arguments);
       }

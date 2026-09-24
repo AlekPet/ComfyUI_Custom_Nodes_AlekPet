@@ -312,6 +312,8 @@ app.registerExtension({
           const el = e.target.closest("[data-value]");
           if (!el) return;
 
+          el.classList.toggle("alekpet_preview_media_higlight");
+
           const valueItem = el.dataset.value;
           const ext = valueItem
             .slice(valueItem.lastIndexOf(".") + 1)
@@ -330,6 +332,19 @@ app.registerExtension({
             el
           );
         } catch (error) {}
+      },
+      true
+    );
+
+    // Pointer leave from item
+    document.addEventListener(
+      "pointerleave",
+      (e) => {
+        try {
+          const el = e.target.closest("[data-value]");
+          if (!el) return;
+          el.classList.toggle("alekpet_preview_media_higlight");
+        } catch (e) {}
       },
       true
     );
