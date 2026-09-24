@@ -13,3 +13,8 @@
   background-blend-mode: multiply;
   background-color: white;
 }
+
+.alekpet_preview_media_higlight {
+  background-color: rgb(204, 204, 204) !important;
+  color: rgb(0, 0, 0) !important;
+}
