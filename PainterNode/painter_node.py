@@ -13,6 +13,7 @@ import glob
 
 import folder_paths
 import node_helpers
+from . import painter_asset_storage
 
 # Directory node save settings
 CHUNK_SIZE = 1024
@@ -399,7 +400,7 @@ class PainterNode(object):
             PromptServer.instance.send_sync(
                 "alekpet_get_image", {"unique_id": unique_id, "images": input_images}
             )
-            
+
             if not wait_canvas_change(unique_id):
                 print(f"Painter_{unique_id}: Failed to get image!")
             else:
@@ -407,7 +408,7 @@ class PainterNode(object):
         # end - Piping image input
 
         image_path = folder_paths.get_annotated_filepath(image)
-        
+
         img = node_helpers.pillow(Image.open, image_path)
 
         output_images = []
