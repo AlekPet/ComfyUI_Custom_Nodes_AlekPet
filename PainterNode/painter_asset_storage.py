@@ -61,6 +61,12 @@ async def list_painter_assets(request):
             try:
                 with open(state_path, "r", encoding="utf-8") as f:
                     state = json.load(f)
+
+                metadata = state.get("metadata")
+                if not metadata:
+                    metadata = {}
+
+                workflow_name = metadata.get("workflow_name", "Unsaved Workflow")
                 size = state.get("settings", {}).get("currentCanvasSize", {})
                 width = size.get("width")
                 height = size.get("height")
@@ -74,6 +80,7 @@ async def list_painter_assets(request):
                     "updated_at": stat.st_mtime,
                     "width": width,
                     "height": height,
+                    "workflow_name": workflow_name
                 }
             )
 
@@ -115,9 +122,15 @@ async def save_painter_asset(request):
         asset_dir = _asset_dir(asset_id)
         payload = await request.json()
         state = payload.get("state")
+        workflow_name = payload.get("workflow_name")
 
         if not isinstance(state, dict):
             return _json_response_error("state must be an object", 400)
+
+        if not hasattr(state, "metadata"):
+            state.setdefault("metadata", {})
+
+        state["metadata"]["workflow_name"] = workflow_name
 
         os.makedirs(asset_dir, exist_ok=True)
         fd, tmp_path = tempfile.mkstemp(

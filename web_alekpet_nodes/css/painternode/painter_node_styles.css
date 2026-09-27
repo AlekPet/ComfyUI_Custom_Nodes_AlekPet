@@ -513,6 +513,7 @@
 }
 
 .alekpet_painter_storage_item_card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -531,11 +532,58 @@
   background: #000;
 }
 
-.alekpet_painter_storage_item_id_text {
+.alekpet_painter_storage_button_close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  transition: all 0.4s;
+  border: 0;
+  border-radius: 0 0 0 50%;
+  background: var(--comfy-menu-bg);
+  cursor: pointer;
+}
+
+.alekpet_painter_storage_button_close:hover {
+  border-radius: 50% 50% 50% 0;
+  padding: 2px;
+  border: 1px solid rgb(255 151 0);
+  background: rgb(255 151 0 / 80%);
+}
+
+.alekpet_painter_storage_item_meta {
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1 1 0;
+}
+
+.alekpet_painter_storage_item_id {
   font-family: monospace;
   font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.alekpet_painter_storage_item_skew_box {
+  background: linear-gradient(90deg, #727272, transparent);
+  padding: 3px 0px;
+  flex-direction: column;
+  clip-path: polygon(0px 0%, 100% 0%, calc(100% - 15px) 100%, 0% 100%);
+}
+
+.alekpet_painter_storage_item_size {
+  background: linear-gradient(90deg, #14377a, transparent);
+}
+.alekpet_painter_storage_item_size > span {
+  color: var(----success-color);
+}
+
+.alekpet_painter_storage_item_workflow_name {
+  background: linear-gradient(90deg, #096e00, transparent);
+}
+.alekpet_painter_storage_item_workflow_name > span {
+  color: var(--success-color);
 }
 /* -- end Settings store managing data */

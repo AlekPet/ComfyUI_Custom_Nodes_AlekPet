@@ -118,27 +118,48 @@ export class PainterAssetDialog {
     canvasEl.style.maxHeight = "100%";
     previewWrap.appendChild(canvasEl);
 
+    const meta = document.createElement("div");
+    meta.className = "alekpet_painter_storage_item_meta";
+
     const id = document.createElement("div");
     id.textContent = asset.asset_id;
     id.title = asset.asset_id;
-    id.className = "alekpet_painter_storage_item_id_text";
+    id.className = "alekpet_painter_storage_item_id";
 
-    const meta = document.createElement("div");
-    meta.textContent = `${formatBytes(asset.size)}${asset.width && asset.height ? ` · ${asset.width}×${asset.height}` : ""}`;
-    meta.style.fontSize = "11px";
+    const size = document.createElement("div");
+    size.title = "Data size · Pixel resolution";
+    size.innerHTML = `Size: <span>${formatBytes(asset.size)}</span> · WxH: <span>${asset.width && asset.height ? ` · ${asset.width}×${asset.height}` : ""}</span>`;
+    size.className =
+      "alekpet_painter_storage_item_skew_box alekpet_painter_storage_item_size";
+
+    const workflow_name = document.createElement("div");
+    workflow_name.innerHTML = `Workflow: <span>${asset.workflow_name}</span>`;
+    workflow_name.title = `Last used workflow: ${asset.workflow_name}`;
+    workflow_name.className =
+      "alekpet_painter_storage_item_skew_box alekpet_painter_storage_item_workflow_name";
 
     const buttons = document.createElement("div");
     Object.assign(buttons.style, { display: "flex", gap: "6px" });
 
     const add = document.createElement("button");
-    add.textContent = "➕ Add to scene";
-    add.onclick = () => this.addToScene(asset.asset_id);
+    add.textContent = "➕ Add as copy";
+    add.title = "Add to workflow as copy.";
+    add.onclick = () => this.addToWorkflow(asset.asset_id);
+
+    const addRef = document.createElement("button");
+    addRef.textContent = "🔗 Add as reference";
+    addRef.title =
+      "Add to workflow as reference. Attention: the change will affect all copies in workflows!";
+    addRef.onclick = () => this.addToWorkflow(asset.asset_id, true);
 
     const remove = document.createElement("button");
-    remove.textContent = "🗑 Delete";
+    remove.textContent = "🗑️";
+    remove.title = "Remove canvas data";
+    remove.className = "alekpet_painter_storage_button_close";
     remove.onclick = () => this.deleteAsset(asset.asset_id, card);
 
-    buttons.append(add, remove);
+    buttons.append(add, addRef, remove);
+    meta.append(id, workflow_name, size);
     card.append(previewWrap, id, meta, buttons);
     this.items.appendChild(card);
 
@@ -182,7 +203,7 @@ export class PainterAssetDialog {
     });
   }
 
-  async addToScene(assetId) {
+  async addToWorkflow(assetId, persist = false) {
     const LiteGraph = globalThis.LiteGraph;
     if (!LiteGraph) {
       console.error("[PainterAssetDialog] LiteGraph is unavailable");
@@ -219,10 +240,13 @@ export class PainterAssetDialog {
 
     await painter.loadCanvasData(assetRef(assetId), painterIndex, {
       migrateImage: false,
+      persist,
     });
 
-    painter.node.painterAsset.asset_id = createPainterAssetId();
-    await painter.persistPainterState();
+    if (!persist) {
+      painter.node.painterAsset.asset_id = createPainterAssetId();
+      await painter.persistPainterState();
+    }
 
     app.graph.setDirtyCanvas(true, false);
   }

@@ -118,6 +118,16 @@ async function getLoadedFonts() {
     });
   });
 }
+
+function getActiveWorkflowName() {
+  const workflow = app?.extensionManager?.workflow?.activeWorkflow;
+
+  return (
+    workflow?.filename?.replace(/\.json$/i, "") ||
+    workflow?.key ||
+    "Unsaved Workflow"
+  );
+}
 // ================= END FUNCTIONS ================
 
 // ================= CLASS PAINTER ================
@@ -2501,7 +2511,10 @@ class Painter {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ state: nextState }),
+          body: JSON.stringify({
+            state: nextState,
+            workflow_name: getActiveWorkflowName(),
+          }),
         }
       );
 
@@ -2874,7 +2887,7 @@ class Painter {
     // - end
   }
 
-  async loadCanvasData(data, painter_idx, options = {}) {
+  async loadCanvasData(data, painter_idx, options = { persist: true }) {
     // New workflows store only {version, asset_id}
     if (isPainterAssetRef(data)) {
       this.node.painterAsset = {
@@ -2939,7 +2952,10 @@ class Painter {
       }
 
       // Migrate legacy workflow data, or repair a missing backend asset
-      await this.persistPainterState(data);
+      if (options.persist !== false) {
+        await this.persistPainterState(data);
+      }
+
       if (data?.canvas_settings && options.migrateImage !== false) {
         await this.uploadPaintFile(this.node.name);
       }
@@ -3237,7 +3253,7 @@ app.registerExtension({
     // Managing data
     app.ui.settings.addSetting({
       id: `${extensionName}.ManagingData`,
-      name: "🔸 Managing JSON data storage",
+      name: "🔸 Managing JSON data assets",
       defaultValue: false,
       type: (name, sett, val) => {
         return makeElement("tr", {
