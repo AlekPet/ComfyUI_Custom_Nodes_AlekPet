@@ -462,79 +462,80 @@
 /* -- end Styles Settigs Kistey -- */
 
 /* Settings store managing data */
-.painter_storage_box {
-  width: 30vw;
+.alekpet_painter_storage_overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.alekpet_painter_storage_box {
+  width: min(900px, 90vw);
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  color: var(--primary-fg);
-}
-
-.painter_storage_header {
-  display: flex;
-  justify-content: space-around;
-  background: var(--content-bg);
-  padding: 3px;
+  background: var(--comfy-menu-bg, #202020);
+  color: var(--input-text, #ddd);
+  border: 1px solid var(--border-color, #555);
   border-radius: 8px;
-  align-items: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
-.painter_storage_body {
+.alekpet_painter_storage_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color, #444);
+}
+
+.alekpet_painter_storage_toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.alekpet_painter_storage_items {
+  overflow: auto;
+  padding: 0 14px 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+}
+
+.alekpet_painter_storage_item {
+  grid-column: 1/-1;
+  padding: 20px;
   text-align: center;
 }
 
-.painter_storage_items_box {
+.alekpet_painter_storage_item_card {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  align-items: stretch;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border-color, #444);
+  border-radius: 6px;
+  background: var(--comfy-input-bg, #181818);
+}
+
+.alekpet_painter_storage_item_preview_wrapper {
+  height: 180px;
+  display: flex;
+  align-items: center;
   justify-content: center;
+  overflow: hidden;
+  background: #000;
 }
 
-.painter_storage_workflows_item {
-  cursor: pointer;
-}
-
-.painter_storage_workflows_item:hover {
-  background: var(--primary-hover-bg) !important;
-}
-
-.painter_storage_grid {
-  display: grid;
-  grid-template-columns: 0.2fr 0.2fr repeat(3, 1fr);
-  justify-content: center;
-  place-items: center;
-}
-
-.painter_storage_items_header {
-  background: var(--primary-bg);
-  text-transform: uppercase;
-}
-
-.painter_storage_painters_item_preview_canvas {
-  width: 60% !important;
-  height: auto !important;
-}
-
-/* Workflows */
-
-.painter_storage_painters_wrapper {
-  border: 1px solid var(--border-color);
-  background: var(--p-button-outlined-contrast-hover-background);
-}
-
-.painter_storage_painters_grid {
-  grid-template-columns: 0.2fr repeat(4, 1fr);
-}
-
-.painter_storage_painters_header {
-  background: var(--descrip-text);
-}
-
-.painter_storage_painters_item_name {
-  text-wrap: nowrap;
-  width: 90%;
+.alekpet_painter_storage_item_id_text {
+  font-family: monospace;
+  font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* -- end Settings store managing data */

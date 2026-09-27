@@ -1,0 +1,250 @@
+import { api } from "../../../../scripts/api.js";
+import { app } from "../../../../scripts/app.js";
+import { fabric } from "./fabric.js";
+import { formatBytes, createPainterAssetId } from "./helpers.js";
+
+const ASSET_VERSION = 2;
+
+function assetRef(assetId) {
+  return { version: ASSET_VERSION, asset_id: assetId };
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function waitForPainter(node, timeout = 5000) {
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const tick = () => {
+      if (node.painter?.canvas) return resolve(node.painter);
+      if (Date.now() - started >= timeout) return resolve(null);
+      setTimeout(tick, 50);
+    };
+    tick();
+  });
+}
+
+export class PainterAssetDialog {
+  constructor() {
+    this.overlay = null;
+    this.items = null;
+  }
+
+  show() {
+    if (this.overlay) return;
+
+    this.overlay = document.createElement("div");
+    this.overlay.className = "alekpet_painter_storage_overlay";
+
+    const box = document.createElement("div");
+    box.className = "alekpet_painter_storage_box";
+
+    const header = document.createElement("div");
+    header.className = "alekpet_painter_storage_header";
+    header.innerHTML = `<strong>Painter Assets</strong>`;
+
+    const close = document.createElement("button");
+    close.textContent = "✕";
+    close.onclick = () => this.close();
+    header.appendChild(close);
+
+    const toolbar = document.createElement("div");
+    toolbar.className = "alekpet_painter_storage_toolbar";
+
+    const refresh = document.createElement("button");
+    refresh.textContent = "Refresh";
+    refresh.onclick = () => this.load();
+    toolbar.appendChild(refresh);
+
+    this.items = document.createElement("div");
+    this.items.className = "alekpet_painter_storage_items";
+
+    box.append(header, toolbar, this.items);
+    this.overlay.appendChild(box);
+    this.overlay.addEventListener("click", (event) => {
+      if (event.target === this.overlay) this.close();
+    });
+    document.body.appendChild(this.overlay);
+    this.load();
+  }
+
+  close() {
+    this.overlay?.remove();
+    this.overlay = null;
+  }
+
+  async load() {
+    if (!this.items) return;
+    this.items.innerHTML =
+      "<div class='alekpet_painter_storage_item'>Loading...</div>";
+
+    try {
+      const response = await api.fetchApi("/alekpet/painter_assets");
+      if (!response.ok)
+        throw new Error(`${response.status} ${response.statusText}`);
+      const result = await response.json();
+      const assets = Array.isArray(result?.assets) ? result.assets : [];
+
+      this.items.innerHTML = "";
+      if (!assets.length) {
+        this.items.innerHTML =
+          "<div class='alekpet_painter_storage_item'>No Painter assets</div>";
+        return;
+      }
+
+      assets.sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0));
+      for (const asset of assets) this.renderAsset(asset);
+    } catch (error) {
+      this.items.innerHTML = `<div class='alekpet_painter_storage_item' style='text-align:left;color:var(--error-text,#f66);'>${escapeHtml(error.message)}</div>`;
+      console.error("[PainterAssetDialog] Failed to load assets:", error);
+    }
+  }
+
+  renderAsset(asset) {
+    const card = document.createElement("div");
+    card.className = "alekpet_painter_storage_item_card";
+
+    const previewWrap = document.createElement("div");
+    previewWrap.className = "alekpet_painter_storage_item_preview_wrapper";
+
+    const canvasEl = document.createElement("canvas");
+    canvasEl.style.maxWidth = "100%";
+    canvasEl.style.maxHeight = "100%";
+    previewWrap.appendChild(canvasEl);
+
+    const id = document.createElement("div");
+    id.textContent = asset.asset_id;
+    id.title = asset.asset_id;
+    id.className = "alekpet_painter_storage_item_id_text";
+
+    const meta = document.createElement("div");
+    meta.textContent = `${formatBytes(asset.size)}${asset.width && asset.height ? ` · ${asset.width}×${asset.height}` : ""}`;
+    meta.style.fontSize = "11px";
+
+    const buttons = document.createElement("div");
+    Object.assign(buttons.style, { display: "flex", gap: "6px" });
+
+    const add = document.createElement("button");
+    add.textContent = "➕ Add to scene";
+    add.onclick = () => this.addToScene(asset.asset_id);
+
+    const remove = document.createElement("button");
+    remove.textContent = "🗑 Delete";
+    remove.onclick = () => this.deleteAsset(asset.asset_id, card);
+
+    buttons.append(add, remove);
+    card.append(previewWrap, id, meta, buttons);
+    this.items.appendChild(card);
+
+    this.loadPreview(asset.asset_id, canvasEl).catch((error) => {
+      console.warn("[PainterAssetDialog] Preview failed:", error);
+    });
+  }
+
+  async loadPreview(assetId, canvasEl) {
+    const response = await api.fetchApi(
+      `/alekpet/painter_asset/${encodeURIComponent(assetId)}`
+    );
+    if (!response.ok)
+      throw new Error(`${response.status} ${response.statusText}`);
+    const state = (await response.json())?.state;
+    if (!state?.canvas_settings) return;
+
+    const size = state.settings?.currentCanvasSize || {
+      width: 512,
+      height: 512,
+    };
+    const scale = Math.min(1, 170 / Math.max(size.width, size.height));
+    const width = Math.max(1, Math.round(size.width * scale));
+    const height = Math.max(1, Math.round(size.height * scale));
+    canvasEl.width = width;
+    canvasEl.height = height;
+
+    const preview = new fabric.StaticCanvas(canvasEl, {
+      width,
+      height,
+      backgroundColor: state.canvas_settings.background || "#000000",
+    });
+
+    await new Promise((resolve) => {
+      preview.loadFromJSON(state.canvas_settings, () => {
+        preview.setDimensions({ width, height });
+        preview.setViewportTransform([scale, 0, 0, scale, 0, 0]);
+        preview.renderAll();
+        resolve();
+      });
+    });
+  }
+
+  async addToScene(assetId) {
+    const LiteGraph = globalThis.LiteGraph;
+    if (!LiteGraph) {
+      console.error("[PainterAssetDialog] LiteGraph is unavailable");
+      return;
+    }
+
+    const node = LiteGraph.createNode("PainterNode");
+    if (!node) return;
+
+    const mouse = app.canvas?.graph_mouse;
+    const selected = app.canvas?.selected_nodes
+      ? Object.values(app.canvas.selected_nodes)[0]
+      : null;
+    node.pos =
+      mouse?.length === 2
+        ? [mouse[0], mouse[1]]
+        : selected?.pos
+          ? [selected.pos[0] + 40, selected.pos[1] + 40]
+          : [100, 100];
+
+    app.graph.add(node);
+    const painter = await waitForPainter(node);
+    if (!painter) {
+      console.error(
+        "[PainterAssetDialog] PainterNode initialization timed out"
+      );
+      return;
+    }
+
+    const painterIndex = node.widgets?.findIndex?.(
+      (widget) => widget.type === "painter_node_alekpet"
+    );
+    if (painterIndex < 0) return;
+
+    await painter.loadCanvasData(assetRef(assetId), painterIndex, {
+      migrateImage: false,
+    });
+
+    painter.node.painterAsset.asset_id = createPainterAssetId();
+    await painter.persistPainterState();
+
+    app.graph.setDirtyCanvas(true, false);
+  }
+
+  async deleteAsset(assetId, card) {
+    if (!confirm(`Delete Painter asset ${assetId}?`)) return;
+
+    try {
+      const response = await api.fetchApi(
+        `/alekpet/painter_asset/${encodeURIComponent(assetId)}`,
+        { method: "DELETE" }
+      );
+      if (!response.ok)
+        throw new Error(`${response.status} ${response.statusText}`);
+      card.remove();
+      if (!this.items.children.length) {
+        this.items.innerHTML =
+          "<div class='alekpet_painter_storage_item'>No Painter assets</div>";
+      }
+    } catch (error) {
+      console.error("[PainterAssetDialog] Failed to delete asset:", error);
+      alert(`Failed to delete Painter asset: ${error.message}`);
+    }
+  }
+}

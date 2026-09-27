@@ -13,8 +13,9 @@ import {
   toRGBA,
   getColorHEX,
   StorageClass,
+  createPainterAssetId,
 } from "./lib/painternode/helpers.js";
-import { PainterStorageDialog } from "./lib/painternode/dialogs.js";
+import { PainterAssetDialog } from "./lib/painternode/painter_asset_dialog.js";
 import { addStylesheet } from "../../scripts/utils.js";
 import {
   showHide,
@@ -36,19 +37,6 @@ const DEBUG = false;
 const extensionName = "alekpet.PainterNode";
 const CLONE_CACHE = new Map();
 const PAINTER_ASSET_VERSION = 2;
-
-function createPainterAssetId() {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
-  }
-
-  // Fallback for older embedded browsers.
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
 
 function isPainterAssetRef(value) {
   return (
@@ -3257,12 +3245,13 @@ app.registerExtension({
             makeElement("td", {
               children: [
                 makeElement("button", {
-                  textContent: "Managing Data",
+                  textContent: "Painter Assets",
                   onclick: () => {
-                    new PainterStorageDialog().show();
+                    new PainterAssetDialog().show();
                   },
                   style: {
                     display: "block",
+                    marginTop: "5px",
                   },
                 }),
               ],

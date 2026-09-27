@@ -7,6 +7,7 @@ Workflow files contain only a small asset reference. The Fabric.js canvas JSON
 import json
 import os
 import re
+import shutil
 import tempfile
 
 from aiohttp import web
@@ -42,11 +43,51 @@ def _json_response_error(message, status=400):
     return web.json_response({"success": False, "error": message}, status=status)
 
 
+@PromptServer.instance.routes.get("/alekpet/painter_assets")
+async def list_painter_assets(request):
+    try:
+        root = _asset_root()
+        assets = []
+        for asset_id in os.listdir(root):
+            if not ASSET_ID_RE.fullmatch(asset_id):
+                continue
+            asset_dir = os.path.join(root, asset_id)
+            state_path = os.path.join(asset_dir, "state.json")
+            if not os.path.isfile(state_path):
+                continue
+
+            stat = os.stat(state_path)
+            width = height = None
+            try:
+                with open(state_path, "r", encoding="utf-8") as f:
+                    state = json.load(f)
+                size = state.get("settings", {}).get("currentCanvasSize", {})
+                width = size.get("width")
+                height = size.get("height")
+            except (OSError, json.JSONDecodeError, AttributeError):
+                pass
+
+            assets.append(
+                {
+                    "asset_id": asset_id,
+                    "size": stat.st_size,
+                    "updated_at": stat.st_mtime,
+                    "width": width,
+                    "height": height,
+                }
+            )
+
+        assets.sort(key=lambda item: item["updated_at"], reverse=True)
+        return web.json_response({"success": True, "assets": assets})
+    except OSError as e:
+        return _json_response_error(str(e), 500)
+
+
 @PromptServer.instance.routes.get("/alekpet/painter_asset/{asset_id}")
 async def get_painter_asset(request):
     try:
-        asset_dir = _asset_dir(request.match_info["asset_id"])
-        state_path = os.path.join(asset_dir, "state.json")
+        asset_id = request.match_info["asset_id"]
+        state_path = os.path.join(_asset_dir(asset_id), "state.json")
 
         if not os.path.isfile(state_path):
             return _json_response_error("Painter asset not found", 404)
@@ -57,7 +98,7 @@ async def get_painter_asset(request):
         return web.json_response(
             {
                 "success": True,
-                "asset_id": request.match_info["asset_id"],
+                "asset_id": asset_id,
                 "state": state,
             }
         )
@@ -116,8 +157,6 @@ async def delete_painter_asset(request):
     try:
         asset_dir = _asset_dir(request.match_info["asset_id"])
         if os.path.isdir(asset_dir):
-            import shutil
-
             shutil.rmtree(asset_dir)
 
         return web.json_response({"success": True})

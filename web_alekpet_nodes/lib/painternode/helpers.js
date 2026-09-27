@@ -1,13 +1,17 @@
-import { api } from "../../../../scripts/api.js";
-import { app } from "../../../../scripts/app.js";
 import { fabric } from "./fabric.js";
-import {
-  makeElement,
-  createWindowModal,
-  isEmptyObject,
-  THEMES_MODAL_WINDOW,
-  comfyuiDesktopConfirm,
-} from "../../utils.js";
+
+function createPainterAssetId() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  // Fallback for older embedded browsers.
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 // RGB, HSV, and HSL color conversion algorithms in JavaScript https://gist.github.com/mjackson/5311256
 function rgbToHsv(r, g, b) {
@@ -96,16 +100,14 @@ function HsvToRgb(brush_settings) {
   return { red, green, blue };
 }
 
-function formatBytes(bytes, decimals = 2) {
-  if (!+bytes) return "0 Bytes";
-
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+function formatBytes(bytes) {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1
+  );
+  return `${(bytes / 1024 ** i).toFixed(i ? 1 : 0)} ${units[i]}`;
 }
 
 // LocalStorage Init
@@ -164,4 +166,5 @@ export {
   HsvToRgb,
   StorageClass,
   formatBytes,
+  createPainterAssetId,
 };
