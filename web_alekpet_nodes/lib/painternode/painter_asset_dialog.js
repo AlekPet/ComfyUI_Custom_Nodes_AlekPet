@@ -110,6 +110,7 @@ export class PainterAssetDialog {
     const card = document.createElement("div");
     card.className = "alekpet_painter_storage_item_card";
 
+    // Preview canvas saved data
     const previewWrap = document.createElement("div");
     previewWrap.className = "alekpet_painter_storage_item_preview_wrapper";
 
@@ -118,17 +119,18 @@ export class PainterAssetDialog {
     canvasEl.style.maxHeight = "100%";
     previewWrap.appendChild(canvasEl);
 
+    // Metadata
     const meta = document.createElement("div");
     meta.className = "alekpet_painter_storage_item_meta";
 
     const id = document.createElement("div");
-    id.textContent = asset.asset_id;
+    id.innerHTML = `Id: <span>${asset.asset_id}</span>`;
     id.title = asset.asset_id;
     id.className = "alekpet_painter_storage_item_id";
 
     const size = document.createElement("div");
     size.title = "Data size · Pixel resolution";
-    size.innerHTML = `Size: <span>${formatBytes(asset.size)}</span> · WxH: <span>${asset.width && asset.height ? ` · ${asset.width}×${asset.height}` : ""}</span>`;
+    size.innerHTML = `Size: <span>${formatBytes(asset.size)}</span> · WxH: <span>${asset.width && asset.height ? `${asset.width}×${asset.height}` : ""}</span>`;
     size.className =
       "alekpet_painter_storage_item_skew_box alekpet_painter_storage_item_size";
 
@@ -138,6 +140,21 @@ export class PainterAssetDialog {
     workflow_name.className =
       "alekpet_painter_storage_item_skew_box alekpet_painter_storage_item_workflow_name";
 
+    const created_date = new Date(asset.created_at).toLocaleString();
+    const file_date_created = document.createElement("div");
+    file_date_created.title = "Date create at";
+    file_date_created.innerHTML = `Create at: <span>${created_date}</span>`;
+    file_date_created.className =
+      "alekpet_painter_storage_item_skew_box alekpet_painter_storage_item_created_date";
+
+    const updated_date = new Date(asset.updated_at).toLocaleString();
+    const file_date_updated = document.createElement("div");
+    file_date_updated.title = "Date update at";
+    file_date_updated.innerHTML = `Update at: <span>${updated_date}</span>`;
+    file_date_updated.className =
+      "alekpet_painter_storage_item_skew_box alekpet_painter_storage_item_updated_date";
+
+    // Buttons panel
     const buttons = document.createElement("div");
     Object.assign(buttons.style, { display: "flex", gap: "6px" });
 
@@ -159,7 +176,7 @@ export class PainterAssetDialog {
     remove.onclick = () => this.deleteAsset(asset.asset_id, card);
 
     buttons.append(add, addRef, remove);
-    meta.append(id, workflow_name, size);
+    meta.append(id, workflow_name, size, file_date_created, file_date_updated);
     card.append(previewWrap, id, meta, buttons);
     this.items.appendChild(card);
 

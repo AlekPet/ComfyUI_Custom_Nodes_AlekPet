@@ -3240,8 +3240,6 @@ function PainterWidget(node, inputName, inputData, app) {
 
 // ================= CREATE EXTENSION ================
 
-let setEventsPromise = null;
-
 app.registerExtension({
   name: extensionName,
   async init(app) {

@@ -573,17 +573,35 @@
   clip-path: polygon(0px 0%, 100% 0%, calc(100% - 15px) 100%, 0% 100%);
 }
 
+.alekpet_painter_storage_item_id {
+  background: linear-gradient(90deg, #3c3d3d, transparent);
+}
 .alekpet_painter_storage_item_size {
   background: linear-gradient(90deg, #14377a, transparent);
 }
-.alekpet_painter_storage_item_size > span {
-  color: var(----success-color);
+
+.alekpet_painter_storage_item_size > span,
+.alekpet_painter_storage_item_workflow_name > span {
+  color: var(--success-color);
 }
 
 .alekpet_painter_storage_item_workflow_name {
   background: linear-gradient(90deg, #096e00, transparent);
 }
-.alekpet_painter_storage_item_workflow_name > span {
-  color: var(--success-color);
+
+.alekpet_painter_storage_item_created_date {
+  background: linear-gradient(90deg, #6e0044, transparent);
+}
+
+.alekpet_painter_storage_item_updated_date {
+  background: linear-gradient(90deg, #52006e, transparent);
+}
+
+.alekpet_painter_storage_item_created_date > span {
+  color: var(--error-text);
+}
+
+.alekpet_painter_storage_item_updated_date > span {
+  color: var(--color-datatype-LATENT);
 }
 /* -- end Settings store managing data */

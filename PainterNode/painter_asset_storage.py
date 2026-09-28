@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import tempfile
+from datetime import datetime, timezone
 
 from aiohttp import web
 from server import PromptServer
@@ -30,18 +31,26 @@ def _asset_root():
 
     root = os.path.join(root, "painter_assets")
     os.makedirs(root, exist_ok=True)
+
     return root
 
 
 def _asset_dir(asset_id):
     if not isinstance(asset_id, str) or not ASSET_ID_RE.fullmatch(asset_id):
         raise ValueError("Invalid Painter asset_id")
+
     return os.path.join(_asset_root(), asset_id)
 
 
 def _json_response_error(message, status=400):
     return web.json_response({"success": False, "error": message}, status=status)
 
+
+def file_time_iso(timestamp):
+    return datetime.fromtimestamp(
+        timestamp,
+        timezone.utc,
+    ).isoformat()
 
 @PromptServer.instance.routes.get("/alekpet/painter_assets")
 async def list_painter_assets(request):
@@ -51,13 +60,16 @@ async def list_painter_assets(request):
         for asset_id in os.listdir(root):
             if not ASSET_ID_RE.fullmatch(asset_id):
                 continue
+
             asset_dir = os.path.join(root, asset_id)
             state_path = os.path.join(asset_dir, "state.json")
+
             if not os.path.isfile(state_path):
                 continue
 
-            stat = os.stat(state_path)
+            file_stat = os.stat(state_path)
             width = height = None
+
             try:
                 with open(state_path, "r", encoding="utf-8") as f:
                     state = json.load(f)
@@ -66,18 +78,24 @@ async def list_painter_assets(request):
                 if not metadata:
                     metadata = {}
 
+                created_at = metadata.get("created_at") or file_time_iso(file_stat.st_mtime)
+                updated_at = metadata.get("updated_at") or file_time_iso(file_stat.st_mtime)
+
                 workflow_name = metadata.get("workflow_name", "Unsaved Workflow")
+
                 size = state.get("settings", {}).get("currentCanvasSize", {})
                 width = size.get("width")
                 height = size.get("height")
+
             except (OSError, json.JSONDecodeError, AttributeError):
                 pass
 
             assets.append(
                 {
                     "asset_id": asset_id,
-                    "size": stat.st_size,
-                    "updated_at": stat.st_mtime,
+                    "size": file_stat.st_size,
+                    "created_at": created_at,
+                    "updated_at": updated_at,
                     "width": width,
                     "height": height,
                     "workflow_name": workflow_name
@@ -127,10 +145,46 @@ async def save_painter_asset(request):
         if not isinstance(state, dict):
             return _json_response_error("state must be an object", 400)
 
-        if not hasattr(state, "metadata"):
-            state.setdefault("metadata", {})
+        # Get metadata
+        metadata = state.get("metadata")
+        now = datetime.now(timezone.utc).isoformat()
 
-        state["metadata"]["workflow_name"] = workflow_name
+        if not isinstance(metadata, dict):
+            metadata = {}
+            state["metadata"] = metadata
+
+        # created_at - not change if asset exist
+        existing_created_at = None
+        state_path = os.path.join(asset_dir, "state.json")
+
+        if os.path.isfile(state_path):
+            try:
+                with open(state_path, "r", encoding="utf-8") as f:
+                    existing_state = json.load(f)
+
+                existing_metadata = existing_state.get("metadata")
+
+                if isinstance(existing_metadata, dict):
+                    existing_created_at = existing_metadata.get("created_at")
+
+                if not existing_created_at:
+                    existing_created_at = file_time_iso(os.path.getmtime(state_path))
+
+            except (OSError, json.JSONDecodeError):
+                pass
+
+        # Check created date
+        if existing_created_at:
+            metadata["created_at"] = existing_created_at
+        else:
+            metadata["created_at"] = now
+
+        # Update update date
+        metadata["updated_at"] = now
+
+        # Update workflow_name
+        if workflow_name:
+            metadata["workflow_name"] = workflow_name
 
         os.makedirs(asset_dir, exist_ok=True)
         fd, tmp_path = tempfile.mkstemp(
