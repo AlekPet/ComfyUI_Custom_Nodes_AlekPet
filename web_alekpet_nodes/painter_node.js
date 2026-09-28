@@ -2544,6 +2544,12 @@ class Painter {
     );
 
     if (response.status === 404) {
+      app.extensionManager.toast.add({
+        severity: "warn",
+        summary: "Warning",
+        detail: `Painter asset '${assetId}' load failed: ${response.status} ${response.statusText}`,
+        life: 8000,
+      });
       return null;
     }
 

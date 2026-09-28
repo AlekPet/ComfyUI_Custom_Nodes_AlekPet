@@ -465,7 +465,7 @@
 .alekpet_painter_storage_overlay {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: 9998;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -567,34 +567,34 @@
 }
 
 .alekpet_painter_storage_item_skew_box {
-  background: linear-gradient(90deg, #727272, transparent);
+  background: linear-gradient(
+    90deg,
+    var(--comfy-menu-bg) 60%,
+    var(--comfy-menu-secondary-bg)
+  );
   padding: 3px 0px;
   flex-direction: column;
   clip-path: polygon(0px 0%, 100% 0%, calc(100% - 15px) 100%, 0% 100%);
 }
 
-.alekpet_painter_storage_item_id {
-  background: linear-gradient(90deg, #3c3d3d, transparent);
-}
 .alekpet_painter_storage_item_size {
-  background: linear-gradient(90deg, #14377a, transparent);
+  background: linear-gradient(90deg, #14377a 60%, transparent);
+}
+
+.alekpet_painter_storage_item_workflow_name {
+  background: linear-gradient(90deg, #096e00 60%, transparent);
+}
+
+.alekpet_painter_storage_item_created_date {
+  background: linear-gradient(90deg, #6e0044 60%, transparent);
+}
+.alekpet_painter_storage_item_updated_date {
+  background: linear-gradient(90deg, #52006e 60%, transparent);
 }
 
 .alekpet_painter_storage_item_size > span,
 .alekpet_painter_storage_item_workflow_name > span {
   color: var(--success-color);
-}
-
-.alekpet_painter_storage_item_workflow_name {
-  background: linear-gradient(90deg, #096e00, transparent);
-}
-
-.alekpet_painter_storage_item_created_date {
-  background: linear-gradient(90deg, #6e0044, transparent);
-}
-
-.alekpet_painter_storage_item_updated_date {
-  background: linear-gradient(90deg, #52006e, transparent);
 }
 
 .alekpet_painter_storage_item_created_date > span {

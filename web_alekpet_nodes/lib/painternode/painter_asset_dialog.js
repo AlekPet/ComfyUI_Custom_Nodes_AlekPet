@@ -2,6 +2,7 @@ import { api } from "../../../../scripts/api.js";
 import { app } from "../../../../scripts/app.js";
 import { fabric } from "./fabric.js";
 import { formatBytes, createPainterAssetId } from "./helpers.js";
+import { comfyuiDesktopConfirm } from "../../utils.js";
 
 const ASSET_VERSION = 2;
 
@@ -125,8 +126,9 @@ export class PainterAssetDialog {
 
     const id = document.createElement("div");
     id.innerHTML = `Id: <span>${asset.asset_id}</span>`;
-    id.title = asset.asset_id;
-    id.className = "alekpet_painter_storage_item_id";
+    id.title = `Unique id: ${asset.asset_id}`;
+    id.className =
+      "alekpet_painter_storage_item_skew_box alekpet_painter_storage_item_id";
 
     const size = document.createElement("div");
     size.title = "Data size · Pixel resolution";
@@ -269,7 +271,8 @@ export class PainterAssetDialog {
   }
 
   async deleteAsset(assetId, card) {
-    if (!confirm(`Delete Painter asset ${assetId}?`)) return;
+    if (!(await comfyuiDesktopConfirm(`Delete Painter asset ${assetId}?`)))
+      return;
 
     try {
       const response = await api.fetchApi(
