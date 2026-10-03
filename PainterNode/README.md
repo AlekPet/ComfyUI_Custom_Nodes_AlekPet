@@ -4,6 +4,8 @@
 
 ## Changelog:
 
+> 2026.09.27 - Canvas data saving method has been changed.
+
 > 2025.07.29 - Add tool Crop canvas
 
 > 2024.05.10 - Implement piping in an image ([issue in an image](https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/24)) ([example Piping in an image](#piping))
@@ -21,6 +23,27 @@
 - Use the resize mod to move, rotate and resize drawn objects
 - Prohibition of certain modifications in the change mode, prohibition of movement along certain axes, scaling and rotation
 - Support brushes mypaint (MyPaint Brush tool)
+- Crop image
+- Connect image on input (piping) and change type insert background or as image and other settings
+- Drag and drop image on canvas node
+- Paste image on canvas node (Ctrl+Shift+V or Ctrl+K V)
+- Select image in combo and insert to the canvas
+
+# Saved canvas data, version 2.0
+
+All canvas data is saved in the `ComfyUI\user\__alekpet\painter_assets` folder
+and has the following structure:
+
+```ComfyUI
+  └── user
+        └── __alekpet/
+            └── painter_assets/
+                └── 8f3c.../
+                      └── state.json   ← Fabric/Painter node data
+                └── 1fn6.../
+                      └── state.json   ← Fabric/Painter node data
+                ...
+```
 
 # Example
 

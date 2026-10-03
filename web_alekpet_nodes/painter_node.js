@@ -13,8 +13,9 @@ import {
   toRGBA,
   getColorHEX,
   StorageClass,
+  createPainterAssetId,
 } from "./lib/painternode/helpers.js";
-import { PainterStorageDialog } from "./lib/painternode/dialogs.js";
+import { PainterAssetDialog } from "./lib/painternode/painter_asset_dialog.js";
 import { addStylesheet } from "../../scripts/utils.js";
 import {
   showHide,
@@ -35,12 +36,17 @@ import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
 const DEBUG = false;
 const extensionName = "alekpet.PainterNode";
 const CLONE_CACHE = new Map();
+const PAINTER_ASSET_VERSION = 2;
 
-// Save settings in JSON file on the extension folder [big data settings includes images] if true else localStorage
-let painters_settings_json = JSON.parse(
-  localStorage.getItem(`${extensionName}.SaveSettingsJson`, false)
-);
-//
+function isPainterAssetRef(value) {
+  return (
+    value &&
+    typeof value === "object" &&
+    value.version === PAINTER_ASSET_VERSION &&
+    typeof value.asset_id === "string" &&
+    value.asset_id.length > 0
+  );
+}
 
 const removeIcon =
   "data:image/svg+xml,%3Csvg version='1.1' id='Ebene_1' x='0px' y='0px' width='595.275px' height='595.275px' viewBox='200 215 230 470' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3C/defs%3E%3Crect x='125.3' y='264.6' width='350.378' height='349.569' style='fill: rgb(237, 0, 0); stroke: rgb(197, 2, 2);' rx='58.194' ry='58.194'%3E%3C/rect%3E%3Cg%3E%3Crect x='267.162' y='307.978' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -222.6202 340.6915)' style='fill:white;' width='65.545' height='262.18' rx='32.772' ry='32.772'%3E%3C/rect%3E%3Crect x='266.988' y='308.153' transform='matrix(0.7071 0.7071 -0.7071 0.7071 398.3889 -83.3116)' style='fill:white;' width='65.544' height='262.179' rx='32.772' ry='32.772'%3E%3C/rect%3E%3C/g%3E%3C/svg%3E";
@@ -112,6 +118,16 @@ async function getLoadedFonts() {
     });
   });
 }
+
+function getActiveWorkflowName() {
+  const workflow = app?.extensionManager?.workflow?.activeWorkflow;
+
+  return (
+    workflow?.filename?.replace(/\.json$/i, "") ||
+    workflow?.key ||
+    "Unsaved Workflow"
+  );
+}
 // ================= END FUNCTIONS ================
 
 // ================= CLASS PAINTER ================
@@ -140,6 +156,11 @@ class Painter {
     this.redo_history = [];
 
     this.storageCls = this.node.storageCls;
+    this.node.painterAsset = this.node.painterAsset || {
+      version: PAINTER_ASSET_VERSION,
+      asset_id: createPainterAssetId(),
+    };
+    this._persistPromise = Promise.resolve();
 
     // [Crop] Object
     this.crop_object = null;
@@ -167,8 +188,36 @@ class Painter {
     const self = this;
     const callb = this.node.callback;
 
-    this.image.callback = function () {
+    this.image.callback = function (image_name) {
       self.image.value = self.node.name;
+
+      // Insert image
+      self.getImageByName(image_name).then(async (image) => {
+        if (image?.tagName !== "IMG") {
+          createWindowModal({
+            textTitle: "ERROR",
+            textBody: [
+              makeElement("div", {
+                innerHTML: image ?? "Error load image",
+              }),
+            ],
+            ...THEMES_MODAL_WINDOW.error,
+            options: {
+              auto: { autohide: true, autoshow: true, autoremove: true },
+              close: { showClose: false },
+              parent: self.canvas.wrapperEl,
+            },
+          });
+          return;
+        }
+
+        if (await comfyuiDesktopConfirm("Past as background?")) {
+          self.pastAsBackground(image);
+        } else if (await comfyuiDesktopConfirm("Past as image?")) {
+          self.pastAsImage(image);
+        }
+      });
+
       if (callb) {
         return callb.apply(this, arguments);
       }
@@ -177,10 +226,12 @@ class Painter {
 
   async saveSettingsPainterNode() {
     this.canvasSaveSettingsPainter();
-    // Save data
-    app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
 
-    if (painters_settings_json) await this.node.storageCls.saveData();
+    const persistPromise = this.persistPainterState();
+    // Save data
+    app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.captureCanvasState();
+
+    await persistPromise;
   }
 
   initCanvas(canvasEl) {
@@ -224,6 +275,34 @@ class Painter {
           `🎨 [PainterNode] Node 2.0 is ${event.detail.value ? "enabled! Brushes MyPaint may not support brush pressure correctly." : "disabled."}`
         );
       }
+    );
+
+    window.addEventListener(
+      "paste",
+      async (e) => {
+        if (
+          !app.canvas.selected_nodes ||
+          !app.canvas.selected_nodes[this.node.id]
+        )
+          return;
+
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf("image") !== -1) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const file = items[i].getAsFile();
+            if (!file) continue;
+
+            this.addImageToCanvas(file);
+            break;
+          }
+        }
+      },
+      true
     );
 
     return this.canvas;
@@ -2404,6 +2483,86 @@ class Painter {
     } catch (e) {}
   }
 
+  getWorkflowValue() {
+    return {
+      version: PAINTER_ASSET_VERSION,
+      asset_id: this.node.painterAsset.asset_id,
+    };
+  }
+
+  async persistPainterState(state = null) {
+    const save_data =
+      this.storageCls.settings_painter_node.settings.saveImage ?? true;
+
+    if (!save_data) return;
+
+    const nextState = state || {
+      ...this.storageCls.settings_painter_node,
+      canvas_settings: this.canvas.toJSON(["mypaintlib"]),
+    };
+
+    const request = async () => {
+      const response = await api.fetchApi(
+        `/alekpet/painter_asset/${encodeURIComponent(
+          this.node.painterAsset.asset_id
+        )}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            state: nextState,
+            workflow_name: getActiveWorkflowName(),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Painter asset save failed: ${response.status} ${response.statusText}`
+        );
+      }
+
+      return response.json();
+    };
+
+    // Serialize writes
+    this._persistPromise = this._persistPromise.catch(() => {}).then(request);
+
+    try {
+      return await this._persistPromise;
+    } catch (error) {
+      console.error("[PainterNode] Failed to save backend asset:", error);
+      return null;
+    }
+  }
+
+  async loadPainterAsset(assetId) {
+    const response = await api.fetchApi(
+      `/alekpet/painter_asset/${encodeURIComponent(assetId)}`
+    );
+
+    if (response.status === 404) {
+      app.extensionManager.toast.add({
+        severity: "warn",
+        summary: "Warning",
+        detail: `Painter asset '${assetId}' load failed: ${response.status} ${response.statusText}`,
+        life: 8000,
+      });
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `Painter asset load failed: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const result = await response.json();
+    return result?.state ?? null;
+  }
+
   undoRedoLoadData(data) {
     this.canvas.loadFromJSON(data, () => {
       this.canvas.renderAll();
@@ -2734,21 +2893,41 @@ class Painter {
     // - end
   }
 
-  async loadCanvasData(data, painter_idx) {
-    if (painters_settings_json && data === null) {
-      data = await this.storageCls.getData();
+  async loadCanvasData(data, painter_idx, options = { persist: true }) {
+    // New workflows store only {version, asset_id}
+    if (isPainterAssetRef(data)) {
+      this.node.painterAsset = {
+        version: PAINTER_ASSET_VERSION,
+        asset_id: options.assetId || data.asset_id,
+      };
 
-      if (!data) {
+      let backendState = null;
+      try {
+        backendState = await this.loadPainterAsset(
+          this.node.painterAsset.asset_id
+        );
+      } catch (error) {
+        console.error("[PainterNode] Failed to load backend asset:", error);
+      }
+
+      if (backendState) {
+        data = backendState;
+      } else {
+        // The workflow may reference an asset that was deleted
         data = JSON.parse(
           JSON.stringify(this.storageCls.settings_painter_node_default)
         );
       }
-
-      this.storageCls.settings_painter_node = data;
+    } else if (data && data.canvas_settings) {
+      // Legacy workflow migration
+      this.node.painterAsset = {
+        version: PAINTER_ASSET_VERSION,
+        asset_id: createPainterAssetId(),
+      };
     }
 
     if (data) {
-      Object.assign(this.node.widgets[painter_idx].value, data);
+      this.storageCls.settings_painter_node = data;
 
       if (data?.settings) {
         const {
@@ -2771,12 +2950,20 @@ class Painter {
 
       // Loading canvas data
       if (data?.canvas_settings) {
-        this.canvasLoadSettingPainter(data).then((result) => {
+        await this.canvasLoadSettingPainter(data).then((result) => {
           if (result) {
             this.canvas.renderAll();
-            this.uploadPaintFile(this.name);
           }
         });
+      }
+
+      // Migrate legacy workflow data, or repair a missing backend asset
+      if (options.persist !== false) {
+        await this.persistPainterState(data);
+      }
+
+      if (data?.canvas_settings && options.migrateImage !== false) {
+        await this.uploadPaintFile(this.node.name);
       }
 
       this.node.setSize(this.node.size);
@@ -2815,10 +3002,26 @@ function PainterWidget(node, inputName, inputData, app) {
     wrapperPainter,
     {
       setValue(v) {
-        node.painter.storageCls.settings_painter_node = v;
+        if (isPainterAssetRef(v)) {
+          node.painter.node.painterAsset = {
+            version: PAINTER_ASSET_VERSION,
+            asset_id: v.asset_id,
+          };
+          return;
+        }
+
+        // Legacy workflows are loaded asynchronously by onConfigure
+        if (v?.canvas_settings) {
+          node.painter.node._legacyPainterData = v;
+          return;
+        }
+
+        if (v) {
+          node.painter.storageCls.settings_painter_node = v;
+        }
       },
       getValue() {
-        return node.painter.storageCls.settings_painter_node;
+        return node.painter.getWorkflowValue();
       },
     }
   );
@@ -2906,8 +3109,11 @@ function PainterWidget(node, inputName, inputData, app) {
 
   // Node serialize
   node.onSerialize = (n) => {
-    if (painters_settings_json) {
-      n.widgets_values[3] = null;
+    const painterIndex = n.widgets_values?.findIndex?.(
+      (_, index) => node.widgets[index]?.type === "painter_node_alekpet"
+    );
+    if (painterIndex >= 0) {
+      n.widgets_values[painterIndex] = node.painter.getWorkflowValue();
     }
   };
 
@@ -2919,7 +3125,7 @@ function PainterWidget(node, inputName, inputData, app) {
       !images.length ||
       !node.painter.storageCls.settings_painter_node.settings.pipingSettings
         .pipingUpdateImage ||
-      +unique_id !== node.id
+      +unique_id != +node.id
     ) {
       return;
     }
@@ -3040,8 +3246,6 @@ function PainterWidget(node, inputName, inputData, app) {
 
 // ================= CREATE EXTENSION ================
 
-let setEventsPromise = null;
-
 app.registerExtension({
   name: extensionName,
   async init(app) {
@@ -3053,7 +3257,7 @@ app.registerExtension({
     // Managing data
     app.ui.settings.addSetting({
       id: `${extensionName}.ManagingData`,
-      name: "🔸 Managing JSON data storage",
+      name: "🔸 Managing JSON data assets",
       defaultValue: false,
       type: (name, sett, val) => {
         return makeElement("tr", {
@@ -3061,33 +3265,19 @@ app.registerExtension({
             makeElement("td", {
               children: [
                 makeElement("button", {
-                  textContent: "Managing Data",
+                  textContent: "Painter Assets",
                   onclick: () => {
-                    new PainterStorageDialog().show();
+                    new PainterAssetDialog().show();
                   },
                   style: {
                     display: "block",
+                    marginTop: "5px",
                   },
                 }),
               ],
             }),
           ],
         });
-      },
-    });
-
-    // Add settings params painter node
-    app.ui.settings.addSetting({
-      id: `${extensionName}.SaveSettingsJson`,
-      name: "🔸 Save settings to JSON file (BETA)",
-      defaultValue: false,
-      type: "boolean",
-      onChange: (e) => {
-        painters_settings_json = !!e;
-        localStorage.setItem(
-          `${extensionName}.SaveSettingsJson`,
-          painters_settings_json
-        );
       },
     });
     // end -- Settings
@@ -3138,10 +3328,6 @@ app.registerExtension({
 
         this.title = `${this.type} - ${this.painter.storageCls.settings_painter_node.settings.currentCanvasSize.width}x${this.painter.storageCls.settings_painter_node.settings.currentCanvasSize.height}`;
 
-        if (!painters_settings_json && !this?.widgets_values) {
-          this.painter.uploadPaintFile(nodeNamePNG);
-        }
-
         // Resize window
         window.addEventListener("resize", (e) => resizeCanvas(this), false);
         return r;
@@ -3152,10 +3338,11 @@ app.registerExtension({
         const cloneNode = origClone?.apply(this, arguments);
         if (!cloneNode) return origClone;
 
-        CLONE_CACHE.set(
-          this.id,
-          structuredClone(this.painter.storageCls.settings_painter_node)
-        );
+        CLONE_CACHE.set(this.id, {
+          state: structuredClone(this.painter.storageCls.settings_painter_node),
+          assetId: createPainterAssetId(),
+        });
+
         return cloneNode;
       };
 
@@ -3164,34 +3351,6 @@ app.registerExtension({
         onConfigure?.apply(this, arguments);
 
         await this.getTitle();
-
-        if (painters_settings_json) {
-          if (this.storageCls.workflowStateManager.currentWorkflow) {
-            DEBUG &&
-              console.log(
-                `⚠️ [PainterNode] currentWorkflow is already set, skip: ${this.name} -> ${this.storageCls.workflowStateManager.currentWorkflow}`
-              );
-          }
-
-          // Если `setEvents` уже выполняется, ждем его завершения
-          if (setEventsPromise) {
-            DEBUG &&
-              console.log(
-                `⏳ [PainterNode] Waiting for setEvents to complete...`
-              );
-
-            await setEventsPromise;
-            DEBUG &&
-              console.log(`✅ [PainterNode] setEvents completed, continue`);
-          } else {
-            // Если это первый узел, запускаем `setEvents`
-            DEBUG &&
-              console.log(`🚀 [PainterNode] The first node calls setEvents...`);
-            setEventsPromise = this.storageCls.workflowStateManager.setEvents();
-            await setEventsPromise;
-            DEBUG && console.log(`✅ [PainterNode] setEvents completed`);
-          }
-        }
 
         setTimeout(async () => {
           console.log(`🔧 Configure PainterNode: ${this.name}`);
@@ -3202,19 +3361,24 @@ app.registerExtension({
 
           if (painter_idx < 0) return;
           let data = widget.widgets_values[painter_idx];
+          let cloneState = null;
 
           if (!data) {
-            for (const [originalId, cachedSettings] of CLONE_CACHE.entries()) {
+            for (const [originalId, cached] of CLONE_CACHE.entries()) {
               console.log(
                 `♻️ Recovering cloned data from node ${originalId} to node ${this.id}`
               );
-              data = cachedSettings;
+              cloneState = cached.state;
+              data = cloneState;
               CLONE_CACHE.delete(originalId);
               break;
             }
           }
 
-          this.painter.loadCanvasData(data, painter_idx);
+          await this.painter.loadCanvasData(data, painter_idx, {
+            assetId: cloneState ? createPainterAssetId() : undefined,
+            migrateImage: true,
+          });
         });
       };
 
@@ -3249,33 +3413,6 @@ app.registerExtension({
             },
           });
         }
-
-        setTimeout(() => {
-          const removeIndex = options.findIndex((m) => m?.content === "Remove"),
-            removeButton = options[removeIndex];
-
-          if (!!removeButton) {
-            const remove_callback = removeButton.callback;
-            const self = this;
-
-            removeButton.callback = async function () {
-              const nodeName = Array.from(arguments).find((f) => f?.name).name;
-              remove_callback.apply(this, arguments);
-
-              if (!painters_settings_json) return;
-
-              if (
-                await comfyuiDesktopConfirm(
-                  `Remove data ${nodeName} from JSON?`
-                )
-              ) {
-                self.storageCls.workflowStateManager.removeData(null, [
-                  nodeName,
-                ]);
-              }
-            };
-          }
-        }, 0);
       };
       // end - ExtraMenuOptions
     }

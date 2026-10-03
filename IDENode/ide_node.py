@@ -31,8 +31,11 @@ IDEs_DICT = {}
 def isFileName(filename):
     if (
         not filename
-        or filename is None
-        or (type(filename) == str and filename.strip() == "")
+        or not isinstance(filename, str)
+        or filename.strip() == ""
+        or "/" in filename
+        or "\\" in filename
+        or ".." in filename
     ):
         print("Filename is incorrect")
         return False

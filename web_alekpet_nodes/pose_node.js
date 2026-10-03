@@ -388,6 +388,36 @@ class OpenPose {
       this.setPose(default_keypoints);
       this.settings.undo_history.push(this.getJSON());
     }
+
+    window.addEventListener(
+      "paste",
+      async (e) => {
+        if (
+          !app.canvas.selected_nodes ||
+          !app.canvas.selected_nodes[this.node.id]
+        )
+          return;
+
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf("image") !== -1) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const file = items[i].getAsFile();
+            if (!file) continue;
+
+            this.onLoadBackground(file);
+
+            break;
+          }
+        }
+      },
+      true
+    );
+
     return this.canvas;
   }
 
@@ -425,7 +455,7 @@ class OpenPose {
   }
 
   saveData() {
-    app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
+    app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.captureCanvasState();
   }
 
   async resetCanvas(reset_size = false) {
@@ -566,9 +596,9 @@ class OpenPose {
     };
   }
 
-  onLoadBackground(e) {
+  onLoadBackground(f) {
     try {
-      const file = this.backgroundInput.files[0];
+      const file = this.backgroundInput.files[0] ?? f;
 
       const formData = new FormData();
       formData.append("image", file);
@@ -851,7 +881,7 @@ function createOpenPose(node, inputName, inputData, app) {
         node.openPose.uploadPoseFile(node.name);
 
         // Save data
-        app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
+        app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.captureCanvasState();
       },
     }),
   ]);
