@@ -34,10 +34,63 @@ let SpeechAndRecognationSpeech = SpeechAndRecognationSpeechLS
     false
   );
 
+const tracked = new Map();
+
+function bind(node, w, ta) {
+  let c = tracked.get(ta);
+  if (c) {
+    c.node = node;
+    c.w = w;
+    c.speech_recognation.setTarget(node, w);
+    return;
+  }
+
+  const speech_recognation = new SpeechAndRecognation(node, w);
+  w.element.parentElement.appendChild(speech_recognation.createLayout());
+
+  c = { node, w, speech_recognation };
+  tracked.set(ta, c);
+}
+
+function walk(graph, seen = new Set()) {
+  if (!graph || seen.has(graph)) return;
+  seen.add(graph);
+  for (const node of graph._nodes ?? graph.nodes ?? []) {
+    for (const w of node.widgets ?? []) {
+      const ta = w.element ?? w.inputEl;
+      if (ta instanceof HTMLTextAreaElement) bind(node, w, ta);
+    }
+    if (node.subgraph) walk(node.subgraph, seen);
+  }
+}
+
+const scan = () => {
+  walk(app.graph);
+  walk(app.canvas?.graph);
+};
+
+let t;
+const scanSoon = () => {
+  if (SpeechAndRecognationSpeech && (speechRect || SpeechSynthesis)) {
+    clearTimeout(t);
+    t = setTimeout(scan, 100);
+  }
+};
+
+function tick() {
+  for (const [ta, c] of tracked) {
+    if (!ta.isConnected) {
+      tracked.delete(ta);
+      continue;
+    }
+  }
+  requestAnimationFrame(tick);
+}
+//
+
 // -- Extension: Speak text & Recognition speech --
 app.registerExtension({
   name: `${idExt}.SpeechAndRecognationSpeech`,
-
   init() {
     addStylesheet(
       "css/extrasnode/extras_node_speech_recognition_style.css",
@@ -63,17 +116,14 @@ app.registerExtension({
               ])
             : "",
           $el("td", [
-            $el("a", {
-              href: "https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/166#issuecomment-3107129457",
-              title: "Causes a bug with multiline fields",
-              target: "_blank",
-              textContent: "Bug with multiline fields 🐞",
-              style: { textDecoration: "none" },
-            }),
             $el(
               "label",
               {
-                style: { display: "flex", alignItems: "center" },
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "end",
+                },
                 textContent: "Enabled: ",
                 for: convertIdClass(`${idExt}.SpeechAndRecognationSpeech_show`),
               },
@@ -84,22 +134,23 @@ app.registerExtension({
                   ),
                   type: "checkbox",
                   checked: val,
-                  onchange: async (e) => {
+                  onchange: (e) => {
                     const checked = !!e.target.checked;
                     SpeechAndRecognationSpeech = checked;
                     localStorage.setItem(
                       `Comfy.Settings.${idExt}.SpeechAndRecognationSpeech`,
                       checked
                     );
-                    if (await comfyuiDesktopConfirm("Reload page?")) {
-                      location.reload();
-                    }
+
+                    document
+                      .querySelectorAll(
+                        ".alekpet_extras_node_speechrecognition_box"
+                      )
+                      .forEach((el) => {
+                        el.style.display = checked ? "flex" : "none";
+                      });
                     sett(checked);
                   },
-                }),
-                $el("span", {
-                  textContent: "(Then reload the page)",
-                  style: { fontSize: "0.6rem", color: "yellow" },
                 }),
               ]
             ),
@@ -145,111 +196,15 @@ app.registerExtension({
         ]);
       },
     });
-
-    // 1. Сохраняем оригинальный метод создания многострочного текста (STRING с multiline: true)
-    const originalSTRING = ComfyWidgets["STRING"];
-
-    // 2. Переопределяем его
-    ComfyWidgets["STRING"] = function (node, inputName, inputData, app) {
-      // Вызываем оригинальный метод, чтобы ComfyUI создал виджет и его HTML-элемент
-      const result = originalSTRING.apply(this, arguments);
-
-      // Проверяем, что это именно многострочное текстовое поле (как у Note)
-      const isMultiline = inputData[1]?.multiline;
-
-      if (
-        isMultiline &&
-        result.widget &&
-        (result.widget.element || result.widget.inputEl)
-      ) {
-        const speech_recognation = new SpeechAndRecognation(
-          node,
-          result.widget
-        );
-        speech_recognation.createLayout();
-      }
-
-      return result;
-    };
   },
-  async beforeRegisterNodeDef(nodeType, nodeData, app) {
-    // -- Speech & Recognition speech widget
-    // If ui settings is true and SpeechSynthesis or speechRecognition is not undefined
-    if (SpeechAndRecognationSpeech && (speechRect || SpeechSynthesis)) {
-      // Node Created
-      // const onNodeCreated = nodeType.prototype.onNodeCreated;
-      // nodeType.prototype.onNodeCreated = async function () {
-      //   const ret = onNodeCreated
-      //     ? onNodeCreated.apply(this, arguments)
-      //     : undefined;
-
-      //   let nodeIsMultiString = false;
-
-      //   if (nodeData?.input && nodeData?.input?.required) {
-      //     for (const inp of Object.keys(nodeData.input.required)) {
-      //       if (
-      //         nodeData.input.required[inp][1]?.multiline &&
-      //         !nodeData.input.required[inp][1]?.forceInput
-      //       ) {
-      //         const type = nodeData.input.required[inp][0];
-      //         if (["STRING"].includes(type)) {
-      //           nodeIsMultiString = true;
-      //           break;
-      //         }
-      //       }
-      //     }
-      //   }
-
-      //   if (nodeData?.output) {
-      //     for (const out of nodeData.output) {
-      //       const isElementTextArea = this?.widgets?.some(
-      //         (w) =>
-      //           w?.element?.tagName === "TEXTAREA" ||
-      //           w?.inputEl?.tagName === "TEXTAREA"
-      //       );
-
-      //       if (isElementTextArea && ["STRING"].includes(out)) {
-      //         nodeIsMultiString = true;
-      //         break;
-      //       }
-      //     }
-      //   }
-
-      //   if (!nodeIsMultiString) return ret;
-
-      //   // Find all widget type customtext
-      //   const widgetsTextMulti = this?.widgets?.filter((w) =>
-      //     ["customtext", "converted-widget"].includes(w.type)
-      //   );
-
-      //   const isIncludesSpeech = this?.widgets?.some(
-      //     (w) => w.type === "speak_and_recognation_type"
-      //   );
-
-      //   if (!isIncludesSpeech && widgetsTextMulti?.length) {
-      //     widgetsTextMulti.forEach(async (w) => {
-      //       const speech_recognation = new SpeechAndRecognation(this, w);
-      //       speech_recognation.createLayout();
-      //     });
-      //   }
-
-      //   return ret;
-      // };
-
-      // onConfigure
-      const onConfigure = nodeType.prototype.onConfigure;
-      nodeType.prototype.onConfigure = async function (w) {
-        onConfigure?.apply(this, arguments);
-
-        if (
-          this.properties &&
-          this.properties?.alekpet_speech_and_recognation_settings
-        ) {
-          this.properties.alekpet_speech_and_recognation_settings =
-            w.properties.alekpet_speech_and_recognation_settings;
-        }
-      };
-    }
-    // -- end - Speech & Recognition speech widget
+  setup() {
+    new MutationObserver(scanSoon).observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+    requestAnimationFrame(tick);
   },
+  nodeCreated: scanSoon,
+  loadedGraphNode: scanSoon,
+  afterConfigureGraph: scanSoon,
 });

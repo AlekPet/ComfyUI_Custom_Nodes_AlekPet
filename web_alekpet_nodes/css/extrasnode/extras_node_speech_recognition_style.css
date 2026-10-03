@@ -128,3 +128,7 @@
   display: flex;
   font-size: 0.6rem;
 }
+
+.alekpet_extras_node_speech_recognition_settings_parent_active {
+  z-index: 10 !important;
+}
