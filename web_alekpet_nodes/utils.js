@@ -114,12 +114,9 @@ function findWidget(node, value, attr = "name", func = "find") {
     : null;
 }
 
-function animateTransitionProps(
-  el,
-  props = { opacity: 1 },
-  preStyles = { display: "block" }
-) {
+function animateTransitionProps(el, props = { opacity: 1 }, preStyles = {}) {
   Object.assign(el.style, preStyles);
+  el.offsetWidth;
 
   el.style.transition =
     !el.style.transition ||
@@ -128,38 +125,50 @@ function animateTransitionProps(
       : el.style.transition;
 
   return new Promise((res) => {
-    setTimeout(() => {
-      Object.assign(el.style, props);
+    Object.assign(el.style, props);
 
-      const transstart = () => (el.isAnimating = true);
-      const transchancel = () => (el.isAnimating = false);
-      el.addEventListener("transitionstart", transstart);
-      el.addEventListener("transitioncancel", transchancel);
+    const transstart = () => (el.isAnimating = true);
+    const transcancel = () => (el.isAnimating = false);
 
-      el.addEventListener("transitionend", function transend() {
-        el.isAnimating = false;
-        el.removeEventListener("transitionend", transend);
-        el.removeEventListener("transitionend", transchancel);
-        el.removeEventListener("transitionend", transstart);
-        res(el);
-      });
-    }, 100);
+    el.addEventListener("transitionstart", transstart);
+    el.addEventListener("transitioncancel", transcancel);
+
+    el.addEventListener("transitionend", function transend() {
+      el.isAnimating = false;
+      el.removeEventListener("transitionend", transend);
+      el.removeEventListener("transitioncancel", transcancel);
+      el.removeEventListener("transitionstart", transstart);
+      res(el);
+    });
   });
 }
 
 function animateClick(target, params = {}) {
   const { opacityVal = 0.9, callback = () => {} } = params;
-  if (target?.isAnimating) return;
+  if (!target || target.isAnimating) return;
 
-  const hide = +target.style.opacity === 0;
-  return animateTransitionProps(target, {
-    opacity: hide ? opacityVal : 0,
-  }).then((el) => {
-    const isHide = hide || el.style.display === "none";
-    showHide({ elements: [target], hide: !hide });
-    callback();
-    return isHide;
-  });
+  const currentDisplay = window.getComputedStyle(target).display;
+  const currentOpacity = parseFloat(window.getComputedStyle(target).opacity);
+  const isHiddenNow = currentDisplay === "none" || currentOpacity === 0;
+
+  if (isHiddenNow) {
+    target.style.opacity = "0";
+
+    return animateTransitionProps(
+      target,
+      { opacity: opacityVal },
+      { display: "block" }
+    ).then((el) => {
+      callback();
+      return false;
+    });
+  } else {
+    return animateTransitionProps(target, { opacity: 0 }, {}).then((el) => {
+      showHide({ elements: [target], hide: true });
+      callback();
+      return true;
+    });
+  }
 }
 
 function showHide({ elements = [], hide = null, displayProp = "block" } = {}) {
