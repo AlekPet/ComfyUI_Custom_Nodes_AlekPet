@@ -1,8 +1,8 @@
 import { api } from "../../../../scripts/api.js";
 import { app } from "../../../../scripts/app.js";
 import { fabric } from "./fabric.js";
-import { formatBytes, createPainterAssetId } from "./helpers.js";
-import { comfyuiDesktopConfirm } from "../../utils.js";
+import { createPainterAssetId } from "./helpers.js";
+import { comfyuiDesktopConfirm, formatBytes } from "../../utils.js";
 
 const ASSET_VERSION = 2;
 
@@ -41,13 +41,13 @@ export class PainterAssetDialog {
     if (this.overlay) return;
 
     this.overlay = document.createElement("div");
-    this.overlay.className = "alekpet_painter_storage_overlay";
+    this.overlay.className = "alekpet_storage_overlay";
 
     const box = document.createElement("div");
-    box.className = "alekpet_painter_storage_box";
+    box.className = "alekpet_storage_box";
 
     const header = document.createElement("div");
-    header.className = "alekpet_painter_storage_header";
+    header.className = "alekpet_storage_header";
     header.innerHTML = `<strong>Painter Assets</strong>`;
 
     const close = document.createElement("button");
@@ -56,7 +56,7 @@ export class PainterAssetDialog {
     header.appendChild(close);
 
     const toolbar = document.createElement("div");
-    toolbar.className = "alekpet_painter_storage_toolbar";
+    toolbar.className = "alekpet_storage_toolbar";
 
     const refresh = document.createElement("button");
     refresh.textContent = "Refresh";
@@ -64,7 +64,7 @@ export class PainterAssetDialog {
     toolbar.appendChild(refresh);
 
     this.items = document.createElement("div");
-    this.items.className = "alekpet_painter_storage_items";
+    this.items.className = "alekpet_storage_items";
 
     box.append(header, toolbar, this.items);
     this.overlay.appendChild(box);
@@ -82,8 +82,7 @@ export class PainterAssetDialog {
 
   async load() {
     if (!this.items) return;
-    this.items.innerHTML =
-      "<div class='alekpet_painter_storage_item'>Loading...</div>";
+    this.items.innerHTML = "<div class='alekpet_storage_item'>Loading...</div>";
 
     try {
       const response = await api.fetchApi("/alekpet/painter_assets");
@@ -95,25 +94,25 @@ export class PainterAssetDialog {
       this.items.innerHTML = "";
       if (!assets.length) {
         this.items.innerHTML =
-          "<div class='alekpet_painter_storage_item'>No Painter assets</div>";
+          "<div class='alekpet_storage_item'>No Painter assets</div>";
         return;
       }
 
       assets.sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0));
       for (const asset of assets) this.renderAsset(asset);
     } catch (error) {
-      this.items.innerHTML = `<div class='alekpet_painter_storage_item' style='text-align:left;color:var(--error-text,#f66);'>${escapeHtml(error.message)}</div>`;
+      this.items.innerHTML = `<div class='alekpet_storage_item' style='text-align:left;color:var(--error-text,#f66);'>${escapeHtml(error.message)}</div>`;
       console.error("[PainterAssetDialog] Failed to load assets:", error);
     }
   }
 
   renderAsset(asset) {
     const card = document.createElement("div");
-    card.className = "alekpet_painter_storage_item_card";
+    card.className = "alekpet_storage_item_card";
 
     // Preview canvas saved data
     const previewWrap = document.createElement("div");
-    previewWrap.className = "alekpet_painter_storage_item_preview_wrapper";
+    previewWrap.className = "alekpet_storage_item_preview_wrapper";
 
     const canvasEl = document.createElement("canvas");
     canvasEl.style.maxWidth = "100%";
@@ -122,39 +121,37 @@ export class PainterAssetDialog {
 
     // Metadata
     const meta = document.createElement("div");
-    meta.className = "alekpet_painter_storage_item_meta";
+    meta.className = "alekpet_storage_item_meta";
 
     const id = document.createElement("div");
     id.innerHTML = `Id: <span>${asset.asset_id}</span>`;
     id.title = `Unique id: ${asset.asset_id}`;
-    id.className =
-      "alekpet_painter_storage_item_skew_box alekpet_painter_storage_item_id";
+    id.className = "alekpet_storage_item_skew_box alekpet_storage_item_id";
 
     const size = document.createElement("div");
     size.title = "Data size · Pixel resolution";
     size.innerHTML = `Size: <span>${formatBytes(asset.size)}</span> · WxH: <span>${asset.width && asset.height ? `${asset.width}×${asset.height}` : ""}</span>`;
-    size.className =
-      "alekpet_painter_storage_item_skew_box alekpet_painter_storage_item_size";
+    size.className = "alekpet_storage_item_skew_box alekpet_storage_item_size";
 
     const workflow_name = document.createElement("div");
     workflow_name.innerHTML = `Workflow: <span>${asset.workflow_name}</span>`;
     workflow_name.title = `Last used workflow: ${asset.workflow_name}`;
     workflow_name.className =
-      "alekpet_painter_storage_item_skew_box alekpet_painter_storage_item_workflow_name";
+      "alekpet_storage_item_skew_box alekpet_storage_item_workflow_name";
 
     const created_date = new Date(asset.created_at).toLocaleString();
     const file_date_created = document.createElement("div");
     file_date_created.title = "Date create at";
     file_date_created.innerHTML = `Create at: <span>${created_date}</span>`;
     file_date_created.className =
-      "alekpet_painter_storage_item_skew_box alekpet_painter_storage_item_created_date";
+      "alekpet_storage_item_skew_box alekpet_storage_item_created_date";
 
     const updated_date = new Date(asset.updated_at).toLocaleString();
     const file_date_updated = document.createElement("div");
     file_date_updated.title = "Date update at";
     file_date_updated.innerHTML = `Update at: <span>${updated_date}</span>`;
     file_date_updated.className =
-      "alekpet_painter_storage_item_skew_box alekpet_painter_storage_item_updated_date";
+      "alekpet_storage_item_skew_box alekpet_storage_item_updated_date";
 
     // Buttons panel
     const buttons = document.createElement("div");
@@ -174,7 +171,7 @@ export class PainterAssetDialog {
     const remove = document.createElement("button");
     remove.textContent = "🗑️";
     remove.title = "Remove canvas data";
-    remove.className = "alekpet_painter_storage_button_close";
+    remove.className = "alekpet_storage_button_close";
     remove.onclick = () => this.deleteAsset(asset.asset_id, card);
 
     buttons.append(add, addRef, remove);
@@ -284,7 +281,7 @@ export class PainterAssetDialog {
       card.remove();
       if (!this.items.children.length) {
         this.items.innerHTML =
-          "<div class='alekpet_painter_storage_item'>No Painter assets</div>";
+          "<div class='alekpet_storage_item'>No Painter assets</div>";
       }
     } catch (error) {
       console.error("[PainterAssetDialog] Failed to delete asset:", error);

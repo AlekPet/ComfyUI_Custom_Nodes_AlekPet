@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import types
 from server import PromptServer
@@ -6,6 +7,9 @@ import time
 import json
 import re
 from functools import wraps
+import itertools
+import shutil
+import tempfile
 
 # Directory node
 DIR_IDENODE = Path(__file__)
@@ -48,6 +52,41 @@ def getFilesInDir(folder, ext="*.json"):
 
     list_files = [item.name for item in folder.rglob(ext) if not item.is_dir()]
     return list_files
+
+
+# Get all codes
+@PromptServer.instance.routes.get("/alekpet/ide_node_get_codes")
+async def list_painter_assets(request):
+    try:
+        codes = []
+        
+        for code in itertools.chain(os.scandir(DIR_IDENODE_CODES / "python"),os.scandir(DIR_IDENODE_CODES / "javascript")):
+            code_file = Path(code.path)
+            if not code_file.suffix.endswith(".json"):
+                continue
+
+            file_stat = os.stat(code.path)
+
+            try:
+                with open(code_file, "r", encoding="utf-8") as f:
+                    code_data = f.read()
+
+            except (OSError, AttributeError):
+                pass
+
+            codes.append(
+                {
+                    "filename": code.name,
+                    "code": code_data,
+                    "language": code_file.parent.name,
+                    "size": file_stat.st_size,
+                }
+            )
+
+        codes.sort(key=lambda item: item["filename"], reverse=True)
+        return web.json_response({"success": True, "codes": codes})
+    except OSError as e:
+        return web.json_response({"success": False, "error": str(e)}, status=500)
 
 
 # Check javascript complete

@@ -6,6 +6,10 @@
 
 # Changelog:
 
+- 2026.10.04: Added a code manager and a default syntax highlighting theme setting.
+
+- 2026.10.03: Rewrite code, add error modal window to python language. Implemented slider "Update", on/off execute node and not used seed node, when need update every executed node.
+
 - 2026.04.19: Implemented save, load, rename, remove your code and change visual design
 
 - 2024.08.28: Implemented add output variables and types
@@ -13,10 +17,13 @@
 # Features:
 
 - Selecting a syntax highlighting theme
+- Set default syntax highlighting theme
 - Choosing a programming language
 - Load, save, rename, remove your written code
 - Feature add inputs and outputs
 - Feature remove inputs and outputs
+- Switch on/off run code
+- Manager codes in the settings (preview, remove, add (dev), edit (dev), save (dev), insert to active workflow)
 
 # Note:
 

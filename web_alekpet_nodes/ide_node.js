@@ -3,12 +3,13 @@ import { api } from "../../scripts/api.js";
 import "./lib/idenode/ace-builds/src-min-noconflict/ace.js";
 import {
   IdeNodeWidget,
-  loadListCodes,
-  defaultComboValue,
   saveValue,
+  LIST_THEMES,
+  DEFAULT_TEMPLATES,
 } from "./lib/idenode/ide_node_widget.js";
+import { IdeNodeCodeDialog } from "./lib/idenode/ide_node_code_dialog.js";
 import { addStylesheet } from "../../scripts/utils.js";
-import { findWidget } from "./utils.js";
+import { findWidget, makeElement, THEMES_MODAL_WINDOW } from "./utils.js";
 
 ace.config.set(
   "basePath",
@@ -17,6 +18,12 @@ ace.config.set(
     import.meta.url
   ).toString()
 );
+
+const extensionName = "alekpet.IDENode";
+
+// IDENode localStorage settings
+const SyntaxHighlightTheme =
+  localStorage.getItem(`${extensionName}.SyntaxHighlightTheme`) ?? "monokai";
 
 // Paint widget function
 function paintWidget(paramsPaint) {
@@ -46,6 +53,80 @@ app.registerExtension({
   name: "alekpet.IDENode",
   init(app) {
     addStylesheet("css/idenode/ide_node_styles.css", import.meta.url);
+
+    // -- Settings
+    // Managing data
+    app.ui.settings.addSetting({
+      id: `${extensionName}.ManagingCodeData`,
+      name: "🔸 Managing saved codes",
+      defaultValue: false,
+      type: (name, sett, val) => {
+        return makeElement("div", {
+          children: [
+            makeElement("button", {
+              textContent: "IDENode codes",
+              onclick: () => {
+                new IdeNodeCodeDialog().show();
+              },
+              style: {
+                display: "block",
+                marginTop: "5px",
+              },
+            }),
+          ],
+        });
+      },
+    });
+
+    // Theme default
+    app.ui.settings.addSetting({
+      id: `${extensionName}.SyntaxHighlightThemeDefault`,
+      name: "🔸 Syntax highlight theme default",
+      defaultValue: false,
+      type: (name, sett, val) => {
+        const exampleCode = makeElement("pre", {
+          style: {
+            width: "15vw",
+            height: "140px",
+          },
+        });
+        const editor = ace.edit(exampleCode);
+        editor.setOptions({
+          mode: "ace/mode/python",
+          theme: `ace/theme/${SyntaxHighlightTheme}`,
+          value: DEFAULT_TEMPLATES.py,
+          readOnly: true,
+          highlightActiveLine: false,
+          highlightGutterLine: false,
+          fontSize: "10px",
+        });
+
+        return makeElement("div", {
+          style: { display: "flex", flexDirection: "column" },
+          children: [
+            exampleCode,
+            makeElement("select", {
+              style: { textAlign: "right" },
+              children: LIST_THEMES.map((theme, indx) =>
+                makeElement("option", {
+                  value: theme,
+                  textContent: theme,
+                  selected: theme == SyntaxHighlightTheme ? true : false,
+                })
+              ),
+              onchange: (e) => {
+                editor.setTheme(`ace/theme/${e.target.value}`);
+                localStorage.setItem(
+                  `${extensionName}.SyntaxHighlightTheme`,
+                  e.target.value
+                );
+              },
+            }),
+          ],
+        });
+      },
+    });
+    // end -- Settings
   },
   getCustomWidgets(app) {
     return {
@@ -110,23 +191,21 @@ app.registerExtension({
 
         // JavaScript run code
         const executionRunJsHandler = async ({ detail }) => {
-          if (this._destroyed) return;
+          if (this._destroyed || this._jsProcessing) return;
 
           const { vars, unique_id } = detail;
-          if (
-            (vars && !Object.keys(vars).length) ||
-            +unique_id !== this.id ||
-            this._jsProcessing
-          ) {
+          if ((vars && !Object.keys(vars).length) || +unique_id !== +this.id) {
             return;
           }
-
-          await this.clsIdeNodeEditor.jsRunCode(vars, unique_id);
+          this._jsProcessing = true;
+          await this.clsIdeNodeEditor.jsRunCode(unique_id, vars);
         };
 
         // Execution start - update_widget
         const executionStartHandler = () => {
           if (!this.graph) return;
+          if (this._pyProcessing || this._jsProcessing) return;
+
           if (this.toggleEnabled) {
             update_widget.value++;
             this.graph.change();
@@ -381,7 +460,7 @@ app.registerExtension({
               : "python";
             const theme = node?.widgets_values[widget_theme_id]?.trim()
               ? node?.widgets_values[widget_theme_id]
-              : "monokai";
+              : SyntaxHighlightTheme;
 
             editor.setTheme(`ace/theme/${theme}`);
             this.widgets[widget_theme_id].value = theme;

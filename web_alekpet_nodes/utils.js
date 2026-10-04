@@ -114,77 +114,93 @@ function findWidget(node, value, attr = "name", func = "find") {
     : null;
 }
 
+function formatBytes(bytes) {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1
+  );
+  return `${(bytes / 1024 ** i).toFixed(i ? 1 : 0)} ${units[i]}`;
+}
+
 function animateTransitionProps(
   el,
   props = { opacity: 1 },
-  preStyles = { display: "block" },
+  preStyles = {},
   callbacks = {}
 ) {
   const { start = () => {}, end = () => {}, cancel = () => {} } = callbacks;
-
   Object.assign(el.style, preStyles);
+  el.offsetWidth;
 
-  return new Promise((res, rej) => {
-    setTimeout(() => {
-      start(el);
+  el.style.transition =
+    !el.style.transition ||
+    !window.getComputedStyle(el).getPropertyValue("transition")
+      ? "all .8s"
+      : el.style.transition;
 
-      Object.assign(el.style, props);
+  return new Promise((res) => {
+    start(el);
+    Object.assign(el.style, props);
 
-      const transstart = () => {
-        el.isAnimating = true;
-      };
+    const transstart = () => {
+      el.isAnimating = true;
+    };
+    const transcancel = () => {
+      el.isAnimating = false;
+      cancel(el);
+    };
 
-      const transcancel = () => {
-        el.isAnimating = false;
-        cancel(el);
-        rej(el);
-      };
+    el.addEventListener("transitionstart", transstart);
+    el.addEventListener("transitioncancel", transcancel);
 
-      const transend = () => {
-        el.isAnimating = false;
+    el.addEventListener("transitionend", function transend() {
+      el.isAnimating = false;
+      el.removeEventListener("transitionend", transend);
+      el.removeEventListener("transitioncancel", transcancel);
+      el.removeEventListener("transitionstart", transstart);
 
-        el.removeEventListener("transitionstart", transstart);
-        el.removeEventListener("transitioncancel", transcancel);
-        el.removeEventListener("transitionend", transend);
-
-        end(el);
-
-        res(el);
-      };
-
-      el.addEventListener("transitionstart", transstart);
-      el.addEventListener("transitioncancel", transcancel);
-      el.addEventListener("transitionend", transend);
-    }, 100);
+      end(el);
+      res(el);
+    });
   });
 }
 
 function animateClick(target, params = {}) {
-  const {
-    opacityVal = 0.9,
-    callbacks = {
-      start: () => {},
-      end: () => {},
-      cancel: () => {},
-    },
-  } = params;
-  if (target?.isAnimating) return;
+  const { opacityVal = 0.9, callbacks = {} } = params;
 
-  const hide = +target.style.opacity === 0;
-  callbacks.start(target);
+  if (!target || target.isAnimating) return;
 
-  return animateTransitionProps(target, {
-    opacity: hide ? opacityVal : 0,
-  })
-    .then((el) => {
-      const isHide = hide || el.style.display === "none";
-      showHide({ elements: [target], hide: !hide });
-      callbacks.end(el);
-      return isHide;
-    })
-    .catch((err) => {
-      callbacks.cancel(err);
+  const { start = () => {}, end = () => {}, cancel = () => {} } = callbacks;
+
+  const currentDisplay = window.getComputedStyle(target).display;
+  const currentOpacity = parseFloat(window.getComputedStyle(target).opacity);
+  const isHiddenNow = currentDisplay === "none" || currentOpacity === 0;
+
+  if (isHiddenNow) {
+    target.style.opacity = "0";
+
+    return animateTransitionProps(
+      target,
+      { opacity: opacityVal },
+      { display: "block" },
+      { start, end, cancel }
+    ).then((el) => {
+      return false; // Element opened
     });
+  } else {
+    // Close click
+    return animateTransitionProps(
+      target,
+      { opacity: 0 },
+      {},
+      { start, end, cancel }
+    ).then((el) => {
+      showHide({ elements: [target], hide: true });
+      return true; // Element closed
+    });
+  }
 }
 
 function showHide({ elements = [], hide = null, displayProp = "block" } = {}) {
@@ -635,42 +651,47 @@ function createWindowModal({
 
   const closeEvent = new Event("closeModal");
   const closeModalWindow = function () {
-    overlay_enabled
-      ? animateTransitionProps(
-          overlayElement,
-          {
-            opacity: 0,
-          },
-          { start: start_anim_event }
-        )
-          .then(() =>
-            animateTransitionProps(
-              wrapper_settings,
-              {
-                opacity: 0,
-              },
-              { display: "block" },
-              { end: end_anim_event }
-            )
+    if (overlay_enabled) {
+      animateTransitionProps(
+        overlayElement,
+        { opacity: 0 },
+        {},
+        { start: start_anim_event }
+      )
+        .then(() =>
+          animateTransitionProps(
+            wrapper_settings,
+            { opacity: 0 },
+            { display: "block" },
+            { end: end_anim_event, cancel: cancel_anim_event }
           )
-          .then(() => {
-            if (closeRemove) {
+        )
+        .then(() => {
+          if (closeRemove) {
+            if (wrapper_settings.parentNode)
               parent.removeChild(wrapper_settings);
-              parent.removeChild(overlayElement);
-            } else {
-              showHide({ elements: [wrapper_settings, overlayElement] });
-            }
-          })
-      : animateTransitionProps(
-          wrapper_settings,
-          {
-            opacity: 0,
-          },
-          { display: "block" },
-          { end: end_anim_event }
-        ).then(() => {
-          showHide({ elements: [wrapper_settings] });
+            if (overlayElement.parentNode) parent.removeChild(overlayElement);
+          } else {
+            showHide({
+              elements: [wrapper_settings, overlayElement],
+              hide: true,
+            });
+          }
         });
+    } else {
+      animateTransitionProps(
+        wrapper_settings,
+        { opacity: 0 },
+        { display: "block" },
+        { end: end_anim_event, cancel: cancel_anim_event }
+      ).then(() => {
+        if (closeRemove) {
+          if (wrapper_settings.parentNode) parent.removeChild(wrapper_settings);
+        } else {
+          showHide({ elements: [wrapper_settings], hide: true });
+        }
+      });
+    }
   };
 
   close__box__button.addEventListener("closeModal", closeModalWindow);
@@ -711,50 +732,15 @@ function createWindowModal({
     parent.append(wrapper_settings);
 
     if (autoshow) {
-      overlay_enabled
-        ? animateClick(overlayElement, {
-            callbacks: {
-              start: start_click_event,
-              end: end_click_event,
-              cancel: cancel_click_event,
-            },
-          }).then(() =>
-            animateClick(wrapper_settings).then(
-              () =>
-                autohide &&
-                setTimeout(
-                  () =>
-                    animateTransitionProps(
-                      wrapper_settings,
-                      { ...propStyles },
-                      { ...propPreStyles },
-                      { start: start_anim_event }
-                    )
-                      .then(() =>
-                        animateTransitionProps(
-                          overlayElement,
-                          { ...propStyles },
-                          { ...propPreStyles },
-                          { end: end_anim_event }
-                        )
-                      )
-                      .then(() => {
-                        if (autoremove) {
-                          parent.removeChild(wrapper_settings);
-                          parent.removeChild(overlayElement);
-                        }
-                      }),
-                  timewait
-                )
-            )
-          )
-        : animateClick(wrapper_settings, {
-            callbacks: {
-              start: start_click_event,
-              end: end_click_event,
-              cancel: cancel_click_event,
-            },
-          }).then(
+      if (overlay_enabled) {
+        animateClick(overlayElement, {
+          callbacks: {
+            start: start_click_event,
+            end: end_click_event,
+            cancel: cancel_click_event,
+          },
+        }).then(() =>
+          animateClick(wrapper_settings).then(
             () =>
               autohide &&
               setTimeout(
@@ -763,13 +749,50 @@ function createWindowModal({
                     wrapper_settings,
                     { ...propStyles },
                     { ...propPreStyles },
-                    { end: end_anim_event }
-                  ).then(() => {
-                    if (autoremove) parent.removeChild(wrapper_settings);
-                  }),
+                    { start: start_anim_event }
+                  )
+                    .then(() =>
+                      animateTransitionProps(
+                        overlayElement,
+                        { ...propStyles },
+                        { ...propPreStyles },
+                        { end: end_anim_event }
+                      )
+                    )
+                    .then(() => {
+                      if (autoremove) {
+                        parent.removeChild(wrapper_settings);
+                        parent.removeChild(overlayElement);
+                      }
+                    }),
                 timewait
               )
-          );
+          )
+        );
+      } else {
+        animateClick(wrapper_settings, {
+          callbacks: {
+            start: start_click_event,
+            end: end_click_event,
+            cancel: cancel_click_event,
+          },
+        }).then(
+          () =>
+            autohide &&
+            setTimeout(
+              () =>
+                animateTransitionProps(
+                  wrapper_settings,
+                  { ...propStyles },
+                  { ...propPreStyles },
+                  { end: end_anim_event }
+                ).then(() => {
+                  if (autoremove) parent.removeChild(wrapper_settings);
+                }),
+              timewait
+            )
+        );
+      }
     }
   }
 
@@ -919,6 +942,7 @@ async function comfyuiDesktopConfirm(message) {
 }
 
 export {
+  formatBytes,
   makeModal,
   createWindowModal,
   animateTransitionProps,

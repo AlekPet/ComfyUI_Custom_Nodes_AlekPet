@@ -11,8 +11,9 @@ import {
 } from "../../utils.js";
 
 // Constants
+const extensionName = "alekpet.IDENode";
 const MAX_CHAR_VARNAME = 50;
-const LIST_THEMES = [
+export const LIST_THEMES = [
   "ambiance",
   "chaos",
   "chrome",
@@ -63,7 +64,7 @@ const LIST_THEMES = [
   "xcode",
 ];
 
-const DEFAULT_TEMPLATES = {
+export const DEFAULT_TEMPLATES = {
   js: `// !!! Attention, do not insert unverified code !!!
 // ---- Example code ----
 // Globals inputs variables: var1, var2, var3, user variables ...
@@ -91,7 +92,7 @@ const symbolsIncorrectFileName = /[/\\?%*:|"<>]/g;
 
 // Save data to workflow forced!
 function saveValue() {
-  app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState();
+  app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.captureCanvasState();
 }
 
 function hasWidgetImplementation(dataType) {
@@ -218,8 +219,7 @@ class IdeNodeControls {
           break;
 
         const currentWidth = this.node.size[0];
-        const input = this.node.addInput(varName, type);
-
+        // const input = this.node.addInput(varName, type);
         // Convert input to widget
         // if (hasWidgetImplementation(type)) {
         //   await app.extensionManager.dialog
@@ -674,6 +674,9 @@ class IdeNodeEditor {
 
   constructor(node, inputData) {
     this.node = node;
+    this.theme =
+      localStorage.getItem(`${extensionName}.SyntaxHighlightTheme`) ??
+      "monokai";
     this.#createEditor(inputData);
     this.#createThemeList();
     this.#createCodeLoader();
@@ -721,7 +724,7 @@ result = str(my(23, 9))`,
 
     // Editor
     this.#editor = ace.edit(this.#codeElement);
-    this.#editor.setTheme("ace/theme/monokai");
+    this.#editor.setTheme(`ace/theme/${this.theme}`);
     this.#editor.session.setMode("ace/mode/python");
   }
 
@@ -730,7 +733,9 @@ result = str(my(23, 9))`,
     this.#themeList = this.node.addWidget(
       "combo",
       "theme_highlight",
-      "monokai",
+      (this.theme =
+        localStorage.getItem(`${extensionName}.SyntaxHighlightTheme`) ??
+        "monokai"),
       (v) => {
         this.getEditor().setTheme(`ace/theme/${this.#themeList.value}`);
       },
@@ -772,6 +777,102 @@ result = str(my(23, 9))`,
     };
   }
 
+  codeInsertEditor(codefile) {
+    // Load code
+    fetch(
+      new URL(
+        `./codes/${this.getWidgetLang().value}/${codefile}`,
+        import.meta.url
+      ).toString()
+    )
+      .then((res) => res.json())
+      .then((res) => {
+        const { inputs, outputs, code, language } = res;
+
+        let lang = language ?? "python";
+
+        // Set code language
+        this.getWidgetLang().value = lang;
+        this.getEditor().session.setMode(`ace/mode/${lang}`);
+
+        const currentWidth = this.node.size[0];
+
+        // Remove input
+        const inputsSet = new Set([
+          "language",
+          "theme_highlight",
+          "pycode",
+          ...inputs.map((i) => i.name),
+        ]);
+
+        for (let i = this.node.inputs.length - 1; i >= 0; i--) {
+          const input = this.node.inputs[i];
+
+          if (!inputsSet.has(input.name)) {
+            this.node.removeInput(i);
+          }
+        }
+
+        // Remove output
+        const outputSet = new Set(["result", ...outputs.map((o) => o.name)]);
+
+        for (let i = this.node.outputs.length - 1; i >= 0; i--) {
+          const output = this.node.outputs[i];
+
+          if (!outputSet.has(output.name)) {
+            this.node.removeOutput(i);
+          }
+        }
+
+        inputs.forEach((input) => {
+          const isNotInArray = !this.node.inputs.some(
+            (i) => i.name === input.name.trim()
+          );
+          if (isNotInArray) this.node.addInput(input.name.trim(), input.type);
+        });
+
+        outputs.forEach((output) => {
+          const isNotInArray = !this.node.outputs.some(
+            (o) => o.name === output.name.trim()
+          );
+          if (isNotInArray)
+            this.node.addOutput(output.name.trim(), output.type);
+        });
+
+        // Set code
+        this.getEditor().setValue(code);
+        this.getEditor().clearSelection();
+
+        this.node.setSize([currentWidth, this.node.size[1]]);
+        this.node.setDirtyCanvas(true, true);
+        saveValue();
+      })
+      .catch((e) => {
+        createWindowModal({
+          textTitle: "ERROR",
+          textBody: [
+            makeElement("div", {
+              style: { fontSize: "0.7rem" },
+              innerHTML: e,
+            }),
+          ],
+          ...THEMES_MODAL_WINDOW.error,
+          options: {
+            auto: {
+              autohide: true,
+              autoremove: true,
+              autoshow: true,
+              timewait: 1500,
+            },
+            close: { showClose: false },
+            overlay: { overlay_enabled: true },
+            parent: this.getCodeElement(),
+          },
+        });
+        console.error(e);
+      });
+  }
+
   #createCodeLoader() {
     // Load code
     this.#codeLoad = this.node.addWidget(
@@ -794,103 +895,7 @@ result = str(my(23, 9))`,
               return;
             }
 
-            // Load code
-            fetch(
-              new URL(
-                `./codes/${this.getWidgetLang().value}/${codefile}`,
-                import.meta.url
-              ).toString()
-            )
-              .then((res) => res.json())
-              .then((res) => {
-                const { inputs, outputs, code, language } = res;
-
-                let lang = language ?? "python";
-
-                // Set code language
-                this.getWidgetLang().value = lang;
-                this.getEditor().session.setMode(`ace/mode/${lang}`);
-
-                const currentWidth = this.node.size[0];
-
-                // Remove input
-                const inputsSet = new Set([
-                  "language",
-                  "theme_highlight",
-                  "pycode",
-                  ...inputs.map((i) => i.name),
-                ]);
-
-                for (let i = this.node.inputs.length - 1; i >= 0; i--) {
-                  const input = this.node.inputs[i];
-
-                  if (!inputsSet.has(input.name)) {
-                    this.node.removeInput(i);
-                  }
-                }
-
-                // Remove output
-                const outputSet = new Set([
-                  "result",
-                  ...outputs.map((o) => o.name),
-                ]);
-
-                for (let i = this.node.outputs.length - 1; i >= 0; i--) {
-                  const output = this.node.outputs[i];
-
-                  if (!outputSet.has(output.name)) {
-                    this.node.removeOutput(i);
-                  }
-                }
-
-                inputs.forEach((input) => {
-                  const isNotInArray = !this.node.inputs.some(
-                    (i) => i.name === input.name.trim()
-                  );
-                  if (isNotInArray)
-                    this.node.addInput(input.name.trim(), input.type);
-                });
-
-                outputs.forEach((output) => {
-                  const isNotInArray = !this.node.outputs.some(
-                    (o) => o.name === output.name.trim()
-                  );
-                  if (isNotInArray)
-                    this.node.addOutput(output.name.trim(), output.type);
-                });
-
-                // Set code
-                this.getEditor().setValue(code);
-                this.getEditor().clearSelection();
-
-                this.node.setSize([currentWidth, this.node.size[1]]);
-                this.node.setDirtyCanvas(true, true);
-                saveValue();
-              })
-              .catch((e) => {
-                createWindowModal({
-                  textTitle: "ERROR",
-                  textBody: [
-                    makeElement("div", {
-                      style: { fontSize: "0.7rem" },
-                      innerHTML: e,
-                    }),
-                  ],
-                  ...THEMES_MODAL_WINDOW.error,
-                  options: {
-                    auto: {
-                      autohide: true,
-                      autoremove: true,
-                      autoshow: true,
-                      timewait: 1500,
-                    },
-                    close: { showClose: false },
-                    overlay: { overlay_enabled: true },
-                    parent: this.getCodeElement(),
-                  },
-                });
-                console.error(e);
-              });
+            this.codeInsertEditor(codefile);
           });
       },
       {
@@ -939,9 +944,7 @@ result = str(my(23, 9))`,
     });
   }
 
-  async jsRunCode(vars, unique_id) {
-    this.node._jsProcessing = true;
-
+  async jsRunCode(unique_id, vars) {
     await new Promise((res) => {
       const edit_vars = JSON.parse(vars);
       let code_run = "";
@@ -961,6 +964,7 @@ result = str(my(23, 9))`,
       let result_run_code = null;
       try {
         result_run_code = eval(`(function(){${code_run}}())`);
+        res(result_run_code);
       } catch (e) {
         result_run_code = `Error in javascript code: ${e}`;
         console.error(`<${this.node.name}> ${result_run_code}`);
@@ -983,12 +987,15 @@ result = str(my(23, 9))`,
             close: { showClose: false },
             overlay: { overlay_enabled: true },
             parent: this.getCodeElement(),
+            callbacks_anim: {
+              start_anim_event: () => (isAnimation = true),
+              end_anim_event: () => {
+                res(Object.keys(edit_vars).map((v) => String(e)));
+              },
+            },
           },
         });
-        this.node._jsProcessing = false;
-        res(Object.keys(edit_vars).map((v) => e.message));
       }
-      res(result_run_code);
     }).then((result_code) => {
       api
         .fetchApi("/alekpet/ide_node_check_js_complete", {
@@ -1006,11 +1013,12 @@ result = str(my(23, 9))`,
                 "color: green; font-weight: 600;"
               )
             : console.error(`Error JS complete: ${res.status}`);
-          this.node._jsProcessing = false;
         })
         .catch((err) => {
-          this.node._jsProcessing = false;
           console.error(`Error JS complete: ${err}`);
+        })
+        .finally(() => {
+          this.node._jsProcessing = isAnimation;
         });
     });
   }
