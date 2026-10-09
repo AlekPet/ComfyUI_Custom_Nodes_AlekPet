@@ -2,21 +2,12 @@ import { api } from "../../../../scripts/api.js";
 import { app } from "../../../../scripts/app.js";
 import { fabric } from "./fabric.js";
 import { createPainterAssetId } from "./helpers.js";
-import { comfyuiDesktopConfirm, formatBytes } from "../../utils.js";
+import { comfyuiDesktopConfirm, formatBytes, escapeHtml } from "../../utils.js";
 
 const ASSET_VERSION = 2;
 
 function assetRef(assetId) {
   return { version: ASSET_VERSION, asset_id: assetId };
-}
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
 
 function waitForPainter(node, timeout = 5000) {

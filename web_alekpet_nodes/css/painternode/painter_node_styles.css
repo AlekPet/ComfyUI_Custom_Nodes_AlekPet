@@ -575,6 +575,7 @@
   padding: 3px 0px;
   flex-direction: column;
   clip-path: polygon(0px 0%, 100% 0%, calc(100% - 15px) 100%, 0% 100%);
+  padding: 2px 4px;
 }
 
 .alekpet_storage_item_size {

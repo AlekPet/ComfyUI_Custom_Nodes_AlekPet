@@ -124,6 +124,15 @@ function formatBytes(bytes) {
   return `${(bytes / 1024 ** i).toFixed(i ? 1 : 0)} ${units[i]}`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function animateTransitionProps(
   el,
   props = { opacity: 1 },
@@ -943,6 +952,7 @@ async function comfyuiDesktopConfirm(message) {
 
 export {
   formatBytes,
+  escapeHtml,
   makeModal,
   createWindowModal,
   animateTransitionProps,

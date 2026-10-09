@@ -70,3 +70,34 @@
   color: #af713e !important;
   border-color: #af713e !important;
 }
+
+/* Setting Dialog IDENode codes */
+.alekpet_storage_item_code_params {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-size: 0.7rem;
+  gap: 5px;
+  flex-wrap: nowrap;
+}
+.alekpet_storage_item_code_params_inputs,
+.alekpet_storage_item_code_params_outputs {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.alekpet_storage_item_code_params_cards > div {
+  background: #464646;
+  margin: 2px;
+  padding: 2px 4px;
+  border-radius: 8px;
+}
+.alekpet_storage_item_code_params_cards
+  .alekpet_storage_item_code_params_input {
+  background: #089500;
+}
+.alekpet_storage_item_code_params_cards
+  .alekpet_storage_item_code_params_output {
+  background: #952f00;
+}
