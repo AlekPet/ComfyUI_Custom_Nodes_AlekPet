@@ -219,7 +219,7 @@ class IdeNodeControls {
           break;
 
         const currentWidth = this.node.size[0];
-        // const input = this.node.addInput(varName, type);
+        const input = this.node.addInput(varName, type);
         // Convert input to widget
         // if (hasWidgetImplementation(type)) {
         //   await app.extensionManager.dialog
@@ -308,7 +308,7 @@ class IdeNodeControls {
           break;
 
         this.node.addOutput(varName, type);
-        this.node.setSize([currentWidth, node.size[1]]);
+        this.node.setSize([currentWidth, this.node.size[1]]);
         app.graph.setDirtyCanvas(true, true);
         saveValue();
         break;
