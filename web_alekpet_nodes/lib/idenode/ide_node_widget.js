@@ -945,6 +945,7 @@ result = str(my(23, 9))`,
   }
 
   async jsRunCode(unique_id, vars) {
+    let isAnimation = false;
     await new Promise((res) => {
       const edit_vars = JSON.parse(vars);
       let code_run = "";
