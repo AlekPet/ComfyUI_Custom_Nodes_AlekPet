@@ -296,17 +296,30 @@ async function getDataJSON(url) {
 }
 
 function deepMerge(target, source) {
-  if (source?.nodeType) return;
-  for (let key in source) {
-    if (source[key] instanceof Object && key in target) {
-      Object.assign(source[key], deepMerge(target[key], source[key]));
+  const output = { ...target };
+
+  if (!source || typeof source !== "object") {
+    return output;
+  }
+
+  for (const key in source) {
+    const sourceValue = source[key];
+    const targetValue = output[key];
+
+    if (
+      sourceValue &&
+      typeof sourceValue === "object" &&
+      !Array.isArray(sourceValue) &&
+      !(sourceValue instanceof HTMLElement)
+    ) {
+      output[key] = deepMerge(targetValue || {}, sourceValue);
+    } else {
+      output[key] = sourceValue;
     }
   }
 
-  Object.assign(target || {}, source);
-  return target;
+  return output;
 }
-
 const THEME_MODAL_WINDOW_BASE = {
   stylesTitle: {
     background: "auto",
@@ -427,6 +440,28 @@ const defaultOptions = {
     overlayClasses: [],
     overlayStyles: {},
   },
+  callbacks_anim: {
+    start_anim_event: () => {
+      // console.log("start_anim_event");
+    },
+    end_anim_event: () => {
+      // console.log("end_anim_event");
+    },
+    cancel_anim_event: () => {
+      // console.log("cancel_anim_event");
+    },
+  },
+  callbacks_click: {
+    start_click_event: () => {
+      // console.log("start_click_event");
+    },
+    end_click_event: () => {
+      // console.log("end_click_event");
+    },
+    cancel_click_event: () => {
+      // console.log("cancel_click_event");
+    },
+  },
   close: { closeRemove: false, showClose: true },
   parent: null,
 };
@@ -450,10 +485,7 @@ function createWindowModal({
   options = defaultOptions,
 } = {}) {
   // Check all options exist
-  const _options = deepMerge(
-    JSON.parse(JSON.stringify(defaultOptions)),
-    options
-  );
+  const _options = deepMerge(defaultOptions, options);
 
   const {
     parent,
@@ -467,6 +499,8 @@ function createWindowModal({
       propStyles,
       propPreStyles,
     },
+    callbacks_anim: { start_anim_event, end_anim_event, cancel_anim_event },
+    callbacks_click: { start_click_event, end_click_event, cancel_click_event },
   } = _options;
 
   // Function past text(html)
@@ -585,28 +619,47 @@ function createWindowModal({
 
   const closeEvent = new Event("closeModal");
   const closeModalWindow = function () {
-    overlay_enabled
-      ? animateTransitionProps(overlayElement, {
-          opacity: 0,
-        })
-          .then(() =>
-            animateTransitionProps(wrapper_settings, {
-              opacity: 0,
-            })
+    if (overlay_enabled) {
+      animateTransitionProps(
+        overlayElement,
+        { opacity: 0 },
+        {},
+        { start: start_anim_event }
+      )
+        .then(() =>
+          animateTransitionProps(
+            wrapper_settings,
+            { opacity: 0 },
+            { display: "block" },
+            { end: end_anim_event, cancel: cancel_anim_event }
           )
-          .then(() => {
-            if (closeRemove) {
+        )
+        .then(() => {
+          if (closeRemove) {
+            if (wrapper_settings.parentNode)
               parent.removeChild(wrapper_settings);
-              parent.removeChild(overlayElement);
-            } else {
-              showHide({ elements: [wrapper_settings, overlayElement] });
-            }
-          })
-      : animateTransitionProps(wrapper_settings, {
-          opacity: 0,
-        }).then(() => {
-          showHide({ elements: [wrapper_settings] });
+            if (overlayElement.parentNode) parent.removeChild(overlayElement);
+          } else {
+            showHide({
+              elements: [wrapper_settings, overlayElement],
+              hide: true,
+            });
+          }
         });
+    } else {
+      animateTransitionProps(
+        wrapper_settings,
+        { opacity: 0 },
+        { display: "block" },
+        { end: end_anim_event, cancel: cancel_anim_event }
+      ).then(() => {
+        if (closeRemove) {
+          if (wrapper_settings.parentNode) parent.removeChild(wrapper_settings);
+        } else {
+          showHide({ elements: [wrapper_settings], hide: true });
+        }
+      });
+    }
   };
 
   close__box__button.addEventListener("closeModal", closeModalWindow);
@@ -647,36 +700,15 @@ function createWindowModal({
     parent.append(wrapper_settings);
 
     if (autoshow) {
-      overlay_enabled
-        ? animateClick(overlayElement).then(() =>
-            animateClick(wrapper_settings).then(
-              () =>
-                autohide &&
-                setTimeout(
-                  () =>
-                    animateTransitionProps(
-                      wrapper_settings,
-                      { ...propStyles },
-                      { ...propPreStyles }
-                    )
-                      .then(() =>
-                        animateTransitionProps(
-                          overlayElement,
-                          { ...propStyles },
-                          { ...propPreStyles }
-                        )
-                      )
-                      .then(() => {
-                        if (autoremove) {
-                          parent.removeChild(wrapper_settings);
-                          parent.removeChild(overlayElement);
-                        }
-                      }),
-                  timewait
-                )
-            )
-          )
-        : animateClick(wrapper_settings).then(
+      if (overlay_enabled) {
+        animateClick(overlayElement, {
+          callbacks: {
+            start: start_click_event,
+            end: end_click_event,
+            cancel: cancel_click_event,
+          },
+        }).then(() =>
+          animateClick(wrapper_settings).then(
             () =>
               autohide &&
               setTimeout(
@@ -684,13 +716,51 @@ function createWindowModal({
                   animateTransitionProps(
                     wrapper_settings,
                     { ...propStyles },
-                    { ...propPreStyles }
-                  ).then(
-                    () => autoremove && parent.removeChild(wrapper_settings)
-                  ),
+                    { ...propPreStyles },
+                    { start: start_anim_event }
+                  )
+                    .then(() =>
+                      animateTransitionProps(
+                        overlayElement,
+                        { ...propStyles },
+                        { ...propPreStyles },
+                        { end: end_anim_event }
+                      )
+                    )
+                    .then(() => {
+                      if (autoremove) {
+                        parent.removeChild(wrapper_settings);
+                        parent.removeChild(overlayElement);
+                      }
+                    }),
                 timewait
               )
-          );
+          )
+        );
+      } else {
+        animateClick(wrapper_settings, {
+          callbacks: {
+            start: start_click_event,
+            end: end_click_event,
+            cancel: cancel_click_event,
+          },
+        }).then(
+          () =>
+            autohide &&
+            setTimeout(
+              () =>
+                animateTransitionProps(
+                  wrapper_settings,
+                  { ...propStyles },
+                  { ...propPreStyles },
+                  { end: end_anim_event }
+                ).then(() => {
+                  if (autoremove) parent.removeChild(wrapper_settings);
+                }),
+              timewait
+            )
+        );
+      }
     }
   }
 
@@ -840,6 +910,8 @@ async function comfyuiDesktopConfirm(message) {
 }
 
 export {
+  formatBytes,
+  escapeHtml,
   makeModal,
   createWindowModal,
   animateTransitionProps,
