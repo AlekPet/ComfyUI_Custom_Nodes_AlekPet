@@ -114,7 +114,32 @@ function findWidget(node, value, attr = "name", func = "find") {
     : null;
 }
 
-function animateTransitionProps(el, props = { opacity: 1 }, preStyles = {}) {
+function formatBytes(bytes) {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1
+  );
+  return `${(bytes / 1024 ** i).toFixed(i ? 1 : 0)} ${units[i]}`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function animateTransitionProps(
+  el,
+  props = { opacity: 1 },
+  preStyles = {},
+  callbacks = {}
+) {
+  const { start = () => {}, end = () => {}, cancel = () => {} } = callbacks;
   Object.assign(el.style, preStyles);
   el.offsetWidth;
 
@@ -125,10 +150,16 @@ function animateTransitionProps(el, props = { opacity: 1 }, preStyles = {}) {
       : el.style.transition;
 
   return new Promise((res) => {
+    start(el);
     Object.assign(el.style, props);
 
-    const transstart = () => (el.isAnimating = true);
-    const transcancel = () => (el.isAnimating = false);
+    const transstart = () => {
+      el.isAnimating = true;
+    };
+    const transcancel = () => {
+      el.isAnimating = false;
+      cancel(el);
+    };
 
     el.addEventListener("transitionstart", transstart);
     el.addEventListener("transitioncancel", transcancel);
@@ -138,14 +169,19 @@ function animateTransitionProps(el, props = { opacity: 1 }, preStyles = {}) {
       el.removeEventListener("transitionend", transend);
       el.removeEventListener("transitioncancel", transcancel);
       el.removeEventListener("transitionstart", transstart);
+
+      end(el);
       res(el);
     });
   });
 }
 
 function animateClick(target, params = {}) {
-  const { opacityVal = 0.9, callback = () => {} } = params;
+  const { opacityVal = 0.9, callbacks = {} } = params;
+
   if (!target || target.isAnimating) return;
+
+  const { start = () => {}, end = () => {}, cancel = () => {} } = callbacks;
 
   const currentDisplay = window.getComputedStyle(target).display;
   const currentOpacity = parseFloat(window.getComputedStyle(target).opacity);
@@ -157,16 +193,21 @@ function animateClick(target, params = {}) {
     return animateTransitionProps(
       target,
       { opacity: opacityVal },
-      { display: "block" }
+      { display: "block" },
+      { start, end, cancel }
     ).then((el) => {
-      callback();
-      return false;
+      return false; // Element opened
     });
   } else {
-    return animateTransitionProps(target, { opacity: 0 }, {}).then((el) => {
+    // Close click
+    return animateTransitionProps(
+      target,
+      { opacity: 0 },
+      {},
+      { start, end, cancel }
+    ).then((el) => {
       showHide({ elements: [target], hide: true });
-      callback();
-      return true;
+      return true; // Element closed
     });
   }
 }
