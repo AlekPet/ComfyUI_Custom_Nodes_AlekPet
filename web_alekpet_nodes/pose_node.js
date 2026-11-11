@@ -7,7 +7,6 @@
 
 import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
-import { $el } from "../../scripts/ui.js";
 import { addStylesheet } from "../../scripts/utils.js";
 import {
   comfyuiDesktopConfirm,
@@ -21,6 +20,7 @@ fabric.Object.prototype.cornerColor = "#108ce6";
 fabric.Object.prototype.borderColor = "#108ce6";
 fabric.Object.prototype.cornerSize = 10;
 
+const { $el } = window.comfyAPI.ui;
 const connect_keypoints = [
   [0, 1],
   [1, 2],
@@ -587,8 +587,7 @@ class OpenPose {
       url: api.apiURL(
         `/view?filename=${encodeURIComponent(
           jsonData.name
-        )}&type=input&subfolder=${
-          jsonData.subfolder
+        )}&type=input&subfolder=${jsonData.subfolder
         }${app.getPreviewFormatParam()}${app.getRandParam()}`
       ),
       name: jsonData.name,
@@ -901,7 +900,7 @@ function createOpenPose(node, inputName, inputData, app) {
     }
   );
 
-  widget.callback = (v) => {};
+  widget.callback = (v) => { };
 
   const origDraw = widget.draw;
   widget.draw = function () {
@@ -915,7 +914,7 @@ function createOpenPose(node, inputName, inputData, app) {
   try {
     const data = node.widgets_values[3];
     if (data) widget.value = JSON.parse(JSON.stringify(data));
-  } catch (error) {}
+  } catch (error) { }
 
   widget.openpose = node.openPose.canvas.wrapperEl;
   widget.parent = node;
@@ -954,7 +953,7 @@ function createOpenPose(node, inputName, inputData, app) {
     this.size = [w, h];
   };
 
-  node.onDrawBackground = function (ctx) {};
+  node.onDrawBackground = function (ctx) { };
 
   return { widget: widget };
 }
@@ -965,7 +964,7 @@ app.registerExtension({
   async init(app) {
     addStylesheet("css/posenode/pose_node_styles.css", import.meta.url);
   },
-  async setup(app) {},
+  async setup(app) { },
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === "PoseNode") {
       const onNodeCreated = nodeType.prototype.onNodeCreated;

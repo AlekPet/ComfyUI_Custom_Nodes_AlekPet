@@ -6,10 +6,10 @@
 
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { $el } from "../../scripts/ui.js";
 import { isValidStyle } from "./utils.js";
 import { createPreiviewSize } from "./lib/extrasnode/extras_node_widgets.js";
 
+const { $el } = window.comfyAPI.ui;
 const convertIdClass = (text) => text.replaceAll(".", "_");
 const idExt = "alekpet.ExtrasNode";
 
@@ -26,13 +26,13 @@ const PreviewImageColorBgLS = localStorage.getItem(
 
 // Settings set values from LS or default
 let PreviewImageSize = PreviewImageSizeLS
-    ? JSON.parse(PreviewImageSizeLS)
-    : false,
+  ? JSON.parse(PreviewImageSizeLS)
+  : false,
   PreviewImageColorText =
     PreviewImageColorTextLS && PreviewImageColorTextLS.trim() !== ""
       ? PreviewImageColorTextLS
       : document.documentElement.style.getPropertyValue("--input-text") ||
-        "#dddddd",
+      "#dddddd",
   PreviewImageColorBg = PreviewImageColorBgLS ? PreviewImageColorBgLS : "";
 
 // -- Extension: PreviewImageSize --
@@ -50,11 +50,11 @@ app.registerExtension({
         return $el("tr", [
           !newUI
             ? $el("td", [
-                $el("label", {
-                  textContent: name,
-                  for: convertIdClass(`${idExt}.PreviewImage_size_checkbox`),
-                }),
-              ])
+              $el("label", {
+                textContent: name,
+                for: convertIdClass(`${idExt}.PreviewImage_size_checkbox`),
+              }),
+            ])
             : "",
           $el("td", [
             $el(
@@ -218,19 +218,17 @@ app.registerExtension({
             if (images.length) {
               const image = new Image();
               image.onload = () => {
-                widgetRes.value = `<div style="border: solid 1px var(--border-color); border-radius: 4px; padding: 5px; ${
-                  PreviewImageColorBg !== ""
-                    ? "background:" + PreviewImageColorBg
-                    : ""
-                }">Width: ${image.naturalWidth}, Height: ${
-                  image.naturalHeight
-                }</div>`;
+                widgetRes.value = `<div style="border: solid 1px var(--border-color); border-radius: 4px; padding: 5px; ${PreviewImageColorBg !== ""
+                  ? "background:" + PreviewImageColorBg
+                  : ""
+                  }">Width: ${image.naturalWidth}, Height: ${image.naturalHeight
+                  }</div>`;
               };
               image.src = api.apiURL(
                 "/view?" +
-                  new URLSearchParams(images[0]).toString() +
-                  app.getPreviewFormatParam() +
-                  app.getRandParam()
+                new URLSearchParams(images[0]).toString() +
+                app.getPreviewFormatParam() +
+                app.getRandParam()
               );
             }
           }

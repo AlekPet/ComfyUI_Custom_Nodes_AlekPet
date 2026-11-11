@@ -4,9 +4,9 @@
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/tree/master/ExtrasNode
  */
 
-import { $el } from "../../../../scripts/ui.js";
 import { rgbToHex, isValidStyle } from "../../utils.js";
 
+const { $el } = window.comfyAPI.ui;
 const idExt = "alekpet.ExtrasNode";
 const CONVERTED_TYPE = "converted-widget";
 
