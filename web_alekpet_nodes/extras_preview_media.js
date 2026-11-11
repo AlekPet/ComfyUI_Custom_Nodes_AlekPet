@@ -6,7 +6,8 @@
 
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { $el } from "../../scripts/ui.js";
+
+const { $el } = window.comfyAPI.ui;
 
 const idExt = "alekpet.ExtrasNode";
 
@@ -177,6 +178,7 @@ app.registerExtension({
 
       LiteGraph.pointerListenerAdd(element, "over", (e) => {
         const currentTypeNode = e?.relatedTarget?.data?.current_node?.type;
+
         if (!currentNodeType) {
           currentNodeType = currentTypeNode;
         } else if (
@@ -186,6 +188,7 @@ app.registerExtension({
         ) {
           currentNodeType = currentTypeNode;
         }
+
       });
 
       LiteGraph.pointerListenerAdd(element, "enter", (e) => {
@@ -233,13 +236,11 @@ app.registerExtension({
               body_rect.width &&
               root_rect.right + previewWidth > body_rect.width
             ) {
-              this.root.preview_content_combo.style.left = `${
-                root_rect.left - previewWidth - 10
-              }px`;
+              this.root.preview_content_combo.style.left = `${root_rect.left - previewWidth - 10
+                }px`;
             } else {
-              this.root.preview_content_combo.style.left = `${
-                root_rect.left + root_rect.width + 10
-              }px`;
+              this.root.preview_content_combo.style.left = `${root_rect.left + root_rect.width + 10
+                }px`;
             }
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -321,7 +322,7 @@ app.registerExtension({
 
           if (
             !SUPPORTS_FORMAT.image.includes(ext) &&
-            !SUPPORTS_FORMAT.video.includes(ext)
+            !SUPPORTS_FORMAT.video.includes(ext) && !SUPPORTS_FORMAT.audio.includes(ext)
           )
             return;
 
@@ -331,7 +332,7 @@ app.registerExtension({
             [null, valueItem, null],
             el
           );
-        } catch (error) {}
+        } catch (error) { }
       },
       true
     );
@@ -344,7 +345,7 @@ app.registerExtension({
           const el = e.target.closest("[data-value]");
           if (!el) return;
           el.classList.toggle("alekpet_preview_media_higlight");
-        } catch (e) {}
+        } catch (e) { }
       },
       true
     );
@@ -363,7 +364,7 @@ app.registerExtension({
 
           if (node && Object.keys(NODES_TYPE_SRC).includes(node.comfyClass))
             currentNodeType = node.comfyClass;
-        } catch (error) {}
+        } catch (error) { }
       },
       true
     );

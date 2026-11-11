@@ -6,7 +6,6 @@
 
 import { api } from "../../../../scripts/api.js";
 import { app } from "../../../../scripts/app.js";
-import { $el } from "../../../../scripts/ui.js";
 import {
   createWindowModal,
   animateClick,
@@ -14,6 +13,7 @@ import {
 } from "../../utils.js";
 import { RecognationSpeechDialog } from "./extras_speech_and_recognation_dialog.js";
 
+const { $el } = window.comfyAPI.ui;
 const idExt = "alekpet.ExtrasNode";
 
 /* ~~~ Speech & Recognition speech Widget ~~~ */

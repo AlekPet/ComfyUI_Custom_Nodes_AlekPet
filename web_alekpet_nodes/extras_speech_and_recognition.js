@@ -4,7 +4,6 @@
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/tree/master/ExtrasNode
  */
 import { app } from "../../scripts/app.js";
-import { $el } from "../../scripts/ui.js";
 import { comfyuiDesktopConfirm } from "./utils.js";
 import { addStylesheet } from "../../scripts/utils.js";
 import {
@@ -15,6 +14,7 @@ import {
 } from "./lib/extrasnode/extras_speech_and_recognation_widget.js";
 import { RecognationSpeechDialog } from "./lib/extrasnode/extras_speech_and_recognation_dialog.js";
 
+const { $el } = window.comfyAPI.ui;
 const convertIdClass = (text) => text.replaceAll(".", "_");
 const idExt = "alekpet.ExtrasNode";
 
@@ -26,8 +26,8 @@ const SpeechAndRecognationSpeechLS = localStorage.getItem(
 // Settings set values from LS or default for Speech & Recognition widget settings
 // Default Off: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/166#issuecomment-3107129457
 let SpeechAndRecognationSpeech = SpeechAndRecognationSpeechLS
-    ? JSON.parse(SpeechAndRecognationSpeechLS)
-    : false,
+  ? JSON.parse(SpeechAndRecognationSpeechLS)
+  : false,
   SpeechAndRecognationSpeechSaveAs = JSON.parse(
     localStorage.getItem(`${idExt}.SpeechAndRecognationSpeechSaveAs`),
     false
@@ -53,13 +53,13 @@ app.registerExtension({
         return $el("tr", [
           !newUI
             ? $el("td", [
-                $el("label", {
-                  textContent: name,
-                  for: convertIdClass(
-                    `${idExt}.SpeechAndRecognationSpeech_show`
-                  ),
-                }),
-              ])
+              $el("label", {
+                textContent: name,
+                for: convertIdClass(
+                  `${idExt}.SpeechAndRecognationSpeech_show`
+                ),
+              }),
+            ])
             : "",
           $el("td", [
             $el("a", {

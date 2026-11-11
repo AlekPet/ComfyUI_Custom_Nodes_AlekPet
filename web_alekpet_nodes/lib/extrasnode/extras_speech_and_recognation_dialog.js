@@ -4,10 +4,10 @@
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/tree/master/ExtrasNode
  */
 
-import { ComfyDialog } from "../../../../../scripts/ui.js";
 import { makeElement } from "../../utils.js";
 import { speakSynthesisUtterance } from "./extras_speech_and_recognation_widget.js";
 
+const { ComfyDialog } = window.comfyAPI.ui;
 const idExt = "alekpet.ExtrasNode";
 
 export class RecognationSpeechDialog extends ComfyDialog {
@@ -27,7 +27,7 @@ export class RecognationSpeechDialog extends ComfyDialog {
     );
 
     const voice =
-        SpeechVoiceLS && SpeechVoiceLS.trim() !== "" ? SpeechVoiceLS : null,
+      SpeechVoiceLS && SpeechVoiceLS.trim() !== "" ? SpeechVoiceLS : null,
       volume =
         SpeechVolumeLS && SpeechVolumeLS.trim() !== "" ? +SpeechVolumeLS : 1,
       pitch = SpeechPitchLS && SpeechPitchLS.trim() !== "" ? +SpeechPitchLS : 1,
@@ -158,8 +158,7 @@ export class RecognationSpeechDialog extends ComfyDialog {
         onchange: (e) => {
           this.settings[opt] = e.target.value;
           localStorage.setItem(
-            `Comfy.Settings.${idExt}.Speech${
-              opt[0].toUpperCase() + opt.slice(1)
+            `Comfy.Settings.${idExt}.Speech${opt[0].toUpperCase() + opt.slice(1)
             }`,
             e.target.value
           );
