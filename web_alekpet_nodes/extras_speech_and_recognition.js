@@ -4,7 +4,7 @@
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/tree/master/ExtrasNode
  */
 import { app } from "../../scripts/app.js";
-import { comfyuiDesktopConfirm } from "./utils.js";
+import { comfyuiDesktopConfirm, placeSettingRow } from "./utils.js";
 import { addStylesheet } from "../../scripts/utils.js";
 import {
   SpeechWidget,
@@ -50,7 +50,7 @@ app.registerExtension({
       defaultValue: false,
       type: (name, sett, val) => {
         const newUI = document.querySelector(".p-dialog-header");
-        return $el("tr", [
+        return placeSettingRow($el("tr", [
           !newUI
             ? $el("td", [
               $el("label", {
@@ -141,7 +141,7 @@ app.registerExtension({
               },
             }),
           ]),
-        ]);
+        ]));
       },
     });
   },

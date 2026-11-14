@@ -212,6 +212,8 @@ export class RecognationSpeechDialog extends ComfyDialog {
 
     super.show(box);
     this.element.style.zIndex = 9999;
+    // The settings dialog disables pointer events outside itself.
+    this.element.style.pointerEvents = "auto";
 
     const close = this.element.children[0].querySelectorAll("button")[1];
     close.style.width = "50%";

@@ -844,6 +844,9 @@ function confirmModal({ title, message }) {
         right: 0,
         bottom: 0,
         zIndex: 9999,
+        // A settings dialog sets pointer-events:none on body. This overlay is
+        // appended to body, so it has to accept clicks itself.
+        pointerEvents: "auto",
         userSelect: "none",
       },
     });
@@ -931,6 +934,24 @@ function confirmModal({ title, message }) {
   });
 }
 
+/**
+ * Frontend 1.59 renders the setting name and mounts the returned node in the
+ * value cell, where a <tr> is invalid. Older settings still use the table row.
+ * @param {HTMLElement} row
+ * @returns {HTMLElement}
+ */
+function placeSettingRow(row) {
+  if (!document.querySelector('[data-dialog-key="global-settings"]')) return row;
+  const cell = row.querySelector("td:last-child") || row;
+  const panel = document.createElement("div");
+  panel.style.display = "flex";
+  panel.style.flexDirection = "column";
+  panel.style.alignItems = "flex-start";
+  panel.style.gap = "6px";
+  while (cell.firstChild) panel.appendChild(cell.firstChild);
+  return panel;
+}
+
 async function comfyuiDesktopConfirm(message) {
   try {
     const result = await confirmModal({
@@ -969,4 +990,5 @@ export {
   comfyuiDesktopConfirm,
   comfyuiDesktopPrompt,
   comfyuiDesktopAlert,
+  placeSettingRow,
 };

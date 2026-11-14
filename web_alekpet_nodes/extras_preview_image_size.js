@@ -6,7 +6,7 @@
 
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { isValidStyle } from "./utils.js";
+import { isValidStyle, placeSettingRow } from "./utils.js";
 import { createPreiviewSize } from "./lib/extrasnode/extras_node_widgets.js";
 
 const { $el } = window.comfyAPI.ui;
@@ -47,7 +47,7 @@ app.registerExtension({
       defaultValue: true,
       type: (name, sett, val) => {
         const newUI = document.querySelector(".p-dialog-header");
-        return $el("tr", [
+        return placeSettingRow($el("tr", [
           !newUI
             ? $el("td", [
               $el("label", {
@@ -165,7 +165,7 @@ app.registerExtension({
               },
             }),
           ]),
-        ]);
+        ]));
       },
     });
   },

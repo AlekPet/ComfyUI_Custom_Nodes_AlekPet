@@ -466,6 +466,8 @@
   position: fixed;
   inset: 0;
   z-index: 9998;
+  /* Settings sets pointer-events:none on body; this overlay is a body child. */
+  pointer-events: auto;
   display: flex;
   align-items: center;
   justify-content: center;
