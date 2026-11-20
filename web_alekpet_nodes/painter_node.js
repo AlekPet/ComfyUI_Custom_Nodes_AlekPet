@@ -27,6 +27,7 @@ import {
   comfyuiDesktopConfirm,
   comfyuiDesktopPrompt,
   comfyuiDesktopAlert,
+  placeSettingRow,
 } from "./utils.js";
 import "./lib/painternode/fontfaceobserver.js";
 import { MyPaintManager } from "./lib/painternode/manager_mypaint.js";
@@ -3260,7 +3261,7 @@ app.registerExtension({
       name: "🔸 Managing JSON data assets",
       defaultValue: false,
       type: (name, sett, val) => {
-        return makeElement("tr", {
+        return placeSettingRow(makeElement("tr", {
           children: [
             makeElement("td", {
               children: [
@@ -3277,7 +3278,7 @@ app.registerExtension({
               ],
             }),
           ],
-        });
+        }));
       },
     });
     // end -- Settings
