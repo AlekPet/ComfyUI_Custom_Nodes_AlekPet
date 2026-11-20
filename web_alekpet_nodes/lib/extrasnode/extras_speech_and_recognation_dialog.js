@@ -10,7 +10,11 @@ import { speakSynthesisUtterance } from "./extras_speech_and_recognation_widget.
 const { ComfyDialog } = window.comfyAPI.ui;
 const idExt = "alekpet.ExtrasNode";
 
-export class RecognationSpeechDialog extends ComfyDialog {
+export class RecognationSpeechDialog {
+  constructor() {
+    this.overlay = null;
+  }
+
   static getSettingsRecSpeechLS() {
     const getItemLS = (k) => localStorage.getItem(`Comfy.Settings.${idExt}.${k}`);
     const num = (k, def) => {
@@ -196,6 +200,24 @@ export class RecognationSpeechDialog extends ComfyDialog {
   }
 
   async show() {
+    if (this.overlay) return;
+
+    this.overlay = document.createElement("div");
+    this.overlay.className = "alekpet_storage_overlay";
+    this.overlay.title = "Close dialog"
+
+    const box = document.createElement("div");
+    box.className = "alekpet_storage_box";
+
+    const header = document.createElement("div");
+    header.className = "alekpet_storage_header";
+    header.innerHTML = `<strong>Speech and Recognition: <span style='color: #7e797d;'>Voice settings</span></strong>`;
+
+    const close = document.createElement("button");
+    close.textContent = "✕";
+    close.onclick = () => this.close();
+    header.appendChild(close);
+
     this.cancelSpeech();
     this.settings = RecognationSpeechDialog.getSettingsRecSpeechLS();
     this.defaultSettings = {
@@ -204,39 +226,36 @@ export class RecognationSpeechDialog extends ComfyDialog {
       pitch: { min: 0, max: 2, default: 1 },
     };
 
-    const box = makeElement("div", {
+    const panelSettings = makeElement("div", {
       class: ["box_recognation_speech"],
       style: {
-        width: "80vw",
         color: "var(--input-text)",
         padding: "20px",
       },
       children: [await this.createPanelSettings()],
     });
 
-    super.show(box);
+
+    box.append(header, panelSettings)
+
+    this.overlay.addEventListener("click", (event) => {
+      if (event.target === this.overlay) this.close();
+    });
 
     const stop = (e) => e.stopPropagation();
     [
       "pointerdown", "pointerup", "mousedown", "mouseup", "click",
       "focusin", "focusout", "keydown",
-    ].forEach((ev) => this.element.addEventListener(ev, stop));
+    ].forEach((ev) => this.overlay.addEventListener(ev, stop));
 
-    this.element.addEventListener("keydown", (e) => {
+    this.overlay.addEventListener("keydown", (e) => {
       if (e.key === "Escape") this.close();
     });
 
-    this.element.tabIndex = -1;
-    this.element.focus();
+    this.overlay.tabIndex = -1;
+    this.overlay.focus();
 
-    this.element.style.zIndex = 9999;
-    // The settings dialog box blocks pointer events outside its boundaries.
-    this.element.style.pointerEvents = "auto";
-
-    const buttons = this.element.children[0].querySelectorAll("button");
-    const close = buttons[buttons.length - 1];
-    if (!close) return;
-    close.style.width = "50%";
+    document.body.append(this.overlay);
 
     const divButtons = makeElement("div", {
       class: ["box_recognation_speech_buttons"],
@@ -275,13 +294,15 @@ export class RecognationSpeechDialog extends ComfyDialog {
             }
           },
         }),
-        close,
       ],
-      parent: this.element.children[0],
+      parent: box,
     });
+
+    this.overlay.appendChild(box)
   }
   close() {
     this.cancelSpeech();
-    this.element?.remove();
+    this.overlay?.remove();
+    this.overlay = null;
   }
 }

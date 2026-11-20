@@ -33,6 +33,7 @@ export class PainterAssetDialog {
 
     this.overlay = document.createElement("div");
     this.overlay.className = "alekpet_storage_overlay";
+    this.overlay.title = "Close dialog"
 
     const box = document.createElement("div");
     box.className = "alekpet_storage_box";
@@ -62,7 +63,20 @@ export class PainterAssetDialog {
     this.overlay.addEventListener("click", (event) => {
       if (event.target === this.overlay) this.close();
     });
+
+    const stop = (e) => e.stopPropagation();
+    [
+      "pointerdown", "pointerup", "mousedown", "mouseup", "click",
+      "focusin", "focusout", "keydown",
+    ].forEach((ev) => this.overlay.addEventListener(ev, stop));
+
+    this.overlay.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") this.close();
+    });
+    this.overlay.tabIndex = -1;
+    this.overlay.focus();
     document.body.appendChild(this.overlay);
+
     this.load();
   }
 
