@@ -4,35 +4,38 @@
  * Github: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/tree/master/ExtrasNode
  */
 import { app } from "../../scripts/app.js";
-import { comfyuiDesktopConfirm, placeSettingRow } from "./utils.js";
+import { placeSettingRow } from "./utils.js";
 import { addStylesheet } from "../../scripts/utils.js";
-import { ComfyWidgets } from "../../../scripts/widgets.js";
 import {
   SpeechAndRecognation,
   speechRect,
   SpeechSynthesis,
   checkboxLSCheckedByKey,
+  getSettingBool,
+  setSettingBool,
+  KEY_ENABLED,
+  KEY_SAVEAS,
 } from "./lib/extrasnode/extras_speech_and_recognation_widget.js";
 import { RecognationSpeechDialog } from "./lib/extrasnode/extras_speech_and_recognation_dialog.js";
 
 const { $el } = window.comfyAPI.ui;
 const convertIdClass = (text) => text.replaceAll(".", "_");
 const idExt = "alekpet.ExtrasNode";
+const SAVEAS_SELECTOR = ".alekpet_extras_node_recognition_saveAs";
 
-// Recognation & speech localStorage settings
-const SpeechAndRecognationSpeechLS = localStorage.getItem(
-  `Comfy.Settings.${idExt}.SpeechAndRecognationSpeech`
-);
+let SpeechAndRecognationSpeech = false;
 
-// Settings set values from LS or default for Speech & Recognition widget settings
-// Default Off: https://github.com/AlekPet/ComfyUI_Custom_Nodes_AlekPet/issues/166#issuecomment-3107129457
-let SpeechAndRecognationSpeech = SpeechAndRecognationSpeechLS
-  ? JSON.parse(SpeechAndRecognationSpeechLS)
-  : false,
-  SpeechAndRecognationSpeechSaveAs = JSON.parse(
-    localStorage.getItem(`${idExt}.SpeechAndRecognationSpeechSaveAs`),
-    false
-  );
+const toggleBoxes = () =>
+  document
+    .querySelectorAll(".alekpet_extras_node_speechrecognition_box")
+    .forEach((el) => (el.style.display = SpeechAndRecognationSpeech ? "flex" : "none"));
+
+export const syncSaveAsCheckboxes = () => {
+  const v = getSaveAs();
+  document
+    .querySelectorAll(".alekpet_extras_node_recognition_saveAs")
+    .forEach((el) => (el.checked = v));
+};
 
 const tracked = new Map();
 
@@ -104,20 +107,28 @@ app.registerExtension({
       import.meta.url
     );
 
+    let dialogSpeechRecogn = null;
+
     // Speech & Recognition speech settings ui
     app.ui.settings.addSetting({
-      id: `${idExt}.SpeechAndRecognationSpeech`,
+      id: KEY_ENABLED,
       name: "🔸 Speak text & Recognition speech",
       defaultValue: false,
+      onChange: (v) => {
+        SpeechAndRecognationSpeech = !!v;
+        toggleBoxes();
+        if (SpeechAndRecognationSpeech) scanSoon();
+      },
       type: (name, sett, val) => {
         const newUI = document.querySelector(".p-dialog-header");
+        const idShow = convertIdClass(`${KEY_ENABLED}_show`);
         return placeSettingRow($el("tr", [
           !newUI
             ? $el("td", [
               $el("label", {
                 textContent: name,
                 for: convertIdClass(
-                  `${idExt}.SpeechAndRecognationSpeech_show`
+                  idShow
                 ),
               }),
             ])
@@ -137,27 +148,11 @@ app.registerExtension({
               [
                 $el("input", {
                   id: convertIdClass(
-                    `${idExt}.SpeechAndRecognationSpeech_show`
+                    idShow
                   ),
                   type: "checkbox",
-                  checked: val,
-                  onchange: (e) => {
-                    const checked = !!e.target.checked;
-                    SpeechAndRecognationSpeech = checked;
-                    localStorage.setItem(
-                      `Comfy.Settings.${idExt}.SpeechAndRecognationSpeech`,
-                      checked
-                    );
-
-                    document
-                      .querySelectorAll(
-                        ".alekpet_extras_node_speechrecognition_box"
-                      )
-                      .forEach((el) => {
-                        el.style.display = checked ? "flex" : "none";
-                      });
-                    sett(checked);
-                  },
+                  checked: !!val,
+                  onchange: (e) => sett(!!e.target.checked),
                 }),
               ]
             ),
@@ -175,25 +170,17 @@ app.registerExtension({
                 $el("span", { textContent: "Output Save as?" }),
                 $el("input", {
                   type: "checkbox",
-                  checked: SpeechAndRecognationSpeechSaveAs,
-                  onchange: (e) => {
-                    localStorage.setItem(
-                      `${idExt}.SpeechAndRecognationSpeechSaveAs`,
-                      !!e.target.checked
-                    );
-                    SpeechAndRecognationSpeechSaveAs = !!e.target.checked;
-                    checkboxLSCheckedByKey(
-                      `${idExt}.SpeechAndRecognationSpeechSaveAs`,
-                      ".alekpet_extras_node_recognition_saveAs"
-                    );
-                  },
+                  checked: getSettingBool(KEY_SAVEAS),
+                  onchange: (e) => setSettingBool(KEY_SAVEAS, e.target.checked),
                 }),
               ]
             ),
             $el("button", {
               textContent: "Speech settings",
               onclick: () => {
-                new RecognationSpeechDialog().show();
+                if (dialogSpeechRecogn?.element?.isConnected) return;
+                dialogSpeechRecogn = new RecognationSpeechDialog();
+                dialogSpeechRecogn.show();
               },
               style: {
                 display: "block",
@@ -203,8 +190,26 @@ app.registerExtension({
         ]));
       },
     });
+
+    app.ui.settings.addSetting({
+      id: KEY_SAVEAS,
+      name: "Output Save as?",
+      type: "hidden",
+      defaultValue: false,
+      onChange: () => checkboxLSCheckedByKey(KEY_SAVEAS, SAVEAS_SELECTOR),
+    });
+
   },
   setup() {
+    try {
+      const legacy = localStorage.getItem(`${idExt}.SpeechAndRecognationSpeechSaveAs`);
+      if (legacy !== null) {
+        setSettingBool(KEY_SAVEAS, JSON.parse(legacy) === true);
+        localStorage.removeItem(`${idExt}.SpeechAndRecognationSpeechSaveAs`);
+      }
+      localStorage.removeItem(`Comfy.Settings.${idExt}.SpeechAndRecognationSpeech`);
+    } catch { }
+
     new MutationObserver(scanSoon).observe(document.body, {
       childList: true,
       subtree: true,

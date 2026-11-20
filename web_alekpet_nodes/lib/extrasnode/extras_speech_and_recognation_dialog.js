@@ -12,28 +12,21 @@ const idExt = "alekpet.ExtrasNode";
 
 export class RecognationSpeechDialog extends ComfyDialog {
   static getSettingsRecSpeechLS() {
-    const SpeechVoiceLS = localStorage.getItem(
-      `Comfy.Settings.${idExt}.SpeechVoice`
-    );
-
-    const SpeechVolumeLS = localStorage.getItem(
-      `Comfy.Settings.${idExt}.SpeechVolume`
-    );
-    const SpeechPitchLS = localStorage.getItem(
-      `Comfy.Settings.${idExt}.SpeechPitch`
-    );
-    const SpeechRateLS = localStorage.getItem(
-      `Comfy.Settings.${idExt}.SpeechRate`
-    );
-
-    const voice =
-      SpeechVoiceLS && SpeechVoiceLS.trim() !== "" ? SpeechVoiceLS : null,
-      volume =
-        SpeechVolumeLS && SpeechVolumeLS.trim() !== "" ? +SpeechVolumeLS : 1,
-      pitch = SpeechPitchLS && SpeechPitchLS.trim() !== "" ? +SpeechPitchLS : 1,
-      rate = SpeechRateLS && SpeechRateLS.trim() !== "" ? +SpeechRateLS : 1;
-    return { voice, volume, pitch, rate };
+    const getItemLS = (k) => localStorage.getItem(`Comfy.Settings.${idExt}.${k}`);
+    const num = (k, def) => {
+      const raw = getItemLS(k);
+      const n = raw && raw.trim() !== "" ? Number(raw) : NaN;
+      return Number.isFinite(n) ? n : def;
+    };
+    const voiceRaw = getItemLS("SpeechVoice");
+    return {
+      voice: voiceRaw && voiceRaw.trim() !== "" ? voiceRaw : null,
+      volume: num("SpeechVolume", 1),
+      pitch: num("SpeechPitch", 1),
+      rate: num("SpeechRate", 1),
+    };
   }
+
 
   async createPanelSettings() {
     const panelSettings = makeElement("div", {
@@ -56,9 +49,20 @@ export class RecognationSpeechDialog extends ComfyDialog {
       },
     });
 
+    const loadVoices = () =>
+      new Promise((resolve) => {
+        const synth = window.speechSynthesis;
+        if (!synth) return resolve([]);
+        const v = synth.getVoices();
+        if (v.length) return resolve(v);
+        const done = () => resolve(synth.getVoices());
+        synth.addEventListener("voiceschanged", done, { once: true });
+        setTimeout(done, 1000);
+      });
+
     const synth = window.speechSynthesis;
     if (synth) {
-      const voices = synth.getVoices();
+      const voices = await loadVoices();
 
       for (let i = 0; i < voices.length; i++) {
         const voice = voices[i];
@@ -156,7 +160,7 @@ export class RecognationSpeechDialog extends ComfyDialog {
           e.target.nextElementSibling.textContent = e.target.value;
         },
         onchange: (e) => {
-          this.settings[opt] = e.target.value;
+          this.settings[opt] = Number(e.target.value);
           localStorage.setItem(
             `Comfy.Settings.${idExt}.Speech${opt[0].toUpperCase() + opt.slice(1)
             }`,
@@ -211,20 +215,44 @@ export class RecognationSpeechDialog extends ComfyDialog {
     });
 
     super.show(box);
+
+    const stop = (e) => e.stopPropagation();
+    [
+      "pointerdown", "pointerup", "mousedown", "mouseup", "click",
+      "focusin", "focusout", "keydown",
+    ].forEach((ev) => this.element.addEventListener(ev, stop));
+
+    this.element.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") this.close();
+    });
+
+    this.element.tabIndex = -1;
+    this.element.focus();
+
     this.element.style.zIndex = 9999;
-    // The settings dialog disables pointer events outside itself.
+    // The settings dialog box blocks pointer events outside its boundaries.
     this.element.style.pointerEvents = "auto";
 
-    const close = this.element.children[0].querySelectorAll("button")[1];
+    const buttons = this.element.children[0].querySelectorAll("button");
+    const close = buttons[buttons.length - 1];
+    if (!close) return;
     close.style.width = "50%";
 
     const divButtons = makeElement("div", {
       class: ["box_recognation_speech_buttons"],
-      style: { display: "flex" },
+      style: {
+        display: "flex",
+        gap: "10px",
+        padding: "15px",
+        flexWrap: "nowrap",
+        justifyContent: "space-evenly"
+      },
       children: [
         makeElement("button", {
           textContent: "Reset to default",
-          style: { width: "50%" },
+          style: {
+            width: "50%"
+          },
           onclick: (e) => {
             const ranges = box.querySelectorAll("[type='range']");
 
@@ -235,7 +263,8 @@ export class RecognationSpeechDialog extends ComfyDialog {
             const indexDefault = Array.from(selectElement.options).findIndex(
               (o) => o.textContent.includes(" — DEFAULT")
             );
-            selectElement.selectedIndex = indexDefault;
+            selectElement.selectedIndex = indexDefault >= 0 ? indexDefault : 0;
+            this.settings.voice = null;
             localStorage.removeItem(`Comfy.Settings.${idExt}.SpeechVoice`);
 
             // Reset settings
@@ -253,6 +282,6 @@ export class RecognationSpeechDialog extends ComfyDialog {
   }
   close() {
     this.cancelSpeech();
-    this.element.remove();
+    this.element?.remove();
   }
 }

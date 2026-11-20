@@ -16,6 +16,26 @@ import { RecognationSpeechDialog } from "./extras_speech_and_recognation_dialog.
 const { $el } = window.comfyAPI.ui;
 const idExt = "alekpet.ExtrasNode";
 
+// Recognation & speech settings
+export const KEY_ENABLED = `${idExt}.SpeechAndRecognationSpeech`;
+export const KEY_SAVEAS = `${idExt}.SpeechAndRecognationSpeechSaveAs`;
+
+export const getSettingBool = (id, def = false) => {
+  try {
+    return !!app.ui.settings.getSettingValue(id, def);
+  } catch {
+    return def;
+  }
+};
+
+export const setSettingBool = (id, v) => {
+  try {
+    app.ui.settings.setSettingValue(id, !!v);
+  } catch (e) {
+    console.warn("[Speech] setting error", id, e);
+  }
+};
+
 /* ~~~ Speech & Recognition ~~~ */
 const spRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -190,12 +210,9 @@ async function checkPremissions(
 }
 
 // Check checkbox
-function checkboxLSCheckedByKey(lsKey, selector, defaultVal = false) {
-  const currValue = JSON.parse(localStorage.getItem(lsKey, defaultVal));
-
-  Array.from(document.querySelectorAll(selector)).forEach(
-    (saveAs) => (saveAs.checked = currValue)
-  );
+function checkboxLSCheckedByKey(settingId, selector, defaultVal = false) {
+  const v = getSettingBool(settingId, defaultVal);
+  document.querySelectorAll(selector).forEach((el) => (el.checked = v));
 }
 
 // Set styles
@@ -221,12 +238,6 @@ class SpeechAndRecognation {
     return hidden;
   }
 
-  setTarget(node, w) {
-    this.node = node;
-    this.widgetsText = w;
-    this.refresh();
-  }
-
   cfg() {
     const name = this.widgetsText?.name;
     const def = () => ({ clear_text: true, save_record: false });
@@ -244,17 +255,20 @@ class SpeechAndRecognation {
       delete all.save_record;
       all[name] ??= old;
     }
-
     return (all[name] ??= def());
+  }
+
+  setTarget(node, w) {
+    this.node = node;
+    this.widgetsText = w;
+    this.refresh();
   }
 
   refresh() {
     if (!this.element) return;
     const cfg = this.cfg();
-
     const save = this.element.querySelector(".alekpet_extras_node_recognition_save");
     const clear = this.element.querySelector(".alekpet_extras_node_recognition_clear");
-
     if (save) save.checked = !!cfg.save_record;
     if (clear) clear.checked = !!cfg.clear_text;
   }
@@ -330,12 +344,7 @@ class SpeechAndRecognation {
                         return;
                       }
 
-                      const saveAsWindow = JSON.parse(
-                        localStorage.getItem(
-                          `${idExt}.SpeechAndRecognationSpeechSaveAs`,
-                          false
-                        )
-                      );
+                      const saveAsWindow = getSettingBool(KEY_SAVEAS);
 
                       // Filename
                       let nameFile = "recording.webm";
@@ -438,10 +447,7 @@ class SpeechAndRecognation {
                       );
                     })
                     .then(() => {
-                      checkboxLSCheckedByKey(
-                        `${idExt}.SpeechAndRecognationSpeechSaveAs`,
-                        ".alekpet_extras_node_recognition_saveAs"
-                      );
+                      checkboxLSCheckedByKey(KEY_SAVEAS, ".alekpet_extras_node_recognition_saveAs");
                       animateClick(e.currentTarget.nextElementSibling);
                     });
                 },
@@ -550,12 +556,8 @@ class SpeechAndRecognation {
                       "input.alekpet_extras_node_speech_recognition_settings_props_input.alekpet_extras_node_speech_recognition_checkbox.alekpet_extras_node_recognition_saveAs",
                       {
                         type: "checkbox",
-                        checked: JSON.parse(
-                          localStorage.getItem(
-                            `${idExt}.SpeechAndRecognationSpeechSaveAs`,
-                            false
-                          )
-                        ),
+                        checked: getSettingBool(KEY_SAVEAS),
+                        onchange: (e) => setSettingBool(KEY_SAVEAS, e.target.checked),
                         onchange: (e) => {
                           const check = !!e.target.checked;
                           const settCheck = document.body.querySelector(
@@ -659,7 +661,7 @@ class SpeechAndRecognation {
                 }
               } else {
                 const utterance = speakSynthesisUtterance(
-                  `${this.widgetsText?.name || "This"}}, field is empty!`,
+                  `${this.widgetsText?.name || "This"}, field is empty!`,
                   {
                     onend: (ev) => {
                       ev.currentTarget.title = "Speak text";
