@@ -228,22 +228,35 @@ class SpeechAndRecognation {
   }
 
   cfg() {
+    const name = this.widgetsText?.name;
+    const def = () => ({ clear_text: true, save_record: false });
+    if (!name) return def();
+
     this.node.properties ??= {};
-    return (this.node.properties.alekpet_speech_and_recognation_settings[
-      this.widgetsText.name
-    ] ??= {
-      clear_text: true,
-      save_record: false,
-    });
+    const all = (this.node.properties.alekpet_speech_and_recognation_settings ??= {});
+
+    if ("save_record" in all || "clear_text" in all) {
+      const old = {
+        clear_text: all.clear_text ?? true,
+        save_record: all.save_record ?? false,
+      };
+      delete all.clear_text;
+      delete all.save_record;
+      all[name] ??= old;
+    }
+
+    return (all[name] ??= def());
   }
 
   refresh() {
-    this.element.querySelector(
-      ".alekpet_extras_node_recognition_save"
-    ).checked = !!this.cfg().save_record;
-    this.element.querySelector(
-      ".alekpet_extras_node_recognition_clear"
-    ).checked = !!this.cfg().clear_text;
+    if (!this.element) return;
+    const cfg = this.cfg();
+
+    const save = this.element.querySelector(".alekpet_extras_node_recognition_save");
+    const clear = this.element.querySelector(".alekpet_extras_node_recognition_clear");
+
+    if (save) save.checked = !!cfg.save_record;
+    if (clear) clear.checked = !!cfg.clear_text;
   }
 
   createLayout() {

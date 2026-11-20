@@ -37,19 +37,22 @@ let SpeechAndRecognationSpeech = SpeechAndRecognationSpeechLS
 const tracked = new Map();
 
 function bind(node, w, ta) {
+  const parent = ta.parentElement;
+  if (!parent) return;
+
   let c = tracked.get(ta);
   if (c) {
     c.node = node;
     c.w = w;
     c.speech_recognation.setTarget(node, w);
+    const el = c.speech_recognation.element;
+    if (el && el.parentElement !== parent) parent.appendChild(el);
     return;
   }
 
   const speech_recognation = new SpeechAndRecognation(node, w);
-  w.element.parentElement.appendChild(speech_recognation.createLayout());
-
-  c = { node, w, speech_recognation };
-  tracked.set(ta, c);
+  parent.appendChild(speech_recognation.createLayout());
+  tracked.set(ta, { node, w, speech_recognation });
 }
 
 function walk(graph, seen = new Set()) {
@@ -57,8 +60,12 @@ function walk(graph, seen = new Set()) {
   seen.add(graph);
   for (const node of graph._nodes ?? graph.nodes ?? []) {
     for (const w of node.widgets ?? []) {
-      const ta = w.element ?? w.inputEl;
-      if (ta instanceof HTMLTextAreaElement) bind(node, w, ta);
+      try {
+        const ta = w.element ?? w.inputEl;
+        if (ta instanceof HTMLTextAreaElement) bind(node, w, ta);
+      } catch (e) {
+        console.warn("[Speech] bind error", node?.id, w?.name, e);
+      }
     }
     if (node.subgraph) walk(node.subgraph, seen);
   }
